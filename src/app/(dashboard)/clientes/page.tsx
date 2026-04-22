@@ -1,55 +1,45 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
-import { UserPlus, Search, Edit2, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Edit2, Trash2, Search, Plus, ChevronLeft, ChevronRight, Filter, User, Copy, Check } from 'lucide-react';
+import Link from 'next/link';
 import { ConfirmModal } from '@/components/ConfirmModal';
 
 const PAGE_SIZE = 50;
 
-export default function ClientesPage() {
-  const router = useRouter();
+export default function ClientesList() {
   const [clientes, setClientes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [busca, setBusca] = useState('');
-  const [nivel, setNivel] = useState('');
+  const [search, setSearch] = useState('');
   const [page, setPage] = useState(0);
   const [total, setTotal] = useState(0);
-
-  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-  const [clientToDelete, setClientToDelete] = useState<{ id: string; nome: string } | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [modalError, setModalError] = useState('');
+  const [nivel, setNivel] = useState('');
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   useEffect(() => {
-    verifyAccess();
+    const fetchProfile = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        const { data: profile } = await supabase.from('usuarios').select('nivel').eq('supabase_user_id', session.user.id).single();
+        if (profile) setNivel(profile.nivel);
+      }
+    };
+    fetchProfile();
   }, []);
 
-  useEffect(() => {
-    fetchClientes();
-  }, [page]);
-
-  const verifyAccess = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) return;
-    const { data: profile } = await supabase
-      .from('usuarios')
-      .select('nivel')
-      .eq('supabase_user_id', session.user.id)
-      .single();
-    if (profile) setNivel(profile.nivel);
-  };
-
-  const fetchClientes = useCallback(async (searchOverride?: string) => {
+  const fetchClientes = useCallback(async () => {
     setLoading(true);
-    const search = searchOverride !== undefined ? searchOverride : busca;
     const from = page * PAGE_SIZE;
     const to = from + PAGE_SIZE - 1;
 
     let query = supabase
       .from('clientes')
       .select('*', { count: 'exact' })
-      .order('created_at', { ascending: false })
+      .order('nome', { ascending: true })
       .range(from, to);
 
     if (search) {
@@ -60,151 +50,152 @@ export default function ClientesPage() {
     if (data) setClientes(data);
     if (count !== null) setTotal(count);
     setLoading(false);
-  }, [page, busca]);
+  }, [page, search]);
 
-  const handleSearch = () => {
-    setPage(0);
-    fetchClientes(busca);
-  };
-
-  const confirmDelete = (id: string, nome: string) => {
-    setClientToDelete({ id, nome });
-    setDeleteModalOpen(true);
-  };
+  useEffect(() => {
+    fetchClientes();
+  }, [page, search]);
 
   const handleDelete = async () => {
-    if (!clientToDelete) return;
-    const { error } = await supabase.from('clientes').delete().eq('id', clientToDelete.id);
+    if (!deleteId) return;
+    setDeleting(true);
+    const { error } = await supabase.from('clientes').delete().eq('id', deleteId);
+    setDeleting(false);
     if (error) {
-      alert('Erro ao excluir: ' + error.message);
+      setModalError('Erro ao excluir cliente: ' + (error.code === '23503' ? 'Este cliente possui vendas vinculadas e não pode ser excluído.' : error.message));
     } else {
-      setClientes(clientes.filter(c => c.id !== clientToDelete.id));
-      setTotal(t => t - 1);
+      setDeleteId(null);
+      fetchClientes();
     }
-    setDeleteModalOpen(false);
-    setClientToDelete(null);
+  };
+
+  const handleCopy = (cpf: string, id: string) => {
+    navigator.clipboard.writeText(cpf);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
   };
 
   const totalPages = Math.ceil(total / PAGE_SIZE);
 
   return (
-    <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
-        <div>
-          <h1 style={{ margin: '0 0 1rem 0' }}>Clientes</h1>
-          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-            <div style={{ position: 'relative', minWidth: '320px' }}>
-              <Search size={18} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
-              <input
-                type="text"
-                placeholder="Buscar por nome ou CPF..."
-                value={busca}
-                onChange={(e) => setBusca(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                style={{ paddingLeft: '2.5rem', width: '100%' }}
-              />
-            </div>
-            <button className="btn btn-secondary" onClick={handleSearch}>Buscar</button>
+    <>
+      <ConfirmModal
+        isOpen={!!deleteId}
+        title="Excluir Cliente"
+        message="Tem certeza que deseja excluir este cliente? Esta ação removerá o cadastro permanentemente."
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteId(null)}
+        confirmText={deleting ? 'Excluindo...' : 'Sim, Excluir'}
+        confirmType="danger"
+      />
+
+      <ConfirmModal
+        isOpen={!!modalError}
+        title="Ação não permitida"
+        message={modalError}
+        onConfirm={() => setModalError('')}
+        confirmText="Entendi"
+      />
+
+      <div className="animate-fade-in">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
+          <div>
+            <h1 style={{ margin: 0 }}>Clientes</h1>
+            <p style={{ color: 'var(--color-text-muted)', marginTop: '0.5rem' }}>Gerencie o cadastro de clientes do sistema.</p>
           </div>
+          <Link href="/clientes/novo" className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <Plus size={18} /> Novo Cliente
+          </Link>
         </div>
 
-        {(nivel === 'admin' || nivel === 'operacional') && (
-          <Link href="/clientes/novo" className="btn btn-primary" style={{ whiteSpace: 'nowrap', marginTop: '0.5rem' }}>
-            <UserPlus size={18} /> Novo Cliente
-          </Link>
-        )}
+      <div className="card" style={{ marginBottom: '2rem', display: 'flex', gap: '1rem', alignItems: 'center' }}>
+        <div style={{ position: 'relative', flex: 1 }}>
+          <Search size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
+          <input type="text" placeholder="Buscar por Nome ou CPF..." value={search} onChange={e => { setSearch(e.target.value); setPage(0); }} style={{ paddingLeft: '2.75rem', width: '100%' }} />
+        </div>
+        <button className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }} onClick={() => fetchClientes()}>
+          <Filter size={18} /> Filtrar
+        </button>
       </div>
 
-      <div className="card" style={{ opacity: loading ? 0.6 : 1, transition: 'opacity 0.2s' }}>
-        {loading && clientes.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-muted)' }}>Buscando clientes...</div>
-        ) : clientes.length === 0 && !loading ? (
-          <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-muted)' }}>
-            Nenhum cliente encontrado.
-          </div>
+      <div className="card">
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: '4rem' }}>Carregando clientes...</div>
+        ) : clientes.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '4rem', color: 'var(--color-text-muted)' }}>Nenhum cliente encontrado.</div>
         ) : (
           <>
             <div className="table-wrapper">
               <table className="table">
                 <thead>
                   <tr>
-                    <th>CPF</th>
                     <th>Nome</th>
-                    <th>Banco (Débito)</th>
-                    <th>Agência</th>
-                    <th>Conta</th>
-                    <th>Tipo</th>
-                    <th>Crédito</th>
-                    {nivel === 'admin' && <th style={{ textAlign: 'right' }}>Ações</th>}
+                    <th>CPF</th>
+                    <th>Email</th>
+                    <th>Telefone</th>
+                    <th style={{ textAlign: 'right' }}>Ações</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {clientes.map((cliente) => (
-                    <tr key={cliente.id}>
-                      <td style={{ whiteSpace: 'nowrap', fontFamily: 'monospace' }}>{cliente.cpf}</td>
-                      <td>{cliente.nome}</td>
-                      <td>{cliente.banco || '-'}</td>
-                      <td>{cliente.agencia || '-'}</td>
-                      <td>{cliente.conta || '-'}</td>
-                      <td style={{ textTransform: 'capitalize' }}>{cliente.tipo_conta || '-'}</td>
-                      <td>
-                        {cliente.forma_credito === 'pix' ? (
-                          <span className="badge badge-success" style={{ fontSize: '0.7rem' }}>PIX</span>
-                        ) : cliente.forma_credito === 'conta' ? (
-                          <span className="badge" style={{ fontSize: '0.7rem', background: 'var(--color-info)', color: '#fff' }}>Conta</span>
-                        ) : (
-                          <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>—</span>
-                        )}
+                  {clientes.map((c) => (
+                    <tr key={c.id}>
+                      <td style={{ fontWeight: 500 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                          <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: 'var(--color-bg-body)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-primary)' }}>
+                            <User size={16} />
+                          </div>
+                          {c.nome}
+                        </div>
                       </td>
-                      {nivel === 'admin' && (
-                        <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                          <button
-                            className="btn btn-secondary"
-                            style={{ padding: '0.25rem', marginRight: '0.5rem', border: 'none', background: 'transparent', color: 'var(--color-primary)' }}
-                            onClick={() => router.push(`/clientes/${cliente.id}`)}
-                            title="Editar"
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          {c.cpf}
+                          <button 
+                            onClick={() => handleCopy(c.cpf, c.id)}
+                            style={{ 
+                              background: 'transparent', 
+                              border: 'none', 
+                              padding: '0.2rem', 
+                              color: copiedId === c.id ? 'var(--color-success)' : 'var(--color-text-muted)', 
+                              cursor: 'pointer', 
+                              display: 'flex', 
+                              alignItems: 'center',
+                              transition: 'all 0.2s'
+                            }}
+                            title="Copiar CPF"
                           >
+                            {copiedId === c.id ? <Check size={14} /> : <Copy size={14} />}
+                          </button>
+                        </div>
+                      </td>
+                      <td>{c.email || '-'}</td>
+                      <td>{c.telefone || '-'}</td>
+                      <td style={{ textAlign: 'right' }}>
+                        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                          <Link href={`/clientes/${c.id}/editar`} className="btn btn-secondary" style={{ padding: '0.4rem' }} title="Editar">
                             <Edit2 size={16} />
-                          </button>
-                          <button
-                            className="btn btn-danger"
-                            style={{ padding: '0.25rem', border: 'none', background: 'transparent', color: 'var(--color-danger)' }}
-                            onClick={() => confirmDelete(cliente.id, cliente.nome)}
-                            title="Excluir"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </td>
-                      )}
+                          </Link>
+                          {nivel === 'admin' && (
+                            <button className="btn btn-danger" style={{ padding: '0.4rem', background: 'transparent', color: 'var(--color-danger)', border: 'none' }} onClick={() => setDeleteId(c.id)} title="Excluir">
+                              <Trash2 size={16} />
+                            </button>
+                          )}
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
 
-            {/* Paginação */}
             {totalPages > 1 && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--color-border)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid var(--color-border)' }}>
                 <span style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>
-                  {total} cliente(s) — Página {page + 1} de {totalPages}
+                  Total: {total} clientes — Página {page + 1} de {totalPages}
                 </span>
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  <button
-                    className="btn btn-secondary"
-                    style={{ padding: '0.375rem 0.75rem' }}
-                    disabled={page === 0}
-                    onClick={() => setPage(p => p - 1)}
-                  >
-                    <ChevronLeft size={16} />
-                  </button>
-                  <button
-                    className="btn btn-secondary"
-                    style={{ padding: '0.375rem 0.75rem' }}
-                    disabled={page >= totalPages - 1}
-                    onClick={() => setPage(p => p + 1)}
-                  >
-                    <ChevronRight size={16} />
-                  </button>
+                  <button className="btn btn-secondary" style={{ padding: '0.5rem' }} disabled={page === 0} onClick={() => setPage(p => p - 1)}><ChevronLeft size={18} /></button>
+                  <button className="btn btn-secondary" style={{ padding: '0.5rem' }} disabled={page >= totalPages - 1} onClick={() => setPage(p => p + 1)}><ChevronRight size={18} /></button>
                 </div>
               </div>
             )}
@@ -212,13 +203,7 @@ export default function ClientesPage() {
         )}
       </div>
 
-      <ConfirmModal
-        isOpen={deleteModalOpen}
-        title="Excluir Cliente"
-        message={<span>Tem certeza que deseja excluir o cliente <strong>{clientToDelete?.nome}</strong>?<br /><br />Esta ação é permanente e não poderá ser desfeita.</span>}
-        onConfirm={handleDelete}
-        onCancel={() => setDeleteModalOpen(false)}
-      />
-    </div>
+      </div>
+    </>
   );
 }

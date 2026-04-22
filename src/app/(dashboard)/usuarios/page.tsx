@@ -14,7 +14,7 @@ export default function UsuariosPage() {
 
   // Modal States
   const [modalOpen, setModalOpen] = useState(false);
-  const [actionType, setActionType] = useState<'approve_op' | 'approve_admin' | 'deactivate' | 'reactivate' | 'reject' | 'toggle_level' | 'delete' | null>(null);
+  const [actionType, setActionType] = useState<'approve_op' | 'approve_admin' | 'deactivate' | 'reactivate' | 'reject' | 'delete' | null>(null);
   const [selectedUser, setSelectedUser] = useState<any>(null);
 
   // Edit Modal State
@@ -49,20 +49,20 @@ export default function UsuariosPage() {
 
   const handleActionConfirm = async () => {
     if (!selectedUser || !actionType) return;
-    
+
     if (actionType === 'delete') {
       const res = await adminDeleteUser(selectedUser.id);
       if (res.error) {
-         setErrorMessage(res.error);
+        setErrorMessage(res.error);
       } else {
-         fetchUsuarios();
+        fetchUsuarios();
       }
     } else {
       const res = await adminChangeUserStatus(selectedUser.id, actionType);
       if (res.error) setErrorMessage(res.error);
       else fetchUsuarios();
     }
-    
+
     setModalOpen(false);
     setSelectedUser(null);
     setActionType(null);
@@ -72,12 +72,12 @@ export default function UsuariosPage() {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
         <h1 style={{ margin: 0 }}>Gerenciamento de Usuários</h1>
-        
+
         <div style={{ position: 'relative', width: '300px' }}>
           <Search size={18} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
-          <input 
-            type="text" 
-            placeholder="Buscar por nome ou e-mail..." 
+          <input
+            type="text"
+            placeholder="Buscar por nome ou e-mail..."
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && fetchUsuarios()}
@@ -120,8 +120,8 @@ export default function UsuariosPage() {
                       </span>
                     </td>
                     <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                      <button 
-                        className="btn btn-secondary" 
+                      <button
+                        className="btn btn-secondary"
                         style={{ padding: '0.4rem', marginRight: '0.4rem', background: 'transparent', color: 'var(--color-primary)', border: 'none' }}
                         onClick={() => { setUserToEdit(usr); setEditModalOpen(true); }}
                         title="Editar Dados e E-mail"
@@ -131,24 +131,24 @@ export default function UsuariosPage() {
 
                       {usr.status === 'pendente' && (
                         <>
-                          <button 
-                            className="btn btn-success" 
+                          <button
+                            className="btn btn-success"
                             style={{ padding: '0.4rem', marginRight: '0.4rem' }}
                             onClick={() => confirmAction(usr, 'approve_op')}
                             title="Aprovar como Operacional"
                           >
                             <UserCheck size={16} />
                           </button>
-                          <button 
-                            className="btn btn-primary" 
+                          <button
+                            className="btn btn-primary"
                             style={{ padding: '0.4rem', marginRight: '0.4rem' }}
                             onClick={() => confirmAction(usr, 'approve_admin')}
                             title="Aprovar como Administrador"
                           >
                             <ShieldCheck size={16} />
                           </button>
-                          <button 
-                            className="btn btn-danger" 
+                          <button
+                            className="btn btn-danger"
                             style={{ padding: '0.4rem', marginRight: '0.4rem', background: 'transparent', color: 'var(--color-danger)', border: '1px solid var(--color-danger)' }}
                             onClick={() => confirmAction(usr, 'reject')}
                             title="Rejeitar Cadastro"
@@ -157,19 +157,11 @@ export default function UsuariosPage() {
                           </button>
                         </>
                       )}
-                      
+
                       {usr.status === 'ativo' && (
                         <>
-                          <button 
-                            className="btn btn-secondary" 
-                            style={{ padding: '0.4rem', marginRight: '0.4rem' }}
-                            onClick={() => confirmAction(usr, 'toggle_level')}
-                            title={`Mudar para ${usr.nivel === 'admin' ? 'Operacional' : 'Admin'}`}
-                          >
-                            <Shield size={16} />
-                          </button>
-                          <button 
-                            className="btn btn-danger" 
+                          <button
+                            className="btn btn-danger"
                             style={{ padding: '0.4rem', marginRight: '0.4rem', color: 'var(--color-warning)', background: 'transparent', border: '1px solid var(--color-warning)' }}
                             onClick={() => confirmAction(usr, 'deactivate')}
                             title="Desativar Acesso"
@@ -180,8 +172,8 @@ export default function UsuariosPage() {
                       )}
 
                       {usr.status === 'inativo' && (
-                         <button 
-                          className="btn btn-secondary" 
+                        <button
+                          className="btn btn-secondary"
                           style={{ padding: '0.4rem', marginRight: '0.4rem' }}
                           onClick={() => confirmAction(usr, 'reactivate')}
                           title="Reativar Acesso"
@@ -190,13 +182,13 @@ export default function UsuariosPage() {
                         </button>
                       )}
 
-                      <button 
-                        className="btn btn-danger" 
+                      <button
+                        className="btn btn-danger"
                         style={{ padding: '0.4rem', border: 'none', background: 'transparent', color: 'var(--color-danger)' }}
                         onClick={() => confirmAction(usr, 'delete')}
                         title="Excluir Permanentemente"
                       >
-                         <Trash2 size={16} />
+                        <Trash2 size={16} />
                       </button>
                     </td>
                   </tr>
@@ -207,20 +199,18 @@ export default function UsuariosPage() {
         )}
       </div>
 
-      <ConfirmModal 
+      <ConfirmModal
         isOpen={modalOpen}
         title={
           actionType === 'delete' ? 'Excluir Usuário Permanentemente' :
-          actionType === 'reject' ? 'Rejeitar Cadastro' :
-          actionType === 'toggle_level' ? 'Alterar Nível de Acesso' :
-          actionType === 'deactivate' ? 'Desativar Usuário' :
-          actionType === 'reactivate' ? 'Reativar Usuário' : 'Aprovar Acesso'
+            actionType === 'reject' ? 'Rejeitar Cadastro' :
+            actionType === 'deactivate' ? 'Desativar Usuário' :
+              actionType === 'reactivate' ? 'Reativar Usuário' : 'Aprovar Acesso'
         }
         message={
           <span>
-            {actionType === 'delete' && <>Tem certeza que deseja apagar o registro de <strong>{selectedUser?.nome}</strong> para sempre? Historicamente, sugerimos apenas "Desativar" para não quebrar a relação dele com os Borderôs e Clientes registrados.</>}
-            {actionType === 'reject' && <>Você está rejeitando o pedido de acesso de <strong>{selectedUser?.nome}</strong>. O status dele ficará bloqueado e não terá qualquer acesso no ProConsig.</>}
-            {actionType === 'toggle_level' && <>Você está prestes a mudar as permissões de poder de <strong>{selectedUser?.nome}</strong> para o nível de <strong>{selectedUser?.nivel === 'admin' ? 'Operacional' : 'Administrador'}</strong>. Deseja aplicar agora?</>}
+            {actionType === 'delete' && <>Tem certeza que deseja apagar o registro de <strong>{selectedUser?.nome}</strong> para sempre? Historicamente, sugerimos apenas "Desativar" para não quebrar a relação dele com as Vendas e Clientes registrados.</>}
+            {actionType === 'reject' && <>Você está rejeitando o pedido de acesso de <strong>{selectedUser?.nome}</strong>. O status dele ficará bloqueado e não terá qualquer acesso no CentralPagamentos.</>}
             {actionType === 'deactivate' && <>Isso revogará temporariamente o acesso do usuário <strong>{selectedUser?.nome}</strong> da plataforma. Essa ação pode ser desfeita a qualquer momento.</>}
             {actionType === 'reactivate' && <>Restabelecer acesso para o perfil de <strong>{selectedUser?.nome}</strong> ({selectedUser?.nivel}).</>}
             {actionType === 'approve_op' && <>Aprovar o cadastro e garantir nível <strong>Operacional</strong> para <strong>{selectedUser?.nome}</strong>?</>}
@@ -229,21 +219,20 @@ export default function UsuariosPage() {
         }
         confirmText={
           actionType === 'delete' ? 'Sim, Excluir' :
-          actionType === 'reject' ? 'Rejeitar Cadastro' :
-          actionType === 'toggle_level' ? 'Confirmar Mudança' :
-          actionType === 'deactivate' ? 'Desativar Acesso' :
-          actionType === 'reactivate' ? 'Reativar' :
-          'Confirmar Aprovação'
+            actionType === 'reject' ? 'Rejeitar Cadastro' :
+                actionType === 'deactivate' ? 'Desativar Acesso' :
+                  actionType === 'reactivate' ? 'Reativar' :
+                    'Confirmar Aprovação'
         }
         onConfirm={handleActionConfirm}
         onCancel={() => setModalOpen(false)}
       />
 
-      <EditUserModal 
-        isOpen={editModalOpen} 
-        user={userToEdit} 
-        onClose={() => setEditModalOpen(false)} 
-        onSuccess={fetchUsuarios} 
+      <EditUserModal
+        isOpen={editModalOpen}
+        user={userToEdit}
+        onClose={() => setEditModalOpen(false)}
+        onSuccess={fetchUsuarios}
       />
 
       <ConfirmModal

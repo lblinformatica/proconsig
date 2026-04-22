@@ -1,44 +1,40 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
-import { Filter, FileSpreadsheet, ShieldOff } from 'lucide-react';
+import { Download, FileSearch, Calendar, Filter } from 'lucide-react';
+import * as XLSX from 'xlsx';
+import { ConfirmModal } from '@/components/ConfirmModal';
 
 export default function RelatoriosPage() {
-  const [dataApurada, setDataApurada] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [nivel, setNivel] = useState<string | null>(null);
-  const [filtros, setFiltros] = useState({
+  const [dataApurada, setDataApurada] = useState<any[]>([]);
+  const [filters, setFilters] = useState({
     banco: '', status: '', dataInicio: '', dataFim: '', corretor: ''
   });
   const [searched, setSearched] = useState(false);
+  const [modalError, setModalError] = useState('');
 
-  useEffect(() => {
-    const init = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-      const { data: profile } = await supabase.from('usuarios').select('nivel').eq('supabase_user_id', session.user.id).single();
-      setNivel(profile?.nivel ?? '');
-    };
-    init();
-  }, []);
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    setFiltros({ ...filtros, [e.target.name]: e.target.value });
+  const handleFilterChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    setFilters({ ...filters, [e.target.name]: e.target.value });
   };
 
-  const gerarRelatorio = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const buscarDados = async () => {
     setLoading(true);
-    let query = supabase.from('borderos').select('*, clientes(nome, cpf), usuarios!created_by(nome)');
-    if (filtros.banco) query = query.ilike('banco', `%${filtros.banco}%`);
-    if (filtros.status) query = query.eq('status', filtros.status);
-    if (filtros.corretor) query = query.ilike('corretor', `%${filtros.corretor}%`);
-    if (filtros.dataInicio) query = query.gte('created_at', filtros.dataInicio);
-    if (filtros.dataFim) query = query.lte('created_at', filtros.dataFim + 'T23:59:59');
+    let query = supabase
+      .from('vendas')
+      .select('*, usuarios!created_by(nome)')
+      .order('created_at', { ascending: false });
+
+    if (filters.banco) query = query.ilike('banco', `%${filters.banco}%`);
+    if (filters.corretor) query = query.ilike('corretor', `%${filters.corretor}%`);
+    if (filters.dataInicio) query = query.gte('created_at', filters.dataInicio);
+    if (filters.dataFim) query = query.lte('created_at', filters.dataFim + 'T23:59:59');
+
     const { data, error } = await query;
-    if (error) alert('Erro: ' + error.message);
-    else {
+    if (error) {
+      setModalError('Erro ao buscar dados: ' + error.message);
+    } else {
       setDataApurada(data || []);
       setSearched(true);
     }
@@ -46,151 +42,120 @@ export default function RelatoriosPage() {
   };
 
   const exportExcel = async () => {
-    if (dataApurada.length === 0) return alert('Gere o relatório antes de exportar.');
-    // Dynamic import to keep bundle size small
-    const XLSX = await import('xlsx');
-    const payload = dataApurada.map(b => ({
-      'ID Borderô': b.bordero_id || b.id,
-      'Data Criação': new Date(b.created_at).toLocaleDateString('pt-BR'),
-      'Cliente': b.clientes?.nome,
-      'CPF': b.clientes?.cpf,
-      'Banco': b.banco,
-      'Agência': b.agencia,
-      'Conta': b.conta,
-      'Operação': b.operacao,
-      'Valor Contrato': b.valor,
-      'Saldo Devedor': b.saldo,
-      'Valor Líquido': b.abat,
-      'Parcela': b.parcela,
-      'Prazo': b.prazo,
-      'Status': b.status,
-      'Empresa': b.empresa,
-      'Corretor': b.corretor,
-      'Usuário': b.usuarios?.nome
+    if (dataApurada.length === 0) {
+      setModalError('Gere o relatório antes de exportar.');
+      return;
+    }
+
+    const timestamp = new Date().toLocaleString('pt-BR');
+    const rows = dataApurada.map(v => ({
+      'ID Venda': v.venda_id || '-',
+      'Data Cadastro': new Date(v.created_at).toLocaleDateString('pt-BR'),
+      'Hora': new Date(v.created_at).toLocaleTimeString('pt-BR'),
+      'Operador': v.usuarios?.nome || '-',
+      'CPF Cliente': v.cpf,
+      'Órgão': v.orgao || '-',
+      'Empresa': v.empresa || '-',
+      'Operação': v.operacao,
+      'Cód. Operação': v.codigo_operacao || '-',
+      'Corretor': v.corretor || '-',
+      'Valor Contrato': v.valor || 0,
+      'Saldo Devedor': v.saldo || 0,
+      'Valor Líquido': v.abat || 0,
+      'Parcela': v.parcela || 0,
+      'Coeficiente': v.coef || 0,
+      'Prazo': v.prazo || 0,
+      'Banco (Débito)': v.banco || '-',
+      'Agência (Débito)': `${v.agencia || ''}-${v.agencia_dv || ''}`,
+      'Conta (Débito)': `${v.conta || ''}-${v.conta_dv || ''}`,
+      'Forma Recebimento': v.forma_credito?.toUpperCase() || '-',
+      'PIX (Chave)': v.pix_chave || '-',
+      'PIX (Tipo)': v.pix_tipo_chave || '-',
+      'Banco (Crédito)': v.credito_banco || '-',
+      'Agência (Crédito)': `${v.credito_agencia || ''}-${v.credito_agencia_dv || ''}`,
+      'Conta (Crédito)': `${v.credito_conta || ''}-${v.credito_conta_dv || ''}`,
+      'Contrato nº': v.contrato || '-',
+      'Ativação': v.empresa_ativacao || '-',
+      'Início (Mês/Ano)': v.inicio ? new Date(v.inicio).toLocaleDateString('pt-BR', { month: '2-digit', year: 'numeric' }) : '-',
+      'Empresa Credora': v.empresa_credora || '-',
+      'Observações': v.observacao || '-',
+      'Log de Exportação': `Gerado em ${timestamp}`
     }));
-    const ws = XLSX.utils.json_to_sheet(payload);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Relatório');
-    XLSX.writeFile(wb, `relatorio_proconsig_${new Date().toISOString().split('T')[0]}.xlsx`);
+
+    const worksheet = XLSX.utils.json_to_sheet(rows);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Relatório de Vendas");
+    XLSX.writeFile(workbook, `Relatorio_Vendas_${new Date().toISOString().split('T')[0]}.xlsx`);
   };
 
-  // Acesso negado para operacional
-  if (nivel === 'operacional') {
-    return (
-      <div style={{ maxWidth: '600px', margin: '4rem auto', textAlign: 'center' }}>
-        <div className="card" style={{ padding: '3rem' }}>
-          <ShieldOff size={48} style={{ color: 'var(--color-danger)', marginBottom: '1rem' }} />
-          <h2 style={{ margin: '0 0 0.5rem' }}>Acesso Restrito</h2>
-          <p style={{ color: 'var(--color-text-muted)' }}>
-            O módulo de relatórios está disponível somente para administradores.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  // Aguardando carregar nivel
-  if (nivel === null) return null;
-
   return (
-    <div>
+    <div className="animate-fade-in">
       <div style={{ marginBottom: '2rem' }}>
-        <h1 style={{ margin: 0 }}>Relatórios</h1>
-        <p style={{ color: 'var(--color-text-muted)', marginTop: '0.5rem' }}>
-          Cruzamentos de dados dinâmicos com exportação para Excel.
-        </p>
+        <h1 style={{ margin: 0 }}>Relatórios de Vendas</h1>
+        <p style={{ color: 'var(--color-text-muted)', marginTop: '0.5rem' }}>Filtre e exporte dados detalhados para Excel.</p>
       </div>
 
       <div className="card" style={{ marginBottom: '2rem' }}>
-        <h2 style={{ fontSize: '1.25rem', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <Filter size={20} color="var(--color-primary)" /> Filtros Customizados
-        </h2>
-        <form onSubmit={gerarRelatorio}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
-            <div>
-              <label>Banco</label>
-              <input type="text" name="banco" value={filtros.banco} onChange={handleChange} placeholder="Ex: 104, Caixa..." />
-            </div>
-            <div>
-              <label>Status</label>
-              <select name="status" value={filtros.status} onChange={handleChange}>
-                <option value="">Todos</option>
-                <option value="Aprovado">Aprovado</option>
-                <option value="Pendente">Pendente</option>
-                <option value="Rejeitado">Rejeitado</option>
-              </select>
-            </div>
-            <div>
-              <label>Corretor / Vendedor</label>
-              <input type="text" name="corretor" value={filtros.corretor} onChange={handleChange} placeholder="Nome do corretor..." />
-            </div>
-            <div>
-              <label>Data Início</label>
-              <input type="date" name="dataInicio" value={filtros.dataInicio} onChange={handleChange} />
-            </div>
-            <div>
-              <label>Data Fim</label>
-              <input type="date" name="dataFim" value={filtros.dataFim} onChange={handleChange} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem', color: 'var(--color-primary)' }}>
+          <Filter size={20} />
+          <h3 style={{ margin: 0 }}>Filtros de Apuração</h3>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem' }}>
+          <div>
+            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Banco</label>
+            <input name="banco" type="text" value={filters.banco} onChange={handleFilterChange} placeholder="Ex: Bradesco" style={{ width: '100%' }} />
+          </div>
+          <div>
+            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Corretor</label>
+            <input name="corretor" type="text" value={filters.corretor} onChange={handleFilterChange} placeholder="Nome do corretor" style={{ width: '100%' }} />
+          </div>
+          <div>
+            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Data Inicial</label>
+            <div style={{ position: 'relative' }}>
+              <Calendar size={16} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
+              <input name="dataInicio" type="date" value={filters.dataInicio} onChange={handleFilterChange} style={{ width: '100%', paddingLeft: '2.5rem' }} />
             </div>
           </div>
-          <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: '1.5rem', display: 'flex', justifyContent: 'flex-end' }}>
-            <button type="submit" className="btn btn-primary" disabled={loading}>
-              {loading ? 'Pesquisando...' : 'Buscar Dados'}
-            </button>
+          <div>
+            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Data Final</label>
+            <div style={{ position: 'relative' }}>
+              <Calendar size={16} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
+              <input name="dataFim" type="date" value={filters.dataFim} onChange={handleFilterChange} style={{ width: '100%', paddingLeft: '2.5rem' }} />
+            </div>
           </div>
-        </form>
+        </div>
+
+        <div style={{ marginTop: '2rem', display: 'flex', gap: '1rem', justifyContent: 'flex-end', borderTop: '1px solid var(--color-border)', paddingTop: '1.5rem' }}>
+          <button className="btn btn-primary" onClick={buscarDados} disabled={loading} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: '160px', justifyContent: 'center' }}>
+            <FileSearch size={18} /> {loading ? 'Buscando...' : 'Gerar Relatório'}
+          </button>
+          <button className="btn btn-secondary" onClick={exportExcel} disabled={dataApurada.length === 0} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <Download size={18} /> Exportar Excel
+          </button>
+        </div>
       </div>
 
-      {dataApurada.length > 0 && (
-        <div className="card animate-fade-in">
-          {/* ... result list ... */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-            <h2 style={{ fontSize: '1.25rem', margin: 0 }}>Resultado: {dataApurada.length} borderôs</h2>
-            <button className="btn btn-primary" onClick={exportExcel}>
-              <FileSpreadsheet size={18} /> Exportar Excel
-            </button>
+      {searched && (
+        <div className="card animate-scale-up" style={{ textAlign: 'center', padding: '3rem' }}>
+          <div style={{ width: '64px', height: '64px', borderRadius: '50%', backgroundColor: 'var(--color-success-bg)', color: 'var(--color-success)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem' }}>
+            <FileSearch size={32} />
           </div>
-          <div className="table-wrapper">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>ID Borderô</th>
-                  <th>Cliente</th>
-                  <th>Operação</th>
-                  <th>Banco</th>
-                  <th>Valor</th>
-                  <th>Status</th>
-                  <th>Usuário</th>
-                </tr>
-              </thead>
-              <tbody>
-                {dataApurada.slice(0, 50).map((b) => (
-                  <tr key={b.id}>
-                    <td style={{ fontFamily: 'monospace', fontSize: '0.8rem', fontWeight: 600 }}>{b.bordero_id || b.id.substring(0, 8).toUpperCase()}</td>
-                    <td>{b.clientes?.nome}<br /><small style={{ color: 'var(--color-text-muted)' }}>{b.clientes?.cpf}</small></td>
-                    <td>{b.operacao}</td>
-                    <td>{b.banco}</td>
-                    <td>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(b.valor || 0)}</td>
-                    <td>{b.status}</td>
-                    <td style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>{b.usuarios?.nome}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            {dataApurada.length > 50 && (
-              <div style={{ textAlign: 'center', padding: '1rem', color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
-                Mostrando os primeiros 50 resultados na tela. O arquivo Excel conterá todos os {dataApurada.length} registros.
-              </div>
-            )}
-          </div>
+          <h2 style={{ margin: '0 0 0.5rem' }}>Relatório Gerado!</h2>
+          <p style={{ color: 'var(--color-text-muted)', marginBottom: '1.5rem' }}>Encontramos <strong>{dataApurada.length}</strong> registros com os filtros aplicados.</p>
+          <button className="btn btn-primary" onClick={exportExcel} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 2rem' }}>
+            <Download size={20} /> Baixar Arquivo Excel
+          </button>
         </div>
       )}
 
-      {searched && dataApurada.length === 0 && !loading && (
-        <div className="card animate-fade-in" style={{ textAlign: 'center', padding: '3rem' }}>
-          <p style={{ color: 'var(--color-text-muted)', fontSize: '1.1rem', margin: 0 }}>Nenhum registro encontrado.</p>
-        </div>
-      )}
+      <ConfirmModal
+        isOpen={!!modalError}
+        title="Relatórios"
+        message={modalError}
+        onConfirm={() => setModalError('')}
+        confirmText="Entendi"
+        confirmType="primary"
+      />
     </div>
   );
 }

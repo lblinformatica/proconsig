@@ -3,12 +3,12 @@
 import { useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
 
-export default function BorderoDetails(props: { params: Promise<{ id: string }> }) {
+export default function VendaDetails(props: { params: Promise<{ id: string }> }) {
   const params = use(props.params);
   const router = useRouter();
 
   useEffect(() => {
-    router.replace(`/borderos/${params.id}/editar`);
+    router.replace(`/vendas/${params.id}/editar`);
   }, [params.id, router]);
 
   return (

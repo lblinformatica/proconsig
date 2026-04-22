@@ -3,14 +3,6 @@
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import nodemailer from 'nodemailer';
 
-// ── SMTP via Supabase ──────────────────────────────────────────────────────
-// Configure as variáveis no .env.local:
-//   SMTP_HOST=smtp.supabase.io (ou o host real do seu projeto)
-//   SMTP_PORT=465  (SSL) ou 587 (TLS)
-//   SMTP_USER=<seu-email-supabase>
-//   SMTP_PASS=<sua-senha-smtp-supabase>
-//   SMTP_FROM=ProConsig <noreply@seudominio.com>
-
 function createTransporter() {
   if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS) {
     console.warn('[Email] SMTP não configurado — emails não serão enviados.');
@@ -45,7 +37,7 @@ async function sendMail(options: { to: string | string[]; subject: string; html:
 // ── Actions ────────────────────────────────────────────────────────────────
 
 export async function createSolicitacao(data: {
-  bordero_id: string;
+  venda_id: string;
   tipo: 'alteracao' | 'exclusao';
   motivo: string;
   solicitante_id: string;
@@ -53,7 +45,7 @@ export async function createSolicitacao(data: {
 }) {
   try {
     const { error: insertError } = await supabaseAdmin.from('solicitacoes_alteracao').insert({
-      bordero_id: data.bordero_id,
+      venda_id: data.venda_id,
       tipo: data.tipo,
       motivo: data.motivo,
       status: 'pendente',
@@ -63,7 +55,6 @@ export async function createSolicitacao(data: {
 
     if (insertError) return { error: 'Falha ao registrar solicitação: ' + insertError.message };
 
-    // Notificar admins por email
     const { data: admins } = await supabaseAdmin
       .from('usuarios')
       .select('email')
@@ -75,17 +66,17 @@ export async function createSolicitacao(data: {
     if (adminEmails.length > 0) {
       await sendMail({
         to: adminEmails,
-        subject: `Nova Solicitação de ${data.tipo === 'exclusao' ? 'Exclusão' : 'Alteração'} — ProConsig`,
+        subject: `Solicitação de ${data.tipo === 'exclusao' ? 'Exclusão' : 'Alteração'} de Venda — ProConsig`,
         html: `
           <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 24px; background: #f9fafb; border-radius: 8px;">
-            <h2 style="color: #4f46e5; margin-bottom: 16px;">Nova Solicitação no Sistema</h2>
+            <h2 style="color: #4f46e5; margin-bottom: 16px;">Nova Solicitação de Venda</h2>
             <table style="width:100%; border-collapse: collapse;">
-              <tr><td style="padding: 8px; font-weight:bold;">Usuário (Operacional):</td><td style="padding:8px;">${data.solicitante_nome}</td></tr>
-              <tr style="background:#fff;"><td style="padding: 8px; font-weight:bold;">Borderô ID:</td><td style="padding:8px;font-family:monospace;">${data.bordero_id}</td></tr>
+              <tr><td style="padding: 8px; font-weight:bold;">Operador:</td><td style="padding:8px;">${data.solicitante_nome}</td></tr>
+              <tr style="background:#fff;"><td style="padding: 8px; font-weight:bold;">ID da Venda:</td><td style="padding:8px;font-family:monospace;">${data.venda_id}</td></tr>
               <tr><td style="padding: 8px; font-weight:bold;">Tipo:</td><td style="padding:8px;">${data.tipo.toUpperCase()}</td></tr>
               <tr style="background:#fff;"><td style="padding: 8px; font-weight:bold;">Motivo:</td><td style="padding:8px;">${data.motivo}</td></tr>
             </table>
-            <p style="margin-top:24px;color:#6b7280;">Acesse o painel para aprovar ou rejeitar.</p>
+            <p style="margin-top:24px;color:#6b7280;">Acesse o painel administrativo para processar esta solicitação.</p>
           </div>
         `
       });
@@ -105,7 +96,7 @@ export async function adminResolveSolicitacao(
   try {
     const { data: sol, error: solError } = await supabaseAdmin
       .from('solicitacoes_alteracao')
-      .select('*, borderos(cpf, valor, bordero_id)')
+      .select('*, vendas(cpf, valor)')
       .eq('id', solicitacaoId)
       .single();
 
@@ -123,19 +114,19 @@ export async function adminResolveSolicitacao(
       .update({ status: decision, aprovador_id: adminId, resolved_at: new Date().toISOString() })
       .eq('id', solicitacaoId);
 
-    if (updErr) return { error: 'Falha ao atualizar: ' + updErr.message };
+    if (updErr) return { error: 'Falha ao atualizar solicitação: ' + updErr.message };
 
     // Processar exclusão aprovada
     if (decision === 'aprovada' && sol.tipo === 'exclusao') {
-      const { error: delErr } = await supabaseAdmin.from('borderos').delete().eq('id', sol.bordero_id);
-      if (delErr) console.error('Falha ao excluir borderô:', delErr);
+      const { error: delErr } = await supabaseAdmin.from('vendas').delete().eq('id', sol.venda_id);
+      if (delErr) console.error('Falha ao excluir venda:', delErr);
     }
 
-    // Notificação interna (sino)
-    const titulo = decision === 'aprovada' ? 'Solicitação Aprovada' : 'Solicitação Rejeitada';
+    // Notificação interna
+    const titulo = decision === 'aprovada' ? 'Venda Aprovada para Ação' : 'Solicitação Rejeitada';
     const mensagem = decision === 'aprovada'
-      ? `Sua solicitação de ${sol.tipo} do borderô (CPF ${sol.borderos?.cpf}) foi aprovada.`
-      : `Sua solicitação de ${sol.tipo} do borderô (CPF ${sol.borderos?.cpf}) foi rejeitada.`;
+      ? `Sua solicitação de ${sol.tipo} da venda (CPF ${sol.vendas?.cpf}) foi aprovada.`
+      : `Sua solicitação de ${sol.tipo} da venda (CPF ${sol.vendas?.cpf}) foi rejeitada pelo administrador.`;
 
     await supabaseAdmin.from('notificacoes').insert({
       usuario_id: sol.solicitante_id,
@@ -143,7 +134,7 @@ export async function adminResolveSolicitacao(
       titulo,
       mensagem,
       lida: false,
-      link: '/borderos'
+      link: '/vendas'
     });
 
     // Email para o solicitante
@@ -154,11 +145,11 @@ export async function adminResolveSolicitacao(
         html: `
           <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 24px; background: #f9fafb; border-radius: 8px;">
             <h2 style="color: ${decision === 'aprovada' ? '#16a34a' : '#dc2626'}; margin-bottom: 16px;">
-              Aviso do ProConsig
+              Notificação de Decisão Administrativa
             </h2>
             <p>Olá <strong>${solicitante.nome}</strong>,</p>
             <p>${mensagem}</p>
-            <p style="margin-top:24px;color:#6b7280;">Acesse o painel para verificar.</p>
+            <p style="margin-top:24px;color:#6b7280;">Acesse o sistema para verificar os detalhes.</p>
           </div>
         `
       });

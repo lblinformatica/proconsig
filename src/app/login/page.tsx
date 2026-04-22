@@ -528,7 +528,7 @@ export default function Login() {
         <div className="login-left">
           <Image
             src="/branding.png"
-            alt="ProConsig background"
+            alt="CentralPagamentos background"
             fill
             sizes="50vw"
             className="login-left-bg"
@@ -538,18 +538,18 @@ export default function Login() {
           <div className="login-left-content">
             <div className="login-brand">
               <Image src="/branding.png" alt="Logo" width={48} height={48} className="login-brand-logo" />
-              <span className="login-brand-name">ProConsig</span>
+              <span className="login-brand-name">CentralPagamentos</span>
             </div>
 
             <div className="login-left-tagline">
-              <h2>Gestão de Borderôs com eficiência e segurança</h2>
+              <h2>Gestão de Pagamentos com eficiência e segurança</h2>
               <p>
-                Plataforma completa para gerenciamento de clientes, borderôs e solicitações, com controle total de acesso e auditoria.
+                Plataforma completa para gerenciamento de clientes, pagamentos e solicitações, com controle total de acesso e auditoria.
               </p>
             </div>
 
             <div className="login-left-pills">
-              <span className="login-pill">Borderôs</span>
+              <span className="login-pill">Pagamentos</span>
               <span className="login-pill">Clientes</span>
               <span className="login-pill">Relatórios</span>
               <span className="login-pill">Controle de Acesso</span>
@@ -564,10 +564,10 @@ export default function Login() {
             {/* Mobile brand */}
             <div className="login-mobile-brand">
               <Image src="/branding.png" alt="Logo" width={40} height={40} className="login-mobile-logo" />
-              <span className="login-mobile-name">ProConsig</span>
+              <span className="login-mobile-name">Central de Pagamentos</span>
             </div>
 
-            <h1 className="login-heading">Bem-vindo de volta</h1>
+            <h1 className="login-heading">Bem-vindo de volta a Central de Pagamentos</h1>
             <p className="login-subheading">Entre com suas credenciais para acessar o painel</p>
 
             {error && (

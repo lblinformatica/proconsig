@@ -1,26 +1,22 @@
-import nodemailer from 'nodemailer';
+import { Resend } from 'resend';
 
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: parseInt(process.env.SMTP_PORT || '587'),
-  secure: false, // true for 465, false for other ports
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-});
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function sendEmail({ to, subject, html }: { to: string | string[], subject: string, html: string }) {
-  const mailOptions = {
-    from: process.env.SMTP_FROM || 'ProConsig <noreply@proconsig.com.br>',
-    to: Array.isArray(to) ? to.join(', ') : to,
-    subject,
-    html,
-  };
-
   try {
-    const info = await transporter.sendMail(mailOptions);
-    return { success: true, info };
+    const { data, error } = await resend.emails.send({
+      from: 'Central de Pagamentos <notificacoes@centralpagamentos.com.br>',
+      to: Array.isArray(to) ? to : [to],
+      subject,
+      html,
+    });
+
+    if (error) {
+      console.error('Error sending email via Resend:', error);
+      return { success: false, error };
+    }
+
+    return { success: true, data };
   } catch (error) {
     console.error('Error sending email:', error);
     return { success: false, error };

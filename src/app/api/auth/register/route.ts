@@ -80,7 +80,7 @@ export async function POST(req: Request) {
       await sendEmail({
         to: adminEmails,
         subject: 'Novo usuário aguardando aprovação',
-        html: `<p>Um novo usuário solicitou acesso ao sistema:</p><ul><li>Nome: ${nome}</li><li>Conta (Username): ${conta}</li><li>E-mail: ${email}</li></ul><p>Acesse o painel do ProConsig para revisar.</p>`
+        html: `<p>Um novo usuário solicitou acesso ao sistema:</p><ul><li>Nome: ${nome}</li><li>Conta (Username): ${conta}</li><li>E-mail: ${email}</li></ul><p>Acesse o painel do CentralPagamentos para revisar.</p>`
       });
     }
 

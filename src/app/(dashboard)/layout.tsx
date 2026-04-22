@@ -12,7 +12,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const pathname = usePathname();
   const [loading, setLoading] = useState(true);
   const [userProfile, setUserProfile] = useState<any>(null);
-  
+
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
@@ -29,7 +29,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
     const checkUser = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      
+
       if (!session) {
         router.push('/login');
         return;
@@ -41,7 +41,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         .select('*')
         .eq('supabase_user_id', session.user.id)
         .single();
-        
+
       if (error || !profile) {
         // Fallback check through API if RLS is fully blocking client querying
         const resp = await fetch('/api/auth/me', {
@@ -70,21 +70,55 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         setUserProfile(profile);
         setCurrentUserId(profile.id);
         fetchNotifications(profile.id);
+
+        // Redirect financeiro to reports by default
+        if (profile.nivel === 'financeiro' && (pathname === '/dashboard' || pathname === '/')) {
+          router.push('/relatorios');
+        }
       }
-      
+
       setLoading(false);
     };
 
     checkUser();
-    
+
     const { data: listener } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_OUT' || !session) {
         router.push('/login');
       }
     });
 
+    // ── Idle Timeout Logic (60 minutos) ─────────────────────────────────────
+    let idleTimer: NodeJS.Timeout;
+    const timeoutDuration = 60 * 60 * 1000; // 60 minutos em ms
+
+    const logoutUser = async () => {
+      console.log('Inatividade detectada. Deslogando...');
+      await supabase.auth.signOut();
+      router.push('/login');
+    };
+
+    const resetTimer = () => {
+      clearTimeout(idleTimer);
+      idleTimer = setTimeout(logoutUser, timeoutDuration);
+    };
+
+    // Eventos que contam como "atividade"
+    const activityEvents = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'];
+
+    activityEvents.forEach(event => {
+      document.addEventListener(event, resetTimer);
+    });
+
+    // Iniciar o cronômetro
+    resetTimer();
+
     return () => {
       listener.subscription.unsubscribe();
+      clearTimeout(idleTimer);
+      activityEvents.forEach(event => {
+        document.removeEventListener(event, resetTimer);
+      });
     };
   }, [router]);
 
@@ -146,25 +180,25 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   if (loading) {
     return (
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'center', 
-        alignItems: 'center', 
-        height: '100vh', 
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        height: '100vh',
         background: 'var(--color-bg-body)',
         color: 'var(--color-primary)',
         flexDirection: 'column',
         gap: '1rem'
       }}>
-        <div className="spinner" style={{ 
-          width: '40px', 
-          height: '40px', 
-          border: '3px solid var(--color-border)', 
-          borderTopColor: 'var(--color-primary)', 
+        <div className="spinner" style={{
+          width: '40px',
+          height: '40px',
+          border: '3px solid var(--color-border)',
+          borderTopColor: 'var(--color-primary)',
           borderRadius: '50%',
           animation: 'spin 1s linear infinite'
         }} />
-        <span style={{ fontSize: '0.875rem', fontWeight: 500, letterSpacing: '0.05em' }}>PROCONSIG</span>
+        <span style={{ fontSize: '0.875rem', fontWeight: 500, letterSpacing: '0.05em' }}>Carregando...</span>
         <style>{`
           @keyframes spin { to { transform: rotate(360deg); } }
         `}</style>
@@ -202,17 +236,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <aside className="dashboard-sidebar" style={{ width: isSidebarCollapsed ? '80px' : '280px' }}>
         <div style={{ padding: isSidebarCollapsed ? '1rem 0.5rem' : '1.5rem', borderBottom: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexDirection: isSidebarCollapsed ? 'column' : 'row', gap: '0.5rem' }}>
           <div style={{ overflow: 'hidden', display: 'flex', flexDirection: isSidebarCollapsed ? 'column' : 'row', alignItems: 'center', gap: '0.75rem' }}>
-            <Image 
-              src="/branding.png" 
-              alt="Logo" 
-              width={isSidebarCollapsed ? 32 : 40} 
-              height={isSidebarCollapsed ? 32 : 40} 
-              style={{ borderRadius: '8px', objectFit: 'cover' }} 
+            <Image
+              src="/branding.png"
+              alt="Logo"
+              width={isSidebarCollapsed ? 32 : 40}
+              height={isSidebarCollapsed ? 32 : 40}
+              style={{ borderRadius: '8px', objectFit: 'cover' }}
             />
             {!isSidebarCollapsed && (
               <div style={{ display: 'flex', flexDirection: 'column' }}>
-                <h2 style={{ color: 'var(--color-primary)', margin: 0, fontSize: '1.25rem', whiteSpace: 'nowrap' }}>
-                  ProConsig
+                <h2 style={{ color: 'var(--color-primary)', margin: 0, fontSize: '0.9rem', whiteSpace: 'nowrap' }}>
+                  CentralPagamentos
                 </h2>
                 <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '0.1rem', whiteSpace: 'nowrap' }}>
                   Nível: <span style={{ textTransform: 'capitalize', fontWeight: 'bold' }}>{userProfile?.nivel}</span>
@@ -224,17 +258,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <Menu size={20} />
           </button>
         </div>
-        
+
         <nav style={{ flexGrow: 1, padding: isSidebarCollapsed ? '1rem 0.5rem' : '1rem', display: 'flex', flexDirection: 'column', gap: '0.25rem', overflowY: 'auto' }}>
-          <Link href="/dashboard" className={`btn ${pathname === '/dashboard' ? 'btn-primary' : 'btn-secondary'}`} style={navItemStyle(pathname === '/dashboard')} title="Início">
-            <Home size={18} style={{ flexShrink: 0 }} /> {!isSidebarCollapsed && <span style={{ whiteSpace: 'nowrap' }}>Início</span>}
-          </Link>
-          <Link href="/clientes" className={`btn ${pathname.includes('/clientes') ? 'btn-primary' : 'btn-secondary'}`} style={navItemStyle(pathname.includes('/clientes'))} title="Clientes">
-            <Users size={18} style={{ flexShrink: 0 }} /> {!isSidebarCollapsed && <span style={{ whiteSpace: 'nowrap' }}>Clientes</span>}
-          </Link>
-          <Link href="/borderos" className={`btn ${pathname.includes('/borderos') ? 'btn-primary' : 'btn-secondary'}`} style={navItemStyle(pathname.includes('/borderos'))} title="Borderôs">
-            <FileText size={18} style={{ flexShrink: 0 }} /> {!isSidebarCollapsed && <span style={{ whiteSpace: 'nowrap' }}>Borderôs</span>}
-          </Link>
+          {userProfile?.nivel !== 'financeiro' && (
+            <>
+              <Link href="/dashboard" className={`btn ${pathname === '/dashboard' ? 'btn-primary' : 'btn-secondary'}`} style={navItemStyle(pathname === '/dashboard')} title="Início">
+                <Home size={18} style={{ flexShrink: 0 }} /> {!isSidebarCollapsed && <span style={{ whiteSpace: 'nowrap' }}>Início</span>}
+              </Link>
+              <Link href="/clientes" className={`btn ${pathname.includes('/clientes') ? 'btn-primary' : 'btn-secondary'}`} style={navItemStyle(pathname.includes('/clientes'))} title="Clientes">
+                <Users size={18} style={{ flexShrink: 0 }} /> {!isSidebarCollapsed && <span style={{ whiteSpace: 'nowrap' }}>Clientes</span>}
+              </Link>
+              <Link href="/vendas" className={`btn ${pathname.includes('/vendas') ? 'btn-primary' : 'btn-secondary'}`} style={navItemStyle(pathname.includes('/vendas'))} title="Vendas">
+                <FileText size={18} style={{ flexShrink: 0 }} /> {!isSidebarCollapsed && <span style={{ whiteSpace: 'nowrap' }}>Vendas</span>}
+              </Link>
+            </>
+          )}
           {userProfile?.nivel === 'admin' && (
             <Link href="/solicitacoes" className={`btn ${pathname.includes('/solicitacoes') ? 'btn-primary' : 'btn-secondary'}`} style={navItemStyle(pathname.includes('/solicitacoes'))} title="Solicitações">
               <CheckSquare size={18} style={{ flexShrink: 0 }} /> {!isSidebarCollapsed && <span style={{ whiteSpace: 'nowrap' }}>Solicitações</span>}
@@ -245,13 +283,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <Users size={18} style={{ flexShrink: 0 }} /> {!isSidebarCollapsed && <span style={{ whiteSpace: 'nowrap' }}>Gerenciar Usuários</span>}
             </Link>
           )}
-          {userProfile?.nivel === 'admin' && (
+          {(userProfile?.nivel === 'admin' || userProfile?.nivel === 'financeiro') && (
             <Link href="/relatorios" className={`btn ${pathname.includes('/relatorios') ? 'btn-primary' : 'btn-secondary'}`} style={navItemStyle(pathname.includes('/relatorios'))} title="Relatórios">
               <BarChart size={18} style={{ flexShrink: 0 }} /> {!isSidebarCollapsed && <span style={{ whiteSpace: 'nowrap' }}>Relatórios</span>}
             </Link>
           )}
         </nav>
-        
+
         <div style={{ padding: isSidebarCollapsed ? '1rem 0.5rem' : '1rem', borderTop: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column', alignItems: isSidebarCollapsed ? 'center' : 'stretch' }}>
           {!isSidebarCollapsed && (
             <div style={{ marginBottom: '1rem', fontSize: '0.875rem', overflow: 'hidden' }}>
@@ -272,7 +310,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
             {/* Theme Toggle */}
             <button onClick={toggleDarkMode} className="btn btn-secondary" style={{ padding: '0.5rem', borderRadius: '50%', background: 'transparent', border: 'none', boxShadow: 'none', color: 'var(--color-text-muted)' }} title="Alternar Tema">
-               {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
+              {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
             </button>
             {/* Notification Bell */}
             <div style={{ position: 'relative' }}>

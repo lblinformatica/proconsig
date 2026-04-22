@@ -41,7 +41,7 @@ export default function SolicitacoesPage() {
 
     let query = supabase
       .from('solicitacoes_alteracao')
-      .select('*, borderos(cpf, valor, operacao, bordero_id, id), usuarios!solicitante_id(nome)', { count: 'exact' })
+      .select('*, vendas(cpf, valor, operacao, id), usuarios!solicitante_id(nome)', { count: 'exact' })
       .order('created_at', { ascending: false })
       .range(from, to);
 
@@ -54,7 +54,7 @@ export default function SolicitacoesPage() {
   }, [page, nivel, userId]);
 
   useEffect(() => {
-    if (nivel !== undefined) fetchSolicitacoes();
+    if (nivel !== undefined && nivel !== '') fetchSolicitacoes();
   }, [page, nivel, userId]);
 
   const confirmDecision = (request: any, decision: 'aprovada' | 'rejeitada') => {
@@ -72,7 +72,7 @@ export default function SolicitacoesPage() {
       }
       const res = await adminResolveSolicitacao(selectedRequest.id, actionType, aprovadorId);
       if (res.error) setModalError(res.error);
-      else setModalMessage(`Solicitação ${actionType} com sucesso. O requerente foi notificado.`);
+      else setModalMessage(`Solicitação ${actionType} com sucesso. O operador foi notificado.`);
       fetchSolicitacoes();
     } catch (err: any) {
       setModalError('Erro ao processar: ' + err.message);
@@ -86,9 +86,9 @@ export default function SolicitacoesPage() {
   return (
     <div>
       <div style={{ marginBottom: '2rem' }}>
-        <h1 style={{ margin: 0 }}>Solicitações de Ajuste</h1>
+        <h1 style={{ margin: 0 }}>Solicitações de Ajuste (Vendas)</h1>
         <p style={{ color: 'var(--color-text-muted)', marginTop: '0.5rem' }}>
-          Analise pedidos de exclusão ou alteração de borderôs.
+          Analise pedidos de exclusão ou alteração de vendas pendentes de revisão.
           {nivel === 'operacional' ? ' Exibindo apenas suas solicitações.' : ''}
         </p>
       </div>
@@ -98,7 +98,7 @@ export default function SolicitacoesPage() {
           <div style={{ textAlign: 'center', padding: '2rem' }}>Carregando solicitações...</div>
         ) : solicitacoes.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-muted)' }}>
-            Não há solicitações no momento.
+            Não há solicitações pendentes.
           </div>
         ) : (
           <>
@@ -106,10 +106,10 @@ export default function SolicitacoesPage() {
               <table className="table">
                 <thead>
                   <tr>
-                    <th>Data e Hora</th>
+                    <th>Data/Hora</th>
                     <th>Solicitante</th>
                     <th>Tipo</th>
-                    <th>Borderô</th>
+                    <th>Venda</th>
                     <th>Motivo</th>
                     <th>Status</th>
                     {nivel === 'admin' && <th style={{ textAlign: 'center' }}>Decisão</th>}
@@ -129,16 +129,16 @@ export default function SolicitacoesPage() {
                       <td>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                           <span style={{ fontFamily: 'monospace', fontSize: '0.8rem', fontWeight: 600 }}>
-                            {sol.borderos?.bordero_id || sol.borderos?.id?.substring(0, 8).toUpperCase()}
+                            {sol.vendas?.id?.substring(0, 8).toUpperCase() || 'N/A'}
                           </span>
-                          {sol.borderos?.id && (
-                            <Link href={`/borderos/${sol.borderos.id}/editar`} title="Editar borderô">
+                          {sol.vendas?.id && (
+                            <Link href={`/vendas/${sol.vendas.id}/editar`} title="Ver detalhes da venda">
                               <ExternalLink size={14} color="var(--color-primary)" />
                             </Link>
                           )}
                         </div>
                         <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-                          CPF: {sol.borderos?.cpf} — {sol.borderos?.operacao}
+                          CPF: {sol.vendas?.cpf} — {sol.vendas?.operacao}
                         </div>
                       </td>
                       <td style={{ maxWidth: '220px', wordWrap: 'break-word', fontSize: '0.875rem' }}>{sol.motivo}</td>
@@ -160,7 +160,7 @@ export default function SolicitacoesPage() {
                             </>
                           ) : (
                             <span style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
-                              {sol.status === 'aprovada' ? 'Aprovado' : 'Rejeitado'}
+                              Processado
                             </span>
                           )}
                         </td>
@@ -191,11 +191,11 @@ export default function SolicitacoesPage() {
         title={actionType === 'aprovada' ? 'Aprovar Solicitação' : 'Rejeitar Solicitação'}
         message={
           <span>
-            Decisão sobre o borderô do cliente <strong>{selectedRequest?.borderos?.cpf}</strong> pelo operador <strong>{selectedRequest?.usuarios?.nome}</strong>.<br /><br />
+            Decisão sobre a venda do cliente <strong>{selectedRequest?.vendas?.cpf}</strong>.<br /><br />
             Decisão: <strong style={{ color: actionType === 'aprovada' ? 'var(--color-success)' : 'var(--color-danger)', textTransform: 'uppercase' }}>{actionType}</strong>
             {actionType === 'aprovada' && selectedRequest?.tipo === 'exclusao' && (
               <div style={{ marginTop: '0.5rem', color: 'var(--color-danger)' }}>
-                <strong>Atenção:</strong> O borderô será excluído permanentemente!
+                <strong>Atenção:</strong> Esta venda será excluída permanentemente!
               </div>
             )}
           </span>

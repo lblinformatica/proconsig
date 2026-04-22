@@ -260,21 +260,21 @@ export default function Cadastro() {
         <style>{styles}</style>
         <div className={`reg-page ${theme}`}>
           <div className="reg-left">
-            <Image src="/branding.png" alt="ProConsig background" fill sizes="50vw" className="reg-left-bg" priority />
+            <Image src="/branding.png" alt="CentralPagamentos background" fill sizes="50vw" className="reg-left-bg" priority />
             <div className="reg-left-overlay" />
             <div className="reg-left-content">
               <div className="reg-brand">
                 <Image src="/branding.png" alt="Logo" width={48} height={48} className="reg-brand-logo" />
-                <span className="reg-brand-name">ProConsig</span>
+                <span className="reg-brand-name">CentralPagamentos</span>
               </div>
               <div className="reg-left-tagline">
-                <h2>Gestão de Borderôs com eficiência e segurança</h2>
+                <h2>Gestão de Pagamentos com eficiência e segurança</h2>
                 <p>
-                  Plataforma completa para gerenciamento de clientes, borderôs e solicitações, com controle total de acesso e auditoria.
+                  Plataforma completa para gerenciamento de clientes, pagamentos e solicitações, com controle total de acesso e auditoria.
                 </p>
               </div>
               <div className="reg-left-pills">
-                <span className="reg-pill">Borderôs</span>
+                <span className="reg-pill">Pagamentos</span>
                 <span className="reg-pill">Clientes</span>
                 <span className="reg-pill">Relatórios</span>
                 <span className="reg-pill">Controle de Acesso</span>
@@ -307,23 +307,23 @@ export default function Cadastro() {
       <div className={`reg-page ${theme}`}>
         {/* Left panel — identical to login page to avoid layout shift on navigation */}
         <div className="reg-left">
-          <Image src="/branding.png" alt="ProConsig background" fill sizes="50vw" className="reg-left-bg" priority />
+          <Image src="/branding.png" alt="CentralPagamentos background" fill sizes="50vw" className="reg-left-bg" priority />
           <div className="reg-left-overlay" />
           <div className="reg-left-content">
             <div className="reg-brand">
               <Image src="/branding.png" alt="Logo" width={48} height={48} className="reg-brand-logo" />
-              <span className="reg-brand-name">ProConsig</span>
+              <span className="reg-brand-name">CentralPagamentos</span>
             </div>
 
             <div className="reg-left-tagline">
               <h2>Crie sua conta e comece a usar agora mesmo</h2>
               <p>
-                Plataforma completa para gerenciamento de clientes, borderôs e solicitações, com controle total de acesso e auditoria.
+                Plataforma completa para gerenciamento de clientes, pagamentos e solicitações, com controle total de acesso e auditoria.
               </p>
             </div>
 
             <div className="reg-left-pills">
-              <span className="reg-pill">Borderôs</span>
+              <span className="reg-pill">Pagamentos</span>
               <span className="reg-pill">Clientes</span>
               <span className="reg-pill">Relatórios</span>
               <span className="reg-pill">Controle de Acesso</span>
@@ -337,7 +337,7 @@ export default function Cadastro() {
 
             <div className="reg-mobile-brand">
               <Image src="/branding.png" alt="Logo" width={40} height={40} className="reg-mobile-logo" />
-              <span className="reg-mobile-name" style={{ fontFamily: 'Outfit, sans-serif', fontSize: '1.4rem', fontWeight: 700 }}>ProConsig</span>
+              <span className="reg-mobile-name" style={{ fontFamily: 'Outfit, sans-serif', fontSize: '1.4rem', fontWeight: 700 }}>CentralPagamentos</span>
             </div>
 
             <h1 className="reg-heading">Criar Conta</h1>

@@ -5,9 +5,8 @@ import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 import { FileText, Clock, CheckCircle, Users } from 'lucide-react';
 
-interface Bordero {
+interface Venda {
   id: string;
-  bordero_id: string | null;
   cpf: string;
   operacao: string;
   valor: number;
@@ -19,12 +18,12 @@ interface Bordero {
 
 export default function DashboardPage() {
   const [metrics, setMetrics] = useState({
-    borderosPendentes: 0,
-    borderosAprovados: 0,
-    totalBorderosValor: 0,
+    vendasPendentes: 0,
+    vendasAprovadas: 0,
+    totalVendasValor: 0,
     clientesAtivos: 0
   });
-  const [recentBorderos, setRecentBorderos] = useState<Bordero[]>([]);
+  const [recentVendas, setRecentVendas] = useState<Venda[]>([]);
   const [loading, setLoading] = useState(true);
   const [nivel, setNivel] = useState('');
   const [userId, setUserId] = useState<string | null>(null);
@@ -45,25 +44,24 @@ export default function DashboardPage() {
       setNivel(userNivel);
       setUserId(uid);
 
-      // Queries paralelas para métricas
       const isOperacional = userNivel === 'operacional';
 
-      // Borderos pendentes
+      // Vendas pendentes
       let pendQuery = supabase
-        .from('borderos')
+        .from('vendas')
         .select('id', { count: 'exact', head: true })
         .ilike('status', 'pendente');
       if (isOperacional && uid) pendQuery = pendQuery.eq('created_by', uid);
 
-      // Borderos aprovados
+      // Vendas aprovadas
       let aprovQuery = supabase
-        .from('borderos')
+        .from('vendas')
         .select('id', { count: 'exact', head: true })
         .ilike('status', 'aprovado');
       if (isOperacional && uid) aprovQuery = aprovQuery.eq('created_by', uid);
 
       // Total valor
-      let valorQuery = supabase.from('borderos').select('valor');
+      let valorQuery = supabase.from('vendas').select('valor');
       if (isOperacional && uid) valorQuery = valorQuery.eq('created_by', uid);
 
       // Clientes ativos
@@ -71,10 +69,10 @@ export default function DashboardPage() {
         .from('clientes')
         .select('id', { count: 'exact', head: true });
 
-      // Últimos borderôs
+      // Últimas vendas
       let recentQuery = supabase
-        .from('borderos')
-        .select('id, bordero_id, cpf, operacao, valor, status, created_at, clientes(nome), usuarios!created_by(nome)')
+        .from('vendas')
+        .select('id, cpf, operacao, valor, status, created_at, clientes(nome), usuarios!created_by(nome)')
         .order('created_at', { ascending: false })
         .limit(50);
       if (isOperacional && uid) recentQuery = recentQuery.eq('created_by', uid);
@@ -90,12 +88,12 @@ export default function DashboardPage() {
       const totalValor = (valorData ?? []).reduce((acc: number, b: any) => acc + (b.valor ?? 0), 0);
 
       setMetrics({
-        borderosPendentes: pendentes ?? 0,
-        borderosAprovados: aprovados ?? 0,
-        totalBorderosValor: totalValor,
+        vendasPendentes: pendentes ?? 0,
+        vendasAprovadas: aprovados ?? 0,
+        totalVendasValor: totalValor,
         clientesAtivos: clientes ?? 0
       });
-      setRecentBorderos((recent as any[]) ?? []);
+      setRecentVendas((recent as any[]) ?? []);
       setLoading(false);
     };
 
@@ -110,20 +108,20 @@ export default function DashboardPage() {
 
   const cards = [
     {
-      label: 'Valor Total (Borderôs)',
-      value: new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(metrics.totalBorderosValor),
+      label: 'Valor Total (Vendas)',
+      value: new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(metrics.totalVendasValor),
       color: 'var(--color-primary)',
       icon: <FileText size={22} />
     },
     {
-      label: 'Borderôs Pendentes',
-      value: metrics.borderosPendentes,
+      label: 'Vendas Pendentes',
+      value: metrics.vendasPendentes,
       color: 'var(--color-warning)',
       icon: <Clock size={22} />
     },
     {
-      label: 'Borderôs Aprovados',
-      value: metrics.borderosAprovados,
+      label: 'Vendas Aprovadas',
+      value: metrics.vendasAprovadas,
       color: 'var(--color-success)',
       icon: <CheckCircle size={22} />
     },
@@ -138,10 +136,9 @@ export default function DashboardPage() {
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-        <h1 style={{ margin: 0 }}>Início</h1>
+        <h1 style={{ margin: 0 }}>Dashboard</h1>
       </div>
 
-      {/* Cards de métricas */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
         {cards.map((card, i) => (
           <div key={i} className="card" style={{ borderLeft: `4px solid ${card.color}`, display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -154,19 +151,18 @@ export default function DashboardPage() {
         ))}
       </div>
 
-      {/* Últimos borderôs */}
       <div className="card">
         <div style={{ marginBottom: '1rem' }}>
           <h2 style={{ fontSize: '1.25rem', margin: 0 }}>
-            Últimos Borderôs {nivel === 'operacional' ? '(seus lançamentos)' : ''}
+            Últimas Vendas {nivel === 'operacional' ? '(seus lançamentos)' : ''}
           </h2>
           <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', margin: '0.25rem 0 0' }}>
             Exibindo os últimos 50 registros
           </p>
         </div>
-        {recentBorderos.length === 0 ? (
+        {recentVendas.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-muted)' }}>
-            Nenhum borderô encontrado.
+            Nenhuma venda encontrada.
           </div>
         ) : (
           <div className="table-wrapper">
@@ -183,32 +179,32 @@ export default function DashboardPage() {
                 </tr>
               </thead>
               <tbody>
-                {recentBorderos.map((b) => (
-                  <tr key={b.id}>
+                {recentVendas.map((v) => (
+                  <tr key={v.id}>
                     <td>
-                      <Link href={`/borderos/${b.id}/editar`} style={{ color: 'var(--color-primary)', fontWeight: 600, fontFamily: 'monospace', fontSize: '0.85rem', textDecoration: 'none' }}>
-                        {b.bordero_id || b.id.substring(0, 8).toUpperCase()}
+                      <Link href={`/vendas/${v.id}/editar`} style={{ color: 'var(--color-primary)', fontWeight: 600, fontFamily: 'monospace', fontSize: '0.85rem', textDecoration: 'none' }}>
+                        {v.id.substring(0, 8).toUpperCase()}
                       </Link>
                     </td>
                     <td>
-                      <div>{b.clientes?.nome || 'N/A'}</div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{b.cpf}</div>
+                      <div>{v.clientes?.nome || 'N/A'}</div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{v.cpf}</div>
                     </td>
-                    <td>{b.operacao || '-'}</td>
+                    <td>{v.operacao || '-'}</td>
                     <td style={{ fontWeight: 500 }}>
-                      {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(b.valor || 0)}
+                      {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v.valor || 0)}
                     </td>
                     <td>
-                      <span className={`badge ${b.status?.toLowerCase() === 'aprovado' ? 'badge-success' : b.status?.toLowerCase() === 'rejeitado' ? 'badge-danger' : 'badge-warning'}`}>
-                        {b.status || 'Pendente'}
+                      <span className={`badge ${v.status?.toLowerCase() === 'aprovado' ? 'badge-success' : v.status?.toLowerCase() === 'rejeitado' ? 'badge-danger' : 'badge-warning'}`}>
+                        {v.status || 'Pendente'}
                       </span>
                     </td>
                     <td style={{ whiteSpace: 'nowrap' }}>
-                      {new Date(b.created_at).toLocaleDateString('pt-BR')}
+                      {new Date(v.created_at).toLocaleDateString('pt-BR')}
                     </td>
                     {nivel === 'admin' && (
                       <td style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>
-                        {(b as any).usuarios?.nome || '-'}
+                        {v.usuarios?.nome || '-'}
                       </td>
                     )}
                   </tr>

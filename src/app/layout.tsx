@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ProConsig",
-  description: "Sistema de Gestão de Borderôs",
+  title: "CentralPagamentos",
+  description: "Sistema de Gestão de Pagamentos",
   icons: {
     icon: "/branding.png",
   },

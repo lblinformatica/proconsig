@@ -15,6 +15,8 @@ export function EditUserModal({ isOpen, user, onClose, onSuccess }: EditUserModa
   const [nome, setNome] = useState('');
   const [conta, setConta] = useState('');
   const [email, setEmail] = useState('');
+  const [nivel, setNivel] = useState('');
+  const [grupos, setGrupos] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -27,6 +29,8 @@ export function EditUserModal({ isOpen, user, onClose, onSuccess }: EditUserModa
       setNome(user.nome);
       setConta(user.conta || '');
       setEmail(user.email);
+      setNivel(user.nivel || 'operacional');
+      setGrupos(user.grupos_permitidos ? user.grupos_permitidos.join(', ') : '');
     }
     setError('');
   }, [user, isOpen]);
@@ -38,7 +42,14 @@ export function EditUserModal({ isOpen, user, onClose, onSuccess }: EditUserModa
     setLoading(true);
     setError('');
 
-    const res = await adminUpdateUser(user.id, { nome, conta, email });
+    const gruposArray = grupos.split(',').map(g => g.trim()).filter(g => g !== '');
+    const res = await adminUpdateUser(user.id, { 
+      nome, 
+      conta, 
+      email, 
+      nivel, 
+      grupos_permitidos: gruposArray 
+    });
 
     setLoading(false);
     if (res.error) {
@@ -84,9 +95,25 @@ export function EditUserModal({ isOpen, user, onClose, onSuccess }: EditUserModa
               * Alterar a conta mudará instantaneamente a credencial de login deste usuário.
             </div>
           </div>
+          <div style={{ marginBottom: '1rem' }}>
+            <label>Nível de Acesso</label>
+            <select value={nivel} onChange={e => setNivel(e.target.value)}>
+              <option value="operacional">Operacional</option>
+              <option value="admin">Administrador</option>
+              <option value="financeiro">Financeiro</option>
+            </select>
+          </div>
           <div style={{ marginBottom: '1.5rem' }}>
-            <label>E-mail (Contato)</label>
-            <input type="email" value={email} onChange={e => setEmail(e.target.value)} required />
+            <label>Grupos Permitidos (Somente Financeiro)</label>
+            <input 
+              type="text" 
+              value={grupos} 
+              onChange={e => setGrupos(e.target.value)} 
+              placeholder="Ex: 1, 2"
+            />
+            <div style={{ marginTop: '0.25rem', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+              Separe os números por vírgula. Inicialmente Grupo 1 e Grupo 2.
+            </div>
           </div>
           
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>

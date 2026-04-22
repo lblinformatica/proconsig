@@ -5,7 +5,7 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin';
 
 export async function adminUpdateUser(
   userId: string, 
-  data: { nome: string; conta?: string; email: string }
+  data: { nome: string; conta?: string; email: string; nivel?: string; grupos_permitidos?: string[] }
 ) {
   try {
     // 1. Find the Supabase Auth ID for that public user profile
@@ -49,9 +49,9 @@ export async function adminUpdateUser(
 
     // 3. Update Public Profile
     let dbUpdate: any = { nome: data.nome, email: data.email };
-    if (data.conta) {
-      dbUpdate.conta = data.conta.toLowerCase();
-    }
+    if (data.conta) dbUpdate.conta = data.conta.toLowerCase();
+    if (data.nivel) dbUpdate.nivel = data.nivel;
+    if (data.grupos_permitidos) dbUpdate.grupos_permitidos = data.grupos_permitidos;
 
     const { error: dbError } = await supabaseAdmin
       .from('usuarios')
