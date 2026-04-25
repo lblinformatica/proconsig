@@ -12,6 +12,36 @@ export default function UsuariosPage() {
   const [loading, setLoading] = useState(true);
   const [busca, setBusca] = useState('');
 
+  // Notification Modal State
+  const [notification, setNotification] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type: 'success' | 'danger' | 'primary';
+    onConfirm?: () => void;
+    onCancel?: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'primary'
+  });
+
+  const showAlert = (title: string, message: string, type: 'success' | 'danger' | 'primary' = 'primary') => {
+    setNotification({ isOpen: true, title, message, type, onConfirm: () => setNotification(prev => ({ ...prev, isOpen: false })) });
+  };
+
+  const showConfirm = (title: string, message: string, onConfirm: () => void, type: 'danger' | 'primary' = 'primary') => {
+    setNotification({ 
+      isOpen: true, 
+      title, 
+      message, 
+      type, 
+      onConfirm: () => { onConfirm(); setNotification(prev => ({ ...prev, isOpen: false })); },
+      onCancel: () => setNotification(prev => ({ ...prev, isOpen: false }))
+    });
+  };
+
   // Modal States
   const [modalOpen, setModalOpen] = useState(false);
   const [actionType, setActionType] = useState<'approve_op' | 'approve_admin' | 'deactivate' | 'reactivate' | 'reject' | 'delete' | null>(null);
@@ -20,9 +50,6 @@ export default function UsuariosPage() {
   // Edit Modal State
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [userToEdit, setUserToEdit] = useState<any>(null);
-
-  // Error Modal State
-  const [errorMessage, setErrorMessage] = useState('');
 
   useEffect(() => {
     fetchUsuarios();
@@ -53,13 +80,13 @@ export default function UsuariosPage() {
     if (actionType === 'delete') {
       const res = await adminDeleteUser(selectedUser.id);
       if (res.error) {
-        setErrorMessage(res.error);
+        showAlert('Erro', res.error, 'danger');
       } else {
         fetchUsuarios();
       }
     } else {
       const res = await adminChangeUserStatus(selectedUser.id, actionType);
-      if (res.error) setErrorMessage(res.error);
+      if (res.error) showAlert('Erro', res.error, 'danger');
       else fetchUsuarios();
     }
 
@@ -240,14 +267,18 @@ export default function UsuariosPage() {
         onSuccess={fetchUsuarios}
       />
 
+
+      {/* Custom Notification Modal */}
       <ConfirmModal
-        isOpen={!!errorMessage}
-        title="Ocorreu um Problema"
-        message={errorMessage}
-        onConfirm={() => setErrorMessage('')}
-        confirmText="Entendi"
-        confirmType="danger"
+        isOpen={notification.isOpen}
+        title={notification.title}
+        message={notification.message}
+        confirmType={notification.type}
+        onConfirm={notification.onConfirm || (() => {})}
+        onCancel={notification.onCancel}
+        confirmText={notification.onCancel ? 'Confirmar' : 'Entendi'}
       />
     </div>
   );
 }
+

@@ -14,11 +14,37 @@ export default function ClientesList() {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(0);
   const [total, setTotal] = useState(0);
-  const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [deleting, setDeleting] = useState(false);
-  const [modalError, setModalError] = useState('');
   const [nivel, setNivel] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  const [notification, setNotification] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type: 'success' | 'danger' | 'primary';
+    onConfirm?: () => void;
+    onCancel?: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'primary'
+  });
+
+  const showAlert = (title: string, message: string, type: 'success' | 'danger' | 'primary' = 'primary') => {
+    setNotification({ isOpen: true, title, message, type, onConfirm: () => setNotification(prev => ({ ...prev, isOpen: false })) });
+  };
+
+  const showConfirm = (title: string, message: string, onConfirm: () => void, type: 'danger' | 'primary' = 'primary') => {
+    setNotification({ 
+      isOpen: true, 
+      title, 
+      message, 
+      type, 
+      onConfirm: () => { onConfirm(); setNotification(prev => ({ ...prev, isOpen: false })); },
+      onCancel: () => setNotification(prev => ({ ...prev, isOpen: false }))
+    });
+  };
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -56,17 +82,23 @@ export default function ClientesList() {
     fetchClientes();
   }, [page, search]);
 
-  const handleDelete = async () => {
-    if (!deleteId) return;
-    setDeleting(true);
-    const { error } = await supabase.from('clientes').delete().eq('id', deleteId);
-    setDeleting(false);
-    if (error) {
-      setModalError('Erro ao excluir cliente: ' + (error.code === '23503' ? 'Este cliente possui vendas vinculadas e não pode ser excluído.' : error.message));
-    } else {
-      setDeleteId(null);
-      fetchClientes();
-    }
+  const handleDelete = async (id: string) => {
+    showConfirm(
+      'Excluir Cliente',
+      'Tem certeza que deseja excluir este cliente? Esta ação não pode ser desfeita.',
+      async () => {
+        setLoading(true);
+        const { error } = await supabase.from('clientes').delete().eq('id', id);
+        if (error) {
+          showAlert('Erro', 'Erro ao excluir cliente: ' + (error.code === '23503' ? 'Este cliente possui vendas vinculadas e não pode ser excluído.' : error.message), 'danger');
+        } else {
+          fetchClientes();
+          showAlert('Sucesso', 'Cliente excluído com sucesso!', 'success');
+        }
+        setLoading(false);
+      },
+      'danger'
+    );
   };
 
   const handleCopy = (cpf: string, id: string) => {
@@ -80,21 +112,13 @@ export default function ClientesList() {
   return (
     <>
       <ConfirmModal
-        isOpen={!!deleteId}
-        title="Excluir Cliente"
-        message="Tem certeza que deseja excluir este cliente? Esta ação removerá o cadastro permanentemente."
-        onConfirm={handleDelete}
-        onCancel={() => setDeleteId(null)}
-        confirmText={deleting ? 'Excluindo...' : 'Sim, Excluir'}
-        confirmType="danger"
-      />
-
-      <ConfirmModal
-        isOpen={!!modalError}
-        title="Ação não permitida"
-        message={modalError}
-        onConfirm={() => setModalError('')}
-        confirmText="Entendi"
+        isOpen={notification.isOpen}
+        title={notification.title}
+        message={notification.message}
+        confirmType={notification.type}
+        onConfirm={notification.onConfirm || (() => {})}
+        onCancel={notification.onCancel}
+        confirmText={notification.onCancel ? 'Sim, Confirmar' : 'Entendi'}
       />
 
       <div className="animate-fade-in">
@@ -176,7 +200,7 @@ export default function ClientesList() {
                             <Edit2 size={16} />
                           </Link>
                           {nivel === 'admin' && (
-                            <button className="btn btn-danger" style={{ padding: '0.4rem', background: 'transparent', color: 'var(--color-danger)', border: 'none' }} onClick={() => setDeleteId(c.id)} title="Excluir">
+                            <button className="btn btn-danger" style={{ padding: '0.4rem', background: 'transparent', color: 'var(--color-danger)', border: 'none' }} onClick={() => handleDelete(c.id)} title="Excluir">
                               <Trash2 size={16} />
                             </button>
                           )}

@@ -59,6 +59,26 @@ export default function NovaVenda() {
     credito_conta: '', credito_conta_dv: '', credito_tipo_conta: 'corrente'
   });
 
+  // Buscar nome do usuário logado para o campo Corretor
+  useEffect(() => {
+    const fetchUserForCorretor = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        const { data: profile } = await supabase
+          .from('usuarios')
+          .select('nome')
+          .eq('supabase_user_id', session.user.id)
+          .single();
+
+        if (profile?.nome) {
+          setForm(f => ({ ...f, corretor: profile.nome.toUpperCase() }));
+        }
+      }
+    };
+    fetchUserForCorretor();
+  }, []);
+
+
   const showAlert = (title: string, message: string) => {
     setAlertModal({ show: true, title, message });
   };

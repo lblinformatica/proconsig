@@ -89,7 +89,7 @@ export function ConfirmModal({
           )}
           <button 
             type="button" 
-            className={`btn btn-${confirmType === 'danger' ? 'danger' : 'primary'}`} 
+            className={`btn btn-${confirmType === 'danger' ? 'danger' : (confirmType === 'success' ? 'success' : 'primary')}`} 
             style={{ flex: 1, padding: '0.75rem' }} 
             onClick={onConfirm}
           >
@@ -101,3 +101,4 @@ export function ConfirmModal({
     document.body
   );
 }
+
