@@ -69,21 +69,26 @@ export default function UsuariosPage() {
   };
 
   return (
-    <div>
+    <div className="animate-fade-in">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
         <h1 style={{ margin: 0 }}>Gerenciamento de Usuários</h1>
+      </div>
 
-        <div style={{ position: 'relative', width: '300px' }}>
-          <Search size={18} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
+      <div className="card" style={{ marginBottom: '2rem', display: 'flex', gap: '1rem', alignItems: 'center' }}>
+        <div style={{ position: 'relative', flex: 1 }}>
+          <Search size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
           <input
             type="text"
             placeholder="Buscar por nome ou e-mail..."
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && fetchUsuarios()}
-            style={{ paddingLeft: '2.5rem' }}
+            style={{ paddingLeft: '2.75rem', width: '100%' }}
           />
         </div>
+        <button className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }} onClick={() => fetchUsuarios()}>
+          <Search size={18} /> Filtrar
+        </button>
       </div>
 
       <div className="card">
