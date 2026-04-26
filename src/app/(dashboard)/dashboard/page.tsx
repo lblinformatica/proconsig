@@ -22,9 +22,11 @@ export default function DashboardPage() {
     totalVendasValor: 0,
     clientesTotal: 0,
     ticketMedio: 0,
+    ticketMedioPorCliente: 0,
     cpfValidoPercent: 0,
     totalOperacoes: 0
   });
+
   const [recentVendas, setRecentVendas] = useState<Venda[]>([]);
   const [recentImports, setRecentImports] = useState<any[]>([]);
   const [groupDistribution, setGroupDistribution] = useState<{ grupo: string, count: number }[]>([]);
@@ -53,7 +55,7 @@ export default function DashboardPage() {
 
       // 1. Chamar a função centralizada de estatísticas (Rápida e Precisa para grandes volumes)
       const { data: stats, error: statsError } = await supabase.rpc('get_dashboard_stats');
-      
+
       if (statsError) {
         console.error('Erro ao buscar estatísticas:', statsError);
       } else if (stats) {
@@ -61,9 +63,11 @@ export default function DashboardPage() {
           totalVendasValor: stats.total_vendas_valor || 0,
           clientesTotal: stats.clientes_total || 0,
           ticketMedio: stats.ticket_medio || 0,
+          ticketMedioPorCliente: stats.ticket_medio_por_cliente || 0,
           cpfValidoPercent: stats.cpf_valido_percent || 0,
           totalOperacoes: stats.total_operacoes || 0
         });
+
         setGroupDistribution(stats.group_distribution || []);
       }
 
@@ -73,7 +77,7 @@ export default function DashboardPage() {
         .select('id, cpf, operacao, valor, status, created_at, clientes(nome), usuarios!created_by(nome)')
         .order('created_at', { ascending: false })
         .limit(10);
-      
+
       if (isOperacional && uid) recentQuery = recentQuery.eq('created_by', uid);
 
       const [recentRes, historyRes] = await Promise.all([
@@ -105,26 +109,26 @@ export default function DashboardPage() {
       desc: 'Total líquido acumulado'
     },
     {
-      label: 'Ticket Médio',
+      label: 'Ticket Médio (Operação)',
       value: new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(metrics.ticketMedio),
       color: 'var(--color-success)',
       icon: <BarChart3 size={22} />,
       desc: 'Por operação importada'
     },
     {
+      label: 'Ticket Médio (CPF)',
+      value: new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(metrics.ticketMedioPorCliente),
+      color: 'var(--color-warning)',
+      icon: <TrendingUp size={22} />,
+      desc: 'Média por CPF único'
+    },
+
+    {
       label: 'Clientes na Base',
       value: new Intl.NumberFormat('pt-BR').format(metrics.clientesTotal),
       color: 'var(--color-info)',
       icon: <Users size={22} />,
       desc: 'Total de clientes cadastrados'
-    },
-
-    {
-      label: 'Qualidade da Base',
-      value: `${metrics.cpfValidoPercent.toFixed(1)}%`,
-      color: metrics.cpfValidoPercent > 90 ? 'var(--color-success)' : 'var(--color-warning)',
-      icon: <ShieldCheck size={22} />,
-      desc: 'Percentual de CPFs válidos'
     }
   ];
 
@@ -147,7 +151,7 @@ export default function DashboardPage() {
               </div>
             </div>
             <div>
-              <div style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{card.label}</div>
+              <div style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem', fontWeight: 600, textTransform: 'capitalize', letterSpacing: '0.05em' }}>{card.label}</div>
               <div style={{ fontSize: '1.75rem', fontWeight: 800, marginTop: '0.25rem', color: 'var(--color-text-main)', letterSpacing: '-0.02em' }}>{card.value}</div>
               <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                 <Info size={12} /> {card.desc}
@@ -255,6 +259,21 @@ export default function DashboardPage() {
                 Gerenciar Operações
               </Link>
             </div>
+          </div>
+
+          {/* Qualidade da Base (Movido para Lateral) */}
+          <div className="card">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <h3 style={{ fontSize: '1rem', margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <ShieldCheck size={18} color={metrics.cpfValidoPercent > 90 ? 'var(--color-success)' : 'var(--color-warning)'} /> Qualidade da Base
+              </h3>
+              <span style={{ fontSize: '1.25rem', fontWeight: 800, color: metrics.cpfValidoPercent > 90 ? 'var(--color-success)' : 'var(--color-warning)' }}>
+                {metrics.cpfValidoPercent.toFixed(1)}%
+              </span>
+            </div>
+            <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: 0 }}>
+              Percentual de CPFs válidos em relação ao total de operações importadas na base.
+            </p>
           </div>
 
           {/* Dica de Qualidade */}

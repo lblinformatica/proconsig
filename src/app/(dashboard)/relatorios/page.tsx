@@ -173,14 +173,14 @@ export default function RelatoriosPage() {
               <input name="corretor" type="text" value={filters.corretor} onChange={handleFilterChange} placeholder="Nome do corretor..." style={{ width: '100%', paddingLeft: '2.5rem', height: '42px' }} />
             </div>
           </div>
-          <div style={{ width: '160px' }}>
+          <div style={{ width: '180px' }}>
             <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'capitalize' }}>Data Inicial</label>
             <div style={{ position: 'relative' }}>
               <Calendar size={16} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
               <input name="dataInicio" type="date" value={filters.dataInicio} onChange={handleFilterChange} style={{ width: '100%', paddingLeft: '2.5rem', height: '42px' }} />
             </div>
           </div>
-          <div style={{ width: '160px' }}>
+          <div style={{ width: '180px' }}>
             <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'capitalize' }}>Data Final</label>
             <div style={{ position: 'relative' }}>
               <Calendar size={16} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
@@ -211,7 +211,7 @@ export default function RelatoriosPage() {
             </div>
           </div>
           <button className="btn btn-secondary" onClick={exportExcel} disabled={loading} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <Download size={18} /> {loading ? 'Processando...' : 'Exportar Tudo para Excel'}
+            <Download size={18} /> {loading ? 'Processando...' : 'Exportar para Excel'}
           </button>
         </div>
 

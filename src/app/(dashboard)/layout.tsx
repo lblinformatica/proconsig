@@ -233,7 +233,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <div className="dashboard-layout">
       {/* Sidebar */}
-      <aside className="dashboard-sidebar" style={{ width: isSidebarCollapsed ? '80px' : '280px' }}>
+      <aside className="dashboard-sidebar" style={{ width: isSidebarCollapsed ? '80px' : '240px' }}>
         <div style={{ padding: isSidebarCollapsed ? '1rem 0.5rem' : '1.5rem', borderBottom: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexDirection: isSidebarCollapsed ? 'column' : 'row', gap: '0.5rem' }}>
           <div style={{ overflow: 'hidden', display: 'flex', flexDirection: isSidebarCollapsed ? 'column' : 'row', alignItems: 'center', gap: '0.75rem' }}>
             <Image
