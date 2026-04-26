@@ -233,7 +233,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <div className="dashboard-layout">
       {/* Sidebar */}
-      <aside className="dashboard-sidebar" style={{ width: isSidebarCollapsed ? '80px' : '240px' }}>
+      <aside className="dashboard-sidebar" style={{ width: isSidebarCollapsed ? '80px' : '265px' }}>
         <div style={{ padding: isSidebarCollapsed ? '1rem 0.5rem' : '1.5rem', borderBottom: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexDirection: isSidebarCollapsed ? 'column' : 'row', gap: '0.5rem' }}>
           <div style={{ overflow: 'hidden', display: 'flex', flexDirection: isSidebarCollapsed ? 'column' : 'row', alignItems: 'center', gap: '0.75rem' }}>
             <Image
@@ -245,9 +245,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             />
             {!isSidebarCollapsed && (
               <div style={{ display: 'flex', flexDirection: 'column' }}>
-                <h2 style={{ color: 'var(--color-primary)', margin: 0, fontSize: '0.9rem', whiteSpace: 'nowrap' }}>
-                  CentralPagamentos
-                </h2>
+                <h1 style={{ color: 'var(--color-primary)', margin: 0, fontSize: '0.9rem', whiteSpace: 'nowrap' }}>
+                  Central
+                </h1>
+                <h1 style={{ color: 'var(--color-primary)', margin: 0, fontSize: '0.9rem', whiteSpace: 'nowrap' }}>
+                  Pagamentos
+                </h1>
                 <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '0.1rem', whiteSpace: 'nowrap' }}>
                   Nível: <span style={{ textTransform: 'capitalize', fontWeight: 'bold' }}>{userProfile?.nivel}</span>
                 </div>
