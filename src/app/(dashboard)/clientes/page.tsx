@@ -36,11 +36,11 @@ export default function ClientesList() {
   };
 
   const showConfirm = (title: string, message: string, onConfirm: () => void, type: 'danger' | 'primary' = 'primary') => {
-    setNotification({ 
-      isOpen: true, 
-      title, 
-      message, 
-      type, 
+    setNotification({
+      isOpen: true,
+      title,
+      message,
+      type,
       onConfirm: () => { onConfirm(); setNotification(prev => ({ ...prev, isOpen: false })); },
       onCancel: () => setNotification(prev => ({ ...prev, isOpen: false }))
     });
@@ -116,7 +116,7 @@ export default function ClientesList() {
         title={notification.title}
         message={notification.message}
         confirmType={notification.type}
-        onConfirm={notification.onConfirm || (() => {})}
+        onConfirm={notification.onConfirm || (() => { })}
         onCancel={notification.onCancel}
         confirmText={notification.onCancel ? 'Sim, Confirmar' : 'Entendi'}
       />
@@ -132,100 +132,94 @@ export default function ClientesList() {
           </Link>
         </div>
 
-      <div className="card" style={{ marginBottom: '2rem', display: 'flex', gap: '1rem', alignItems: 'center' }}>
-        <div style={{ position: 'relative', flex: 1 }}>
-          <Search size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
-          <input type="text" placeholder="Buscar por Nome ou CPF..." value={search} onChange={e => { setSearch(e.target.value); setPage(0); }} style={{ paddingLeft: '2.75rem', width: '100%' }} />
+        <div className="card" style={{ marginBottom: '2rem', display: 'flex', gap: '1rem', alignItems: 'center' }}>
+          <div style={{ position: 'relative', flex: 1 }}>
+            <Search size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
+            <input type="text" placeholder="Buscar por Nome ou CPF..." value={search} onChange={e => { setSearch(e.target.value); setPage(0); }} style={{ paddingLeft: '2.75rem', width: '100%' }} />
+          </div>
+          <button className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }} onClick={() => fetchClientes()}>
+            <Filter size={18} /> Filtrar
+          </button>
         </div>
-        <button className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }} onClick={() => fetchClientes()}>
-          <Filter size={18} /> Filtrar
-        </button>
-      </div>
 
-      <div className="card">
-        {loading ? (
-          <div style={{ textAlign: 'center', padding: '4rem' }}>Carregando clientes...</div>
-        ) : clientes.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '4rem', color: 'var(--color-text-muted)' }}>Nenhum cliente encontrado.</div>
-        ) : (
-          <>
-            <div className="table-wrapper">
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th>Nome</th>
-                    <th>CPF</th>
-                    <th>Email</th>
-                    <th>Telefone</th>
-                    <th style={{ textAlign: 'right' }}>Ações</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {clientes.map((c) => (
-                    <tr key={c.id}>
-                      <td style={{ fontWeight: 500 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                          <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: 'var(--color-bg-body)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-primary)' }}>
-                            <User size={16} />
-                          </div>
-                          {c.nome}
-                        </div>
-                      </td>
-                      <td>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                          {c.cpf}
-                          <button 
-                            onClick={() => handleCopy(c.cpf, c.id)}
-                            style={{ 
-                              background: 'transparent', 
-                              border: 'none', 
-                              padding: '0.2rem', 
-                              color: copiedId === c.id ? 'var(--color-success)' : 'var(--color-text-muted)', 
-                              cursor: 'pointer', 
-                              display: 'flex', 
-                              alignItems: 'center',
-                              transition: 'all 0.2s'
-                            }}
-                            title="Copiar CPF"
-                          >
-                            {copiedId === c.id ? <Check size={14} /> : <Copy size={14} />}
-                          </button>
-                        </div>
-                      </td>
-                      <td>{c.email || '-'}</td>
-                      <td>{c.telefone || '-'}</td>
-                      <td style={{ textAlign: 'right' }}>
-                        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                          <Link href={`/clientes/${c.id}/editar`} className="btn btn-secondary" style={{ padding: '0.4rem' }} title="Editar">
-                            <Edit2 size={16} />
-                          </Link>
-                          {nivel === 'admin' && (
-                            <button className="btn btn-danger" style={{ padding: '0.4rem', background: 'transparent', color: 'var(--color-danger)', border: 'none' }} onClick={() => handleDelete(c.id)} title="Excluir">
-                              <Trash2 size={16} />
-                            </button>
-                          )}
-                        </div>
-                      </td>
+        <div className="card">
+          {loading ? (
+            <div style={{ textAlign: 'center', padding: '4rem' }}>Carregando clientes...</div>
+          ) : clientes.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '4rem', color: 'var(--color-text-muted)' }}>Nenhum cliente encontrado.</div>
+          ) : (
+            <>
+              <div className="table-wrapper">
+                <table className="table">
+                  <thead>
+                    <tr>
+                      <th>Nome</th>
+                      <th>CPF</th>
+                      <th>Email</th>
+                      <th>Telefone</th>
+                      <th style={{ textAlign: 'right' }}>Ações</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {totalPages > 1 && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid var(--color-border)' }}>
-                <span style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>
-                  Total: {total} clientes — Página {page + 1} de {totalPages}
-                </span>
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  <button className="btn btn-secondary" style={{ padding: '0.5rem' }} disabled={page === 0} onClick={() => setPage(p => p - 1)}><ChevronLeft size={18} /></button>
-                  <button className="btn btn-secondary" style={{ padding: '0.5rem' }} disabled={page >= totalPages - 1} onClick={() => setPage(p => p + 1)}><ChevronRight size={18} /></button>
-                </div>
+                  </thead>
+                  <tbody>
+                    {clientes.map((c) => (
+                      <tr key={c.id}>
+                        <td style={{ fontWeight: 500 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                            <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: 'var(--color-bg-body)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-primary)' }}>
+                              <User size={16} />
+                            </div>
+                            {c.nome}
+                          </div>
+                        </td>
+                        <td>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            {c.cpf}
+                            <button
+                              onClick={() => {
+                                navigator.clipboard.writeText(c.cpf);
+                                showAlert('Copiado', 'CPF copiado para a área de transferência!', 'success');
+                              }}
+                              style={{ background: 'transparent', border: 'none', padding: '0.25rem', cursor: 'pointer', color: 'var(--color-text-muted)', display: 'flex' }}
+                              title="Copiar CPF"
+                            >
+                              <Copy size={12} />
+                            </button>
+                          </div>
+                        </td>
+                        <td>{c.email || '-'}</td>
+                        <td>{c.telefone || '-'}</td>
+                        <td style={{ textAlign: 'right' }}>
+                          <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                            <Link href={`/clientes/${c.id}/editar`} className="btn btn-secondary" style={{ padding: '0.4rem' }} title="Editar">
+                              <Edit2 size={16} />
+                            </Link>
+                            {nivel === 'admin' && (
+                              <button className="btn btn-danger" style={{ padding: '0.4rem', background: 'transparent', color: 'var(--color-danger)', border: 'none' }} onClick={() => handleDelete(c.id)} title="Excluir">
+                                <Trash2 size={16} />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-            )}
-          </>
-        )}
-      </div>
+
+              {totalPages > 1 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid var(--color-border)' }}>
+                  <span style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>
+                    Total: {total} clientes — Página {page + 1} de {totalPages}
+                  </span>
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <button className="btn btn-secondary" style={{ padding: '0.5rem' }} disabled={page === 0} onClick={() => setPage(p => p - 1)}><ChevronLeft size={18} /></button>
+                    <button className="btn btn-secondary" style={{ padding: '0.5rem' }} disabled={page >= totalPages - 1} onClick={() => setPage(p => p + 1)}><ChevronRight size={18} /></button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
 
       </div>
     </>
