@@ -51,7 +51,7 @@ export function ConfirmModal({
       zIndex: 999999,
       backdropFilter: 'blur(3px)'
     }}>
-      <div className="card animate-scale-up" style={{ 
+      <div className="card" style={{ 
         width: '100%', 
         maxWidth: '440px', 
         backgroundColor: 'var(--color-bg-surface)',
@@ -77,7 +77,7 @@ export function ConfirmModal({
           {title}
         </h2>
         
-        <div style={{ marginBottom: '2rem', color: 'var(--color-text-muted)', lineHeight: '1.6', fontSize: '0.95rem' }}>
+        <div style={{ marginBottom: '2rem', color: 'var(--color-text-muted)', lineHeight: '1.6', fontSize: '0.95rem', whiteSpace: 'pre-line' }}>
           {message}
         </div>
         

@@ -447,7 +447,7 @@ export default function OperacoesPage() {
         }
 
         setShowImportModal(false);
-        showAlert('Importação Concluída', `Registros Importados: ${results.imported}\nRegistros Ignorados: ${results.ignored}`, 'success');
+        showAlert('Importação Concluída', `Registros Importados: ${results.imported}\nRegistros Ignorados: ${results.ignored}\nRegistros Duplicados: ${results.duplicates}`, 'success');
         fetchOperacoes();
       } catch (err: any) {
         console.error('Erro ao processar arquivo:', err);
@@ -900,7 +900,7 @@ export default function OperacoesPage() {
       {/* Confirmation Modal */}
       {showConfirmDelete && (
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(5px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000, padding: '1.5rem' }}>
-          <div className="card animate-scale-up" style={{ width: '100%', maxWidth: '400px', padding: '2rem', textAlign: 'center' }}>
+          <div className="card" style={{ width: '100%', maxWidth: '400px', padding: '2rem', textAlign: 'center' }}>
             <div style={{ backgroundColor: 'var(--color-danger-bg)', color: 'var(--color-danger)', width: '60px', height: '60px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem' }}>
               <AlertCircle size={32} />
             </div>
@@ -927,15 +927,6 @@ export default function OperacoesPage() {
 
 
 
-      <style jsx global>{`
-        .animate-scale-up {
-          animation: scaleUp 0.3s ease-out;
-        }
-        @keyframes scaleUp {
-          from { opacity: 0; transform: scale(0.95); }
-          to { opacity: 1; transform: scale(1); }
-        }
-      `}</style>
       {/* Custom Notification Modal */}
       <ConfirmModal
         isOpen={notification.isOpen}

@@ -322,7 +322,7 @@ export default function EditarVenda(props: { params: Promise<{ id: string }> }) 
               </div>
               <button type="button" className="btn btn-secondary" style={{ marginTop: '1.5rem', padding: '0.65rem' }} onClick={buscarCliente} disabled={searchLoading}><Search size={20} /></button>
               {clientFound && (
-                <div className="animate-scale-up" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--color-success)', marginTop: '1.5rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--color-success)', marginTop: '1.5rem' }}>
                   <CheckCircle2 size={20} /> <strong>{clientFound.nome}</strong>
                 </div>
               )}

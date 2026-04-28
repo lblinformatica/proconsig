@@ -198,7 +198,7 @@ export default function RelatoriosPage() {
         </div>
       </div>
 
-      <div className="card animate-scale-up" style={{ padding: '0' }}>
+      <div className="card" style={{ padding: '0' }}>
 
         <div style={{ padding: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--color-border)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>

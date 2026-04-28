@@ -369,7 +369,7 @@ export default function NovaVenda() {
               </div>
               <button type="button" className="btn btn-secondary" style={{ marginTop: '1.5rem', padding: '0.65rem' }} onClick={buscarCliente} disabled={searchLoading}><Search size={20} /></button>
               {clientFound && !searchLoading && (
-                <div className="animate-scale-up" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--color-success)', marginTop: '1.5rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--color-success)', marginTop: '1.5rem' }}>
                   <CheckCircle2 size={20} /> <strong>{clientFound.nome}</strong>
                 </div>
               )}
@@ -529,7 +529,7 @@ export default function NovaVenda() {
           ) : (
             <div className="card animate-fade-in" style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-muted)', border: '2px dashed var(--color-border)', backgroundColor: 'transparent', minHeight: '260px', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
               {searchInitiated ? (
-                <div className="animate-scale-up">
+                <div>
                   <AlertTriangle size={48} color="var(--color-warning)" style={{ marginBottom: '1rem' }} />
                   <h3 style={{ color: 'var(--color-text)', marginBottom: '0.5rem' }}>Cliente não localizado</h3>
                   <p style={{ marginBottom: '1.5rem', maxWidth: '400px' }}>O CPF <strong>{cpf}</strong> não foi encontrado em nossa base de dados.</p>
