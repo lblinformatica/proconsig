@@ -77,7 +77,8 @@ export default function OperacoesPage() {
     data_inicio: '',
     data_fim: '',
     validez: 'todos', // 'todos', 'validos', 'invalidos'
-    cliente_status: 'todos' // 'todos', 'cadastrados', 'nao_cadastrados'
+    cliente_status: 'todos', // 'todos', 'cadastrados', 'nao_cadastrados'
+    nome_arquivo: ''
   });
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
