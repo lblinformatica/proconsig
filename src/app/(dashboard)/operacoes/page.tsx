@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 import {
   Search,
@@ -21,9 +22,11 @@ import {
   CheckSquare,
   Square,
   FileDown,
-  ChevronDown,
   Copy,
-  Check
+  Check,
+  Eye,
+  UserCheck,
+  UserMinus
 } from 'lucide-react';
 
 import * as XLSX from 'xlsx';
@@ -71,10 +74,10 @@ export default function OperacoesPage() {
   const [page, setPage] = useState(0);
   const [total, setTotal] = useState(0);
   const [filters, setFilters] = useState({
-    nome_arquivo: '',
     data_inicio: '',
     data_fim: '',
-    validez: 'todos' // 'todos', 'validos', 'invalidos'
+    validez: 'todos', // 'todos', 'validos', 'invalidos'
+    cliente_status: 'todos' // 'todos', 'cadastrados', 'nao_cadastrados'
   });
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
@@ -133,12 +136,10 @@ export default function OperacoesPage() {
       .order('data_importacao', { ascending: false })
       .range(from, to);
 
-    if (search) {
-      query = query.or(`vendedor.ilike.%${search}%,cpf.ilike.%${search}%,convenio.ilike.%${search}%`);
-    }
-
-    if (filters.nome_arquivo) {
-      query = query.ilike('nome_arquivo', `%${filters.nome_arquivo}%`);
+    if (filters.cliente_status === 'cadastrados') {
+      query = query.eq('cliente_cadastrado', true);
+    } else if (filters.cliente_status === 'nao_cadastrados') {
+      query = query.eq('cliente_cadastrado', false);
     }
 
     if (filters.data_inicio) {
@@ -304,16 +305,22 @@ export default function OperacoesPage() {
 
     if (allData.length > 0) {
       const exportData = allData.map(op => ({
+        'Nome': op.nome_cliente,
+        'CPF': op.cpf,
+        'Contrato': op.contrato,
         'Operação': op.operacao,
         'Vencimento': new Date(op.vencimento + 'T12:00:00').toLocaleDateString('pt-BR'),
-        'CPF': op.cpf,
-        'Status': op.cpf_valido ? 'Válido' : 'Inválido',
-        'Grupo': op.grupo,
         'Valor': op.valor,
-        'Vendedor': op.vendedor,
+        'Parcela': op.parcela_valor,
+        'Saldo': op.saldo,
+        'Troco': op.troco,
+        'Coef': op.coef,
+        'Grupo': op.grupo,
+        'Conta Cobrança': op.contacobranca,
         'Fundo': op.fundo,
         'Convênio': op.convenio,
-        'Arquivo': op.nome_arquivo,
+        'Status Cliente': op.cliente_cadastrado ? 'Cadastrado' : 'Não Cadastrado',
+        'CPF Válido': op.cpf_valido ? 'Sim' : 'Não',
         'Data Importação': new Date(op.data_importacao).toLocaleString('pt-BR')
       }));
 
@@ -372,50 +379,70 @@ export default function OperacoesPage() {
           duplicates: 0
         };
 
+        // Função auxiliar para buscar valor em colunas com nomes variados
+        const findVal = (row: any, keys: string[]) => {
+          for (const key of keys) {
+            const found = Object.keys(row).find(k => k.toLowerCase().trim() === key.toLowerCase().trim());
+            if (found && row[found] !== undefined && row[found] !== null) return row[found];
+          }
+          return null;
+        };
+
         const toStaging: any[] = [];
         const fileName = file.name;
         const sessionId = crypto.randomUUID();
         const importTimestamp = new Date().toISOString();
 
-
-        // 1. Prepare and validate data on client (fast)
         for (const row of data) {
-          // Mapeamento tolerante a maiúsculas/minúsculas e acentos
-          const operacaoId = row['Operação'] || row['operação'] || row['Operacao'] || row['operacao'];
-          const vencimento = row['Vencimento'] || row['vencimento'];
-          const cpfRaw = String(row['CPF'] || row['cpf'] || '');
+          // Mapeamento Robusto
+          const operacaoId = findVal(row, ['Operação', 'Operacao', 'op', 'cod op']) || 0;
+          const vencimentoRaw = findVal(row, ['Vencimento', 'venc', 'data vencimento']);
+          const cpfRaw = String(findVal(row, ['CPF', 'cpf cliente']) || '');
           const cpf = cpfRaw ? formatCPF(cpfRaw) : null;
-          const valor = row['Valor'] || row['valor'];
-          const fundo = row['Fundo'] || row['fundo'] || '';
-          const convenio = row['Convênio'] || row['convenio'] || row['Convenio'] || '';
-          const grupo = row['Grupo'] || row['grupo'] || '';
-          const vendedor = row['Vendedor'] || row['vendedor'] || '';
-
-          if (!operacaoId || !vencimento || !cpf) {
+          
+          // Agora só ignora se realmente não tiver o CPF, que é a chave principal
+          if (!cpf) {
             results.ignored++;
             continue;
           }
 
-          const isValidCpf = validateCPF(cpf);
+          // Captura Grupo com detecção profunda
+          const grupoRaw = findVal(row, ['Grupo', 'Grp', 'Grup', 'Cod Grupo']) || '';
+          const grupoMatch = String(grupoRaw).match(/\d+/);
+          const grupoNum = grupoMatch ? parseInt(grupoMatch[0]) : 0;
+
+          // Regra da Parcela Zero: Se vazio ou inválido, vira 0
+          const numParcelaRaw = findVal(row, ['Nº Parcela', 'n° parcela', 'Num Parcela', 'n parcela', 'Parcela']);
+          const numParcela = (numParcelaRaw !== null && numParcelaRaw !== '') ? parseInt(String(numParcelaRaw)) : 0;
+
+          const valor = findVal(row, ['Valor', 'Valor Bruto', 'Vlr']);
           const valorNum = typeof valor === 'number' ? valor : parseFloat(String(valor || 0).replace(',', '.'));
-          const grupoNum = grupo ? parseInt(String(grupo)) : 0;
+          
+          const isValidCpf = validateCPF(cpf);
 
           toStaging.push({
             operacao: parseInt(String(operacaoId)),
-            vencimento: parseExcelDate(vencimento),
+            vencimento: parseExcelDate(vencimentoRaw),
             cpf,
             valor: isNaN(valorNum) ? 0 : valorNum,
-            vendedor: String(vendedor),
-            contacobranca: String(row['Conta de Cob.'] || row['Conta de Cob'] || row['Conta de Cobrança'] || row['contacobranca'] || ''),
-            fundo: String(fundo),
-            convenio: String(convenio),
+            vendedor: String(findVal(row, ['Vendedor', 'Consultor']) || ''),
+            contacobranca: String(findVal(row, ['Conta de Cob.', 'Conta Cobranca', 'Conta Cob']) || ''),
+            fundo: String(findVal(row, ['Fundo', 'Fundo Investimento']) || ''),
+            convenio: String(findVal(row, ['Convênio', 'Convenio']) || ''),
             grupo: isNaN(grupoNum) ? 0 : grupoNum,
             nome_arquivo: fileName,
             import_session_id: sessionId,
             data_importacao: importTimestamp,
-            cpf_valido: isValidCpf
+            cpf_valido: isValidCpf,
+            // Novos campos com fallbacks
+            num_parcela: isNaN(numParcela) ? 0 : numParcela,
+            nome_cliente: String(findVal(row, ['Nome', 'Nome Cliente', 'Cliente']) || ''),
+            contrato: String(findVal(row, ['Contrato', 'Nº Contrato']) || ''),
+            coef: parseFloat(String(findVal(row, ['Coef', 'Coeficiente']) || 0).replace(',', '.')),
+            parcela_valor: parseFloat(String(findVal(row, ['Parcela', 'Vlr Parcela']) || 0).replace(',', '.')),
+            troco: parseFloat(String(findVal(row, ['Troco', 'Vlr Troco']) || 0).replace(',', '.')),
+            saldo: parseFloat(String(findVal(row, ['Saldo', 'Vlr Saldo']) || 0).replace(',', '.')),
           });
-
         }
 
 
@@ -520,14 +547,16 @@ export default function OperacoesPage() {
               </div>
             </div>
             <div style={{ flex: '1', minWidth: '150px' }}>
-              <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: '0.25rem', display: 'block' }}>Nome do Arquivo</label>
-              <input
-                type="text"
-                placeholder="Arquivo..."
-                value={filters.nome_arquivo}
-                onChange={e => setFilters(f => ({ ...f, nome_arquivo: e.target.value }))}
-                style={{ width: '100%' }}
-              />
+              <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: '0.25rem', display: 'block' }}>Status Cliente</label>
+              <select
+                value={filters.cliente_status}
+                onChange={e => setFilters(f => ({ ...f, cliente_status: e.target.value }))}
+                style={{ width: '100%', padding: '0.5rem' }}
+              >
+                <option value="todos">Todos</option>
+                <option value="cadastrados">Cadastrados</option>
+                <option value="nao_cadastrados">Não Cadastrados</option>
+              </select>
             </div>
             <div style={{ width: '140px' }}>
               <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: '0.25rem', display: 'block' }}>Data Início</label>
@@ -629,12 +658,12 @@ export default function OperacoesPage() {
                       <th style={{ paddingLeft: '0.5rem', width: '80px' }}>Operação</th>
                       <th style={{ width: '100px' }}>Vencimento</th>
                       <th style={{ width: '140px' }}>CPF</th>
-                      <th style={{ width: '90px' }}>Status</th>
+                      <th style={{ width: '120px', textAlign: 'center' }}>Cliente</th>
+                      <th style={{ width: '90px' }}>Status CPF</th>
                       <th style={{ width: '70px' }}>Grupo</th>
                       <th style={{ width: '110px' }}>Valor</th>
-                      <th style={{ width: '100px' }}>Fundo</th>
-                      <th style={{ minWidth: '120px' }}>Arquivo</th>
                       <th style={{ width: '150px' }}>Importado em</th>
+                      <th style={{ width: '50px', textAlign: 'center' }}>Ações</th>
 
 
                     </tr>
@@ -669,6 +698,16 @@ export default function OperacoesPage() {
                           </div>
                         </td>
 
+                        <td style={{ textAlign: 'center' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', justifyContent: 'center' }}>
+                            {op.cliente_cadastrado ? (
+                              <span title="Cliente Cadastrado" style={{ color: 'var(--color-success)' }}><UserCheck size={18} /></span>
+                            ) : (
+                              <span title="Cliente Não Cadastrado" style={{ color: 'var(--color-danger)' }}><UserMinus size={18} /></span>
+                            )}
+                          </div>
+                        </td>
+
                         <td>
                           <span className={`badge ${op.cpf_valido ? 'badge-success' : 'badge-danger'}`}>
                             {op.cpf_valido ? 'Válido' : 'Inválido'}
@@ -678,33 +717,21 @@ export default function OperacoesPage() {
                         <td style={{ fontWeight: 600 }}>
                           {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(op.valor)}
                         </td>
-                        <td style={{
-                          maxWidth: '100px',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap'
-                        }} title={op.fundo}>
-                          {op.fundo}
-                        </td>
-
-                        <td style={{
-                          fontSize: '0.8rem',
-                          color: 'var(--color-text-muted)',
-                          maxWidth: '100px',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap'
-                        }} title={op.nome_arquivo}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', overflow: 'hidden' }}>
-                            <FileText size={14} style={{ flexShrink: 0 }} />
-                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{op.nome_arquivo || '-'}</span>
-                          </div>
-                        </td>
                         <td style={{ fontSize: '0.8rem', whiteSpace: 'nowrap' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                             <Clock size={14} style={{ flexShrink: 0 }} />
                             {new Date(op.data_importacao).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                           </div>
+                        </td>
+                        <td style={{ textAlign: 'center' }}>
+                           <Link 
+                             href={`/operacoes/${op.id}`}
+                             className="btn btn-secondary" 
+                             style={{ padding: '0.3rem', background: 'transparent', border: 'none', color: 'var(--color-primary)', display: 'inline-flex' }}
+                             title="Visualizar Detalhes"
+                           >
+                             <Eye size={18} />
+                           </Link>
                         </td>
 
 
@@ -927,7 +954,6 @@ export default function OperacoesPage() {
 
 
 
-      {/* Custom Notification Modal */}
       <ConfirmModal
         isOpen={notification.isOpen}
         title={notification.title}

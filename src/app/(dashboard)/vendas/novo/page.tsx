@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
-import { ArrowLeft, CheckCircle2, Search, AlertTriangle, UserPlus, Info, ListFilter, Calculator, User, Building, Loader2, Landmark, Wallet } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Search, AlertTriangle, UserPlus, Info, ListFilter, Calculator, User, Building, Loader2, Landmark, Wallet, LayoutGrid } from 'lucide-react';
 import { validateCPF, formatCPF } from '@/lib/cpf';
 import { ConfirmModal } from '@/components/ConfirmModal';
 
@@ -83,6 +83,24 @@ export default function NovaVenda() {
     setAlertModal({ show: true, title, message });
   };
 
+  const resetScreen = () => {
+    setClientFound(null);
+    setSearchInitiated(false);
+    setOperacoesDisponiveis([]);
+    setSelectedOpIds([]);
+    setForm(f => ({
+      ...f,
+      orgao: '', empresa: '', codigo_operacao: '',
+      valor: '', saldo: '', valor_liquido: '', coef: '', parcela: '', prazo: '',
+      banco: '', agencia: '', agencia_dv: '', op: '', conta: '', conta_dv: '',
+      contrato: '', empresa_ativacao: '', conta_ativacao: '',
+      inicio_mes: '', dia_util: '', empresa_credora: '', observacao: '',
+      forma_credito: 'conta', pix_tipo_chave: '', pix_chave: '',
+      credito_banco: '', credito_agencia: '', credito_agencia_dv: '',
+      credito_conta: '', credito_conta_dv: ''
+    }));
+  };
+
   const buscarCliente = async () => {
     if (!validateCPF(cpf)) {
       setClientFound(null);
@@ -96,7 +114,7 @@ export default function NovaVenda() {
     setClientFound(null);
 
     const formattedCpf = formatCPF(cpf);
-    const { data: cliente } = await supabase.from('clientes').select('*').eq('cpf', formattedCpf).single();
+    const { data: cliente } = await supabase.schema('pro_consig').from('clientes').select('*').eq('cpf', formattedCpf).single();
 
     if (cliente) {
       setClientFound(cliente);
@@ -118,7 +136,7 @@ export default function NovaVenda() {
       }));
 
       // Busca operações disponíveis que NÃO têm venda registrada
-      const { data: ops } = await supabase.from('operacoes').select('*').eq('cpf', formattedCpf);
+      const { data: ops } = await supabase.schema('pro_consig').from('operacoes').select('*').eq('cpf', formattedCpf);
       const { data: existingVendas } = await supabase.schema('pro_consig').from('vendas').select('contrato').eq('cpf', formattedCpf);
 
       if (ops) {
@@ -182,6 +200,22 @@ export default function NovaVenda() {
   };
 
   useEffect(() => {
+    // Quando o CPF muda, reseta a operação e campos dependentes
+    setForm(f => ({
+      ...f,
+      codigo_operacao: '',
+      contrato: '',
+      valor: '',
+      parcela: '',
+      coef: '',
+      prazo: '',
+      empresa_ativacao: '',
+      conta_ativacao: '',
+      empresa_credora: ''
+    }));
+  }, [form.cpf]);
+
+  useEffect(() => {
     if (totaisRefin.liquido > 0) {
       setForm(f => ({ ...f, saldo: totaisRefin.liquido.toFixed(2).replace('.', ',') }));
     } else if (form.operacao === 'REFIN') {
@@ -192,14 +226,68 @@ export default function NovaVenda() {
   useEffect(() => {
     if (form.operacao === 'REFIN' && form.codigo_operacao) {
       setForm(f => ({ ...f, contrato: f.codigo_operacao }));
+      
+      // Auto-preenchimento Financeiro e Ativação/Credora
+      const opSelecionada = operacoesDisponiveis.find(o => o.operacao.toString() === form.codigo_operacao);
+      if (opSelecionada) {
+        // Preenche valores financeiros da operação
+        // NOVA ESTRATÉGIA: Pega o valor total do campo 'contrato'
+        const valorContratoRaw = String(opSelecionada.contrato || '0').replace(/[^\d.,]/g, '').replace(',', '.');
+        const valorContratoNum = parseFloat(valorContratoRaw) || 0;
+        
+        setForm(f => ({
+          ...f,
+          valor: valorContratoNum.toLocaleString('pt-BR', { minimumFractionDigits: 2 }),
+          parcela: opSelecionada.parcela_valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 }),
+          coef: (opSelecionada.coef || 0).toFixed(3).replace('.', ',')
+        }));
+
+        const fetchContas = async () => {
+          try {
+            const { data: allContas } = await supabase.schema('pro_consig').from('contas').select('*');
+            const contaData = allContas?.find(c => 
+              Number(c.grupo) === Number(opSelecionada.grupo) && 
+              Number(c.conta_ativacao) === Number(opSelecionada.contacobranca)
+            );
+
+            if (contaData) {
+              setForm(f => ({
+                ...f,
+                empresa_ativacao: contaData.empresa_ativacao || '',
+                conta_ativacao: String(contaData.conta_ativacao),
+                empresa_credora: contaData.empresa_credora || ''
+              }));
+            } else {
+              setForm(f => ({ ...f, conta_ativacao: opSelecionada.contacobranca || '' }));
+            }
+          } catch (e) {
+            console.error('Erro ao buscar contas:', e);
+          }
+        };
+        fetchContas();
+      }
     }
-  }, [form.operacao, form.codigo_operacao]);
+  }, [form.operacao, form.codigo_operacao, operacoesDisponiveis]);
+
+  // Mensagem de Aviso para Operação sem parcelas
+  const opSemParcelas = useMemo(() => {
+    if (form.operacao !== 'REFIN' || !form.codigo_operacao) return false;
+    const op = operacoesDisponiveis.find(o => String(o.operacao) === form.codigo_operacao);
+    
+    // NOVA ESTRATÉGIA: Se o n° parcela for 0, não tem parcelas
+    return op && (op.num_parcela === 0 || op.num_parcela === '0');
+  }, [form.operacao, form.codigo_operacao, operacoesDisponiveis]);
 
   useEffect(() => {
     const v = parseFloat(form.valor.replace(/\./g, '').replace(',', '.')) || 0;
     const s = parseFloat(form.saldo.replace(/\./g, '').replace(',', '.')) || 0;
-    if (v > 0 || s > 0) setForm(f => ({ ...f, valor_liquido: (v - s).toFixed(2).replace('.', ',') }));
-  }, [form.valor, form.saldo]);
+    
+    if (form.operacao === 'REFIN' && selectedOpIds.length === 0) {
+      setForm(f => ({ ...f, valor_liquido: '0,00' }));
+    } else if (v > 0 || s > 0) {
+      setForm(f => ({ ...f, valor_liquido: (v - s).toFixed(2).replace('.', ',') }));
+    }
+  }, [form.valor, form.saldo, selectedOpIds.length, form.operacao]);
 
   useEffect(() => {
     const v = parseFloat(form.valor.replace(/\./g, '').replace(',', '.')) || 0;
@@ -365,7 +453,14 @@ export default function NovaVenda() {
             <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
               <div style={{ maxWidth: '280px', flex: 1 }}>
                 <label style={fs}>CPF do Cliente</label>
-                <input type="text" value={cpf} onChange={e => setCpf(formatCPF(e.target.value))} placeholder="000.000.000-00" style={{ width: '100%' }} />
+                <input 
+                  type="text" 
+                  value={cpf} 
+                  onChange={e => setCpf(formatCPF(e.target.value))} 
+                  onFocus={resetScreen}
+                  placeholder="000.000.000-00" 
+                  style={{ width: '100%' }} 
+                />
               </div>
               <button type="button" className="btn btn-secondary" style={{ marginTop: '1.5rem', padding: '0.65rem' }} onClick={buscarCliente} disabled={searchLoading}><Search size={20} /></button>
               {clientFound && !searchLoading && (
@@ -396,15 +491,24 @@ export default function NovaVenda() {
               </div>
 
               {/* GRID REFIN */}
-              {form.operacao === 'REFIN' && form.codigo_operacao && (
+              {form.operacao === 'REFIN' && form.codigo_operacao ? (
                 <div className="card animate-fade-in" style={{ marginBottom: '1rem', border: '1px solid var(--color-primary-light)', backgroundColor: 'rgba(79, 70, 229, 0.01)' }}>
                   <legend style={ls}><div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><ListFilter size={18} /> Detalhes da Operação {form.codigo_operacao}</div></legend>
-                  <div className="table-wrapper" style={{ border: '1px solid var(--color-border)' }}>
-                    <table className="table table-sm" style={{ borderCollapse: 'separate', borderSpacing: 0 }}>
-                      <thead>
+                  
+                  {opSemParcelas ? (
+                    <div style={{ textAlign: 'center', padding: '2rem', color: '#ef4444', fontWeight: 600 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+                        <AlertTriangle size={20} /> Esta operação não possui parcelas pendentes (Parcela Zero).
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="table-wrapper" style={{ border: '1px solid var(--color-border)' }}>
+                        <table className="table table-sm" style={{ borderCollapse: 'separate', borderSpacing: 0 }}>
+                          <thead>
                         <tr>
                           <th style={{ width: '44px', position: 'sticky', top: 0, zIndex: 10, backgroundColor: 'var(--color-bg-surface-hover)', borderBottom: '2px solid var(--color-border)', textAlign: 'center', padding: '0.5rem' }}>
-                            <input type="checkbox" checked={isAllSelected} onChange={handleSelectAll} style={{ cursor: 'pointer', verticalAlign: 'middle' }} />
+                            <input type="checkbox" checked={isAllSelected} onChange={handleSelectAll} style={{ cursor: 'pointer', verticalAlign: 'middle' }} disabled={opSemParcelas} />
                           </th>
                           <th style={{ width: '60px', position: 'sticky', top: 0, zIndex: 10, backgroundColor: 'var(--color-bg-surface-hover)', borderBottom: '2px solid var(--color-border)', textAlign: 'right' }}>Parcela</th>
                           <th style={{ position: 'sticky', top: 0, zIndex: 10, backgroundColor: 'var(--color-bg-surface-hover)', borderBottom: '2px solid var(--color-border)', textAlign: 'center' }}>Vencimento</th>
@@ -417,21 +521,31 @@ export default function NovaVenda() {
                         </tr>
                       </thead>
                       <tbody style={{ fontSize: '0.8125rem' }}>
-                        {parcelasExibidas.map(p => (
-                          <tr key={p.id} onClick={() => toggleOpSelection(p.id)} style={{ cursor: 'pointer', backgroundColor: selectedOpIds.includes(p.id) ? 'rgba(79, 70, 229, 0.06)' : 'transparent' }}>
-                            <td style={{ padding: '0.4rem 0.5rem', width: '44px', textAlign: 'center' }}>
-                              <input type="checkbox" checked={selectedOpIds.includes(p.id)} readOnly style={{ verticalAlign: 'middle' }} />
+                        {parcelasExibidas.length > 0 ? (
+                          parcelasExibidas.map(p => (
+                            <tr key={p.id} onClick={() => toggleOpSelection(p.id)} style={{ cursor: 'pointer', backgroundColor: selectedOpIds.includes(p.id) ? 'rgba(79, 70, 229, 0.06)' : 'transparent' }}>
+                              <td style={{ padding: '0.4rem 0.5rem', width: '44px', textAlign: 'center' }}>
+                                <input type="checkbox" checked={selectedOpIds.includes(p.id)} readOnly style={{ verticalAlign: 'middle' }} />
+                              </td>
+                              <td style={{ padding: '0.4rem 0.5rem', textAlign: 'right', fontWeight: 600, color: 'var(--color-text-muted)' }}>{p.numParcela}</td>
+                              <td style={{ padding: '0.4rem 0.5rem', textAlign: 'center' }}>{new Date(p.vencimento).toLocaleDateString('pt-BR')}</td>
+                              <td style={{ padding: '0.4rem 0.5rem', textAlign: 'right', fontWeight: 500 }}>{p.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                              <td style={{ padding: '0.4rem 0.5rem', textAlign: 'center' }}>{p.dias}</td>
+                              <td style={{ padding: '0.4rem 0.5rem', textAlign: 'center', color: 'var(--color-danger)' }}>{p.percDesconto}%</td>
+                              <td style={{ padding: '0.4rem 0.5rem', textAlign: 'right', color: 'var(--color-danger)' }}>- {p.valorDesconto.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                              <td style={{ padding: '0.4rem 0.5rem', textAlign: 'right', fontWeight: 600, color: 'var(--color-success)' }}>{p.valorComDesconto.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                              <td style={{ padding: '0.4rem 0.5rem', textAlign: 'center', fontWeight: 600 }}>{p.grupo}</td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan={9} style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-danger)', fontWeight: 600 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+                                <AlertTriangle size={18} /> Não constam parcelas para esta operação no banco de dados.
+                              </div>
                             </td>
-                            <td style={{ padding: '0.4rem 0.5rem', textAlign: 'right', fontWeight: 600, color: 'var(--color-text-muted)' }}>{p.numParcela}</td>
-                            <td style={{ padding: '0.4rem 0.5rem', textAlign: 'center' }}>{new Date(p.vencimento).toLocaleDateString('pt-BR')}</td>
-                            <td style={{ padding: '0.4rem 0.5rem', textAlign: 'right', fontWeight: 500 }}>{p.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
-                            <td style={{ padding: '0.4rem 0.5rem', textAlign: 'center' }}>{p.dias}</td>
-                            <td style={{ padding: '0.4rem 0.5rem', textAlign: 'center', color: 'var(--color-danger)' }}>{p.percDesconto}%</td>
-                            <td style={{ padding: '0.4rem 0.5rem', textAlign: 'right', color: 'var(--color-danger)' }}>- {p.valorDesconto.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
-                            <td style={{ padding: '0.4rem 0.5rem', textAlign: 'right', fontWeight: 600, color: 'var(--color-success)' }}>{p.valorComDesconto.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
-                            <td style={{ padding: '0.4rem 0.5rem', textAlign: 'center', fontWeight: 600 }}>G{p.grupo}</td>
                           </tr>
-                        ))}
+                        )}
                       </tbody>
                     </table>
                   </div>
@@ -441,8 +555,10 @@ export default function NovaVenda() {
                     <div className="card" style={{ padding: '0.5rem', textAlign: 'center', border: '1px solid var(--color-border)' }}><span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>Total Bruto</span><div style={{ fontSize: '1rem', fontWeight: 700 }}>R$ {totaisRefin.bruto.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div></div>
                     <div className="card" style={{ padding: '0.5rem', textAlign: 'center', border: '1px solid var(--color-border)' }}><span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>Total Líquido</span><div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-success)' }}>R$ {totaisRefin.liquido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div></div>
                   </div>
-                </div>
+                </>
               )}
+            </div>
+          ) : null}
 
               {/* VALORES E CONDIÇÕES EM LINHA ÚNICA */}
               <div className="card" style={{ marginBottom: '1rem' }}>
