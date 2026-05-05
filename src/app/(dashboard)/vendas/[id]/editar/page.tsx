@@ -233,7 +233,7 @@ export default function EditarVenda(props: { params: Promise<{ id: string }> }) 
       conta_ativacao: '',
       empresa_credora: ''
     }));
-  }, [form.cpf]);
+  }, [cpf]);
 
   useEffect(() => {
     if (totaisRefin.liquido > 0) setForm(f => ({ ...f, saldo: totaisRefin.liquido.toFixed(2).replace('.', ',') }));

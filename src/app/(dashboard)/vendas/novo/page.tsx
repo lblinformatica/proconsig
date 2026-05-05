@@ -213,7 +213,7 @@ export default function NovaVenda() {
       conta_ativacao: '',
       empresa_credora: ''
     }));
-  }, [form.cpf]);
+  }, [cpf]);
 
   useEffect(() => {
     if (totaisRefin.liquido > 0) {
