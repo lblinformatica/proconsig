@@ -300,18 +300,27 @@ export default function NovaVenda() {
   }, [form.operacao, form.codigo_operacao, operacoesDisponiveis]);
 
   useEffect(() => {
-    if (form.operacao === 'REFIN' && selectedOpIds.length > 0) {
-      const selecionadas = parcelasExibidas.filter(p => selectedOpIds.includes(p.id));
-      if (selecionadas.length > 0) {
-        const maisAntiga = [...selecionadas].sort((a, b) => new Date(a.vencimento).getTime() - new Date(b.vencimento).getTime())[0];
-        const dataVenc = new Date(maisAntiga.vencimento + 'T12:00:00');
-        const mes = (dataVenc.getMonth() + 1).toString().padStart(2, '0');
-        const ano = dataVenc.getFullYear().toString();
-        
+    if (form.operacao === 'REFIN') {
+      if (selectedOpIds.length > 0) {
+        const selecionadas = parcelasExibidas.filter(p => selectedOpIds.includes(p.id));
+        if (selecionadas.length > 0) {
+          const maisAntiga = [...selecionadas].sort((a, b) => new Date(a.vencimento).getTime() - new Date(b.vencimento).getTime())[0];
+          const dataVenc = new Date(maisAntiga.vencimento + 'T12:00:00');
+          const mes = (dataVenc.getMonth() + 1).toString().padStart(2, '0');
+          const ano = dataVenc.getFullYear().toString();
+          
+          setForm(f => ({
+            ...f,
+            inicio_mes: mes,
+            inicio_ano: ano
+          }));
+        }
+      } else {
+        // Quando nenhuma parcela está selecionada, limpa os campos de início (Mês/Ano)
         setForm(f => ({
           ...f,
-          inicio_mes: mes,
-          inicio_ano: ano
+          inicio_mes: '',
+          inicio_ano: ''
         }));
       }
     }
