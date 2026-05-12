@@ -239,6 +239,26 @@ export default function OperacoesPage() {
     );
   };
 
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const v = e.target.value;
+    // Se contiver letras, não formata como CPF (pode ser busca por nome/vendedor/fundo/convenio)
+    if (/[a-zA-Z]/.test(v)) {
+      setSearch(v);
+    } else {
+      const digits = v.replace(/\D/g, '').slice(0, 11);
+      let formatted = digits;
+      if (digits.length > 9) {
+        formatted = `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`;
+      } else if (digits.length > 6) {
+        formatted = `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6)}`;
+      } else if (digits.length > 3) {
+        formatted = `${digits.slice(0, 3)}.${digits.slice(3)}`;
+      }
+      setSearch(formatted);
+    }
+    setPage(0);
+  };
+
   const handleDeleteAllFiltered = async () => {
     showConfirm(
       'Excluir Tudo',
@@ -561,7 +581,7 @@ export default function OperacoesPage() {
                   type="text"
                   placeholder="Vendedor, CPF..."
                   value={search}
-                  onChange={e => { setSearch(e.target.value); setPage(0); }}
+                  onChange={handleSearchChange}
                   style={{ paddingLeft: '2.75rem', width: '100%' }}
                 />
               </div>

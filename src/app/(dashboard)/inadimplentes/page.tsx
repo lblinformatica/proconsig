@@ -44,6 +44,25 @@ export default function InadimplentesPage() {
     type: 'success' | 'danger' | 'primary';
   }>({ isOpen: false, title: '', message: '', type: 'primary' });
 
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const v = e.target.value;
+    if (/[a-zA-Z]/.test(v)) {
+      setSearch(v);
+    } else {
+      const digits = v.replace(/\D/g, '').slice(0, 11);
+      let formatted = digits;
+      if (digits.length > 9) {
+        formatted = `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`;
+      } else if (digits.length > 6) {
+        formatted = `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6)}`;
+      } else if (digits.length > 3) {
+        formatted = `${digits.slice(0, 3)}.${digits.slice(3)}`;
+      }
+      setSearch(formatted);
+    }
+    setPage(0);
+  };
+
   const showAlert = (title: string, message: string, type: 'success' | 'danger' | 'primary' = 'primary') => {
     setNotification({ isOpen: true, title, message, type });
   };
@@ -228,7 +247,7 @@ export default function InadimplentesPage() {
               type="text"
               placeholder="Buscar por nome ou CPF..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={handleSearchChange}
               className="input"
               style={{ width: '100%', paddingLeft: '2.5rem' }}
             />

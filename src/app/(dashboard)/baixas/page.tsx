@@ -49,6 +49,25 @@ export default function BaixasPage() {
     setNotification({ isOpen: true, title, message, type });
   };
 
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const v = e.target.value;
+    if (/[a-zA-Z]/.test(v)) {
+      setSearch(v);
+    } else {
+      const digits = v.replace(/\D/g, '').slice(0, 11);
+      let formatted = digits;
+      if (digits.length > 9) {
+        formatted = `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`;
+      } else if (digits.length > 6) {
+        formatted = `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6)}`;
+      } else if (digits.length > 3) {
+        formatted = `${digits.slice(0, 3)}.${digits.slice(3)}`;
+      }
+      setSearch(formatted);
+    }
+    setPage(0);
+  };
+
   const fetchBaixas = useCallback(async () => {
     setLoading(true);
     const from = page * PAGE_SIZE;
@@ -235,7 +254,7 @@ export default function BaixasPage() {
                 type="text"
                 placeholder="Buscar por nome, CPF ou operação..."
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={handleSearchChange}
                 className="input"
                 style={{ width: '100%', paddingLeft: '2.5rem' }}
               />

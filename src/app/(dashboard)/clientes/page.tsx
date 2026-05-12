@@ -57,6 +57,25 @@ export default function ClientesList() {
     fetchProfile();
   }, []);
 
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const v = e.target.value;
+    if (/[a-zA-Z]/.test(v)) {
+      setSearch(v);
+    } else {
+      const digits = v.replace(/\D/g, '').slice(0, 11);
+      let formatted = digits;
+      if (digits.length > 9) {
+        formatted = `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`;
+      } else if (digits.length > 6) {
+        formatted = `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6)}`;
+      } else if (digits.length > 3) {
+        formatted = `${digits.slice(0, 3)}.${digits.slice(3)}`;
+      }
+      setSearch(formatted);
+    }
+    setPage(0);
+  };
+
   const fetchClientes = useCallback(async () => {
     setLoading(true);
     const from = page * PAGE_SIZE;
@@ -135,7 +154,7 @@ export default function ClientesList() {
         <div className="card" style={{ marginBottom: '2rem', display: 'flex', gap: '1rem', alignItems: 'center' }}>
           <div style={{ position: 'relative', flex: 1 }}>
             <Search size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
-            <input type="text" placeholder="Buscar por Nome ou CPF..." value={search} onChange={e => { setSearch(e.target.value); setPage(0); }} style={{ paddingLeft: '2.75rem', width: '100%' }} />
+            <input type="text" placeholder="Buscar por Nome ou CPF..." value={search} onChange={handleSearchChange} style={{ paddingLeft: '2.75rem', width: '100%' }} />
           </div>
           <button className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }} onClick={() => fetchClientes()}>
             <Filter size={18} /> Filtrar
