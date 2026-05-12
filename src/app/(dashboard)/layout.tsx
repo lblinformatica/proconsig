@@ -5,7 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import Link from 'next/link';
 import Image from 'next/image';
-import { LogOut, Home, Users, FileText, CheckSquare, BarChart, Menu, Moon, Sun, Bell, CheckCheck, List } from 'lucide-react';
+import { LogOut, Home, Users, FileText, CheckSquare, BarChart, Menu, Moon, Sun, Bell, CheckCheck, List, AlertCircle } from 'lucide-react';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -277,13 +277,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </>
           )}
           {userProfile?.nivel === 'admin' && (
-            <Link href="/operacoes" className={`btn ${pathname.includes('/operacoes') ? 'btn-primary' : 'btn-secondary'}`} style={navItemStyle(pathname.includes('/operacoes'))} title="Operações">
-              <List size={18} style={{ flexShrink: 0 }} /> {!isSidebarCollapsed && <span style={{ whiteSpace: 'nowrap' }}>Operações</span>}
-            </Link>
+            <>
+              <Link href="/operacoes" className={`btn ${pathname.includes('/operacoes') ? 'btn-primary' : 'btn-secondary'}`} style={navItemStyle(pathname.includes('/operacoes'))} title="Operações">
+                <List size={18} style={{ flexShrink: 0 }} /> {!isSidebarCollapsed && <span style={{ whiteSpace: 'nowrap' }}>Operações</span>}
+              </Link>
+              <Link href="/inadimplentes" className={`btn ${pathname.includes('/inadimplentes') ? 'btn-primary' : 'btn-secondary'}`} style={navItemStyle(pathname.includes('/inadimplentes'))} title="Inadimplentes">
+                <AlertCircle size={18} style={{ flexShrink: 0 }} /> {!isSidebarCollapsed && <span style={{ whiteSpace: 'nowrap' }}>Inadimplentes</span>}
+              </Link>
+              <Link href="/baixas" className={`btn ${pathname.includes('/baixas') ? 'btn-primary' : 'btn-secondary'}`} style={navItemStyle(pathname.includes('/baixas'))} title="Baixas">
+                <CheckSquare size={18} style={{ flexShrink: 0 }} /> {!isSidebarCollapsed && <span style={{ whiteSpace: 'nowrap' }}>Baixas</span>}
+              </Link>
+            </>
           )}
           {userProfile?.nivel === 'admin' && (
-            <Link href="/usuarios" className={`btn ${pathname.includes('/usuarios') ? 'btn-primary' : 'btn-secondary'}`} style={navItemStyle(pathname.includes('/usuarios'))} title="Gerenciar Usuários">
-              <Users size={18} style={{ flexShrink: 0 }} /> {!isSidebarCollapsed && <span style={{ whiteSpace: 'nowrap' }}>Gerenciar Usuários</span>}
+            <Link href="/usuarios" className={`btn ${pathname.includes('/usuarios') ? 'btn-primary' : 'btn-secondary'}`} style={navItemStyle(pathname.includes('/usuarios'))} title="Usuários">
+              <Users size={18} style={{ flexShrink: 0 }} /> {!isSidebarCollapsed && <span style={{ whiteSpace: 'nowrap' }}>Usuários</span>}
             </Link>
           )}
           {(userProfile?.nivel === 'admin' || userProfile?.nivel === 'financeiro') && (

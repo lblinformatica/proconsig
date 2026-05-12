@@ -46,6 +46,7 @@ export default function NovaVenda() {
   const [searchInitiated, setSearchInitiated] = useState(false);
   const [operacoesDisponiveis, setOperacoesDisponiveis] = useState<any[]>([]);
   const [selectedOpIds, setSelectedOpIds] = useState<number[]>([]);
+  const [baixasCliente, setBaixasCliente] = useState<any[]>([]);
 
   const [form, setForm] = useState({
     orgao: '', empresa: '', operacao: 'REFIN', codigo_operacao: '', corretor: '',
@@ -114,6 +115,21 @@ export default function NovaVenda() {
     setClientFound(null);
 
     const formattedCpf = formatCPF(cpf);
+    const rawCpf = formattedCpf.replace(/[^\d]/g, '');
+
+    // Verificar Inadimplência
+    const { data: inadimplente } = await supabase.schema('pro_consig').from('inadimplentes').select('id').eq('cpf', rawCpf).limit(1).maybeSingle();
+    
+    if (inadimplente) {
+      setSearchLoading(false);
+      setSearchInitiated(false);
+      return showAlert('Cliente com restritivo interno (Inadimplência)', 'Este CPF possui restrição interna e não é permitido prosseguir com a venda.');
+    }
+
+    // Buscar Baixas (Parcelas já pagas)
+    const { data: baixas } = await supabase.schema('pro_consig').from('baixas').select('*').eq('cpf', rawCpf);
+    setBaixasCliente(baixas || []);
+
     const { data: cliente } = await supabase.schema('pro_consig').from('clientes').select('*').eq('cpf', formattedCpf).single();
 
     if (cliente) {
@@ -169,16 +185,28 @@ export default function NovaVenda() {
         const rate = o.grupo === 2 ? 0.0022 : 0;
         const percDesconto = dias > 0 ? (dias * rate) : 0;
         const valorDesconto = o.valor * percDesconto;
+
+        // Identificar se a parcela já foi baixada
+        // o.cpf pode estar formatado, b.cpf está apenas números
+        const rawOCpf = o.cpf.replace(/[^\d]/g, '');
+        const isBaixada = baixasCliente.some(b => 
+          b.cpf === rawOCpf && 
+          b.operacao === o.operacao.toString() && 
+          Number(b.parcela) === Number(o.valor) && 
+          b.vencimento === o.vencimento
+        );
+
         return {
           ...o,
           numParcela: index + 1,
           dias: dias > 0 ? dias : 0,
           percDesconto: (percDesconto * 100).toFixed(2),
           valorDesconto,
-          valorComDesconto: o.valor - valorDesconto
+          valorComDesconto: o.valor - valorDesconto,
+          isBaixada
         };
       });
-  }, [form.operacao, form.codigo_operacao, operacoesDisponiveis]);
+  }, [form.operacao, form.codigo_operacao, operacoesDisponiveis, baixasCliente]);
 
   const totaisRefin = useMemo(() => {
     const selecionadas = parcelasExibidas.filter(p => selectedOpIds.includes(p.id));
@@ -195,7 +223,7 @@ export default function NovaVenda() {
     if (isAllSelected) {
       setSelectedOpIds([]);
     } else {
-      setSelectedOpIds(parcelasExibidas.map(p => p.id));
+      setSelectedOpIds(parcelasExibidas.filter(p => !p.isBaixada).map(p => p.id));
     }
   };
 
@@ -216,22 +244,24 @@ export default function NovaVenda() {
   }, [cpf]);
 
   useEffect(() => {
-    if (totaisRefin.liquido > 0) {
-      setForm(f => ({ ...f, saldo: totaisRefin.liquido.toFixed(2).replace('.', ',') }));
-    } else if (form.operacao === 'REFIN') {
-      setForm(f => ({ ...f, saldo: '' }));
+    if (form.operacao === 'REFIN') {
+      // Se tiver parcelas exibidas mas nenhuma selecionada, traz a soma de todas como sugestão
+      const valorParaSaldo = selectedOpIds.length > 0 ? totaisRefin.bruto : parcelasExibidas.filter(p => !p.isBaixada).reduce((acc, curr) => acc + curr.valor, 0);
+      
+      if (valorParaSaldo > 0) {
+        setForm(f => ({ ...f, saldo: valorParaSaldo.toFixed(2).replace('.', ',') }));
+      } else {
+        setForm(f => ({ ...f, saldo: '' }));
+      }
     }
-  }, [totaisRefin.liquido, form.operacao]);
+  }, [totaisRefin.bruto, form.operacao, parcelasExibidas, selectedOpIds.length]);
 
   useEffect(() => {
     if (form.operacao === 'REFIN' && form.codigo_operacao) {
       setForm(f => ({ ...f, contrato: f.codigo_operacao }));
       
-      // Auto-preenchimento Financeiro e Ativação/Credora
       const opSelecionada = operacoesDisponiveis.find(o => o.operacao.toString() === form.codigo_operacao);
       if (opSelecionada) {
-        // Preenche valores financeiros da operação
-        // NOVA ESTRATÉGIA: Pega o valor total do campo 'contrato'
         const valorContratoRaw = String(opSelecionada.contrato || '0').replace(/[^\d.,]/g, '').replace(',', '.');
         const valorContratoNum = parseFloat(valorContratoRaw) || 0;
         
@@ -269,12 +299,60 @@ export default function NovaVenda() {
     }
   }, [form.operacao, form.codigo_operacao, operacoesDisponiveis]);
 
+  useEffect(() => {
+    if (form.operacao === 'REFIN' && selectedOpIds.length > 0) {
+      const selecionadas = parcelasExibidas.filter(p => selectedOpIds.includes(p.id));
+      if (selecionadas.length > 0) {
+        const maisAntiga = [...selecionadas].sort((a, b) => new Date(a.vencimento).getTime() - new Date(b.vencimento).getTime())[0];
+        const dataVenc = new Date(maisAntiga.vencimento + 'T12:00:00');
+        const mes = (dataVenc.getMonth() + 1).toString().padStart(2, '0');
+        const ano = dataVenc.getFullYear().toString();
+        
+        setForm(f => ({
+          ...f,
+          inicio_mes: mes,
+          inicio_ano: ano
+        }));
+      }
+    }
+  }, [selectedOpIds, parcelasExibidas, form.operacao]);
+
+  const buscarEmpresasPorConta = async (conta: string) => {
+    if (!conta) return;
+    try {
+      // Tenta encontrar o grupo da operação atual para filtrar melhor
+      const opSelecionada = operacoesDisponiveis.find(o => o.operacao.toString() === form.codigo_operacao);
+      const grupo = opSelecionada?.grupo;
+
+      let query = supabase.schema('pro_consig').from('contas').select('*').eq('conta_ativacao', conta);
+      
+      if (grupo) {
+        query = query.eq('grupo', grupo);
+      }
+
+      const { data, error } = await query;
+      
+      if (error) throw error;
+
+      if (data && data.length > 0) {
+        // Pega o primeiro resultado (idealmente seria filtrado por grupo)
+        const record = data[0];
+        setForm(f => ({
+          ...f,
+          empresa_ativacao: record.empresa_ativacao || f.empresa_ativacao,
+          empresa_credora: record.empresa_credora || f.empresa_credora
+        }));
+      }
+    } catch (e) {
+      console.error('Erro ao buscar empresas por conta:', e);
+    }
+  };
+
   // Mensagem de Aviso para Operação sem parcelas
   const opSemParcelas = useMemo(() => {
     if (form.operacao !== 'REFIN' || !form.codigo_operacao) return false;
     const op = operacoesDisponiveis.find(o => String(o.operacao) === form.codigo_operacao);
     
-    // NOVA ESTRATÉGIA: Se o n° parcela for 0, não tem parcelas
     return op && (op.num_parcela === 0 || op.num_parcela === '0');
   }, [form.operacao, form.codigo_operacao, operacoesDisponiveis]);
 
@@ -282,12 +360,10 @@ export default function NovaVenda() {
     const v = parseFloat(form.valor.replace(/\./g, '').replace(',', '.')) || 0;
     const s = parseFloat(form.saldo.replace(/\./g, '').replace(',', '.')) || 0;
     
-    if (form.operacao === 'REFIN' && selectedOpIds.length === 0) {
-      setForm(f => ({ ...f, valor_liquido: '0,00' }));
-    } else if (v > 0 || s > 0) {
+    if (v > 0 || s > 0) {
       setForm(f => ({ ...f, valor_liquido: (v - s).toFixed(2).replace('.', ',') }));
     }
-  }, [form.valor, form.saldo, selectedOpIds.length, form.operacao]);
+  }, [form.valor, form.saldo]);
 
   useEffect(() => {
     const v = parseFloat(form.valor.replace(/\./g, '').replace(',', '.')) || 0;
@@ -305,8 +381,29 @@ export default function NovaVenda() {
   }, [form.valor, form.parcela]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
-    if (e.target.name === 'operacao' && e.target.value !== 'REFIN') {
+    const { name, value } = e.target;
+
+    // Campos financeiros (permitem números, ponto e vírgula)
+    if (['valor', 'saldo', 'parcela', 'valor_liquido'].includes(name)) {
+      const cleanValue = value.replace(/[^\d.,]/g, '');
+      setForm(f => ({ ...f, [name]: cleanValue }));
+      return;
+    }
+
+    // Campos numéricos puros (apenas dígitos)
+    const numericFields = [
+      'conta_ativacao', 'dia_util', 'inicio_ano', 'prazo', 
+      'agencia', 'agencia_dv', 'conta', 'conta_dv', 'op',
+      'credito_agencia', 'credito_agencia_dv', 'credito_conta', 'credito_conta_dv'
+    ];
+    if (numericFields.includes(name)) {
+      const cleanValue = value.replace(/\D/g, '');
+      setForm(f => ({ ...f, [name]: cleanValue }));
+      return;
+    }
+
+    setForm({ ...form, [name]: value });
+    if (name === 'operacao' && value !== 'REFIN') {
       setSelectedOpIds([]);
     }
   };
@@ -331,10 +428,6 @@ export default function NovaVenda() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!clientFound) return showAlert('Atenção', 'Você precisa buscar e validar um cliente antes de gravar a venda.');
-
-    if (form.operacao === 'REFIN' && selectedOpIds.length === 0) {
-      return showAlert('Ação Necessária', 'Para operações de REFIN, você deve selecionar pelo menos uma parcela no grid de detalhes.');
-    }
 
     if (!form.prazo) {
       return showAlert('Prazo não identificado', 'Os valores informados não correspondem a nenhum prazo em nossa tabela de coeficientes. Por favor, revise os valores de Contrato e Parcela.');
@@ -485,7 +578,25 @@ export default function NovaVenda() {
                   <div><label style={fs}>Órgão</label><input name="orgao" type="text" value={form.orgao} onChange={handleChange} required style={{ width: '100%', padding: '0.5rem' }} /></div>
                   <div><label style={fs}>Empresa</label><input name="empresa" type="text" value={form.empresa} onChange={handleChange} required style={{ width: '100%', padding: '0.5rem' }} /></div>
                   <div><label style={fs}>Operação</label><select name="operacao" value={form.operacao} onChange={handleChange} required style={{ width: '100%', padding: '0.5rem' }}><option value="REFIN">REFIN</option><option value="NOVO">NOVO</option><option value="COMPRA">COMPRA</option></select></div>
-                  <div><label style={fs}>Cód. Operação</label>{form.operacao === 'REFIN' && codigosUnicos.length > 0 ? (<select name="codigo_operacao" value={form.codigo_operacao} onChange={handleChange} required style={{ width: '100%', padding: '0.5rem' }}><option value="">Selecione...</option>{codigosUnicos.map(c => <option key={c} value={c}>{c}</option>)}</select>) : (<input name="codigo_operacao" type="text" value={form.codigo_operacao} onChange={handleChange} required style={{ width: '100%', padding: '0.5rem' }} />)}</div>
+                  <div>
+                    <label style={fs}>Cód. Operação</label>
+                    {form.operacao === 'REFIN' && codigosUnicos.length > 0 ? (
+                      <select name="codigo_operacao" value={form.codigo_operacao} onChange={handleChange} required style={{ width: '100%', padding: '0.5rem' }}>
+                        <option value="">Selecione...</option>
+                        {codigosUnicos.map(c => <option key={c} value={c}>{c}</option>)}
+                      </select>
+                    ) : (
+                      <input 
+                        name="codigo_operacao" 
+                        type="text" 
+                        value={form.codigo_operacao} 
+                        onChange={handleChange} 
+                        required={form.operacao !== 'NOVO'} 
+                        disabled={form.operacao === 'NOVO'}
+                        style={{ width: '100%', padding: '0.5rem', ...(form.operacao === 'NOVO' ? readonlyStyle : {}) }} 
+                      />
+                    )}
+                  </div>
                   <div><label style={fs}>Corretor</label><input name="corretor" type="text" value={form.corretor} onChange={handleChange} required style={{ width: '100%', padding: '0.5rem' }} /></div>
                 </div>
               </div>
@@ -514,6 +625,7 @@ export default function NovaVenda() {
                           <th style={{ position: 'sticky', top: 0, zIndex: 10, backgroundColor: 'var(--color-bg-surface-hover)', borderBottom: '2px solid var(--color-border)', textAlign: 'center' }}>Vencimento</th>
                           <th style={{ position: 'sticky', top: 0, zIndex: 10, backgroundColor: 'var(--color-bg-surface-hover)', borderBottom: '2px solid var(--color-border)', textAlign: 'right' }}>Valor (R$)</th>
                           <th style={{ position: 'sticky', top: 0, zIndex: 10, backgroundColor: 'var(--color-bg-surface-hover)', borderBottom: '2px solid var(--color-border)', textAlign: 'center' }}>Dias</th>
+                          <th style={{ position: 'sticky', top: 0, zIndex: 10, backgroundColor: 'var(--color-bg-surface-hover)', borderBottom: '2px solid var(--color-border)', textAlign: 'center' }}>Status</th>
                           <th style={{ position: 'sticky', top: 0, zIndex: 10, backgroundColor: 'var(--color-bg-surface-hover)', borderBottom: '2px solid var(--color-border)', textAlign: 'center' }}>% Desconto</th>
                           <th style={{ position: 'sticky', top: 0, zIndex: 10, backgroundColor: 'var(--color-bg-surface-hover)', borderBottom: '2px solid var(--color-border)', textAlign: 'right' }}>Desconto (R$)</th>
                           <th style={{ position: 'sticky', top: 0, zIndex: 10, backgroundColor: 'var(--color-bg-surface-hover)', borderBottom: '2px solid var(--color-border)', textAlign: 'right' }}>Líquido (R$)</th>
@@ -523,14 +635,35 @@ export default function NovaVenda() {
                       <tbody style={{ fontSize: '0.8125rem' }}>
                         {parcelasExibidas.length > 0 ? (
                           parcelasExibidas.map(p => (
-                            <tr key={p.id} onClick={() => toggleOpSelection(p.id)} style={{ cursor: 'pointer', backgroundColor: selectedOpIds.includes(p.id) ? 'rgba(79, 70, 229, 0.06)' : 'transparent' }}>
+                            <tr 
+                              key={p.id} 
+                              onClick={() => !p.isBaixada && toggleOpSelection(p.id)} 
+                              style={{ 
+                                cursor: p.isBaixada ? 'not-allowed' : 'pointer', 
+                                backgroundColor: selectedOpIds.includes(p.id) ? 'rgba(79, 70, 229, 0.06)' : 'transparent',
+                                opacity: p.isBaixada ? 0.6 : 1
+                              }}
+                            >
                               <td style={{ padding: '0.4rem 0.5rem', width: '44px', textAlign: 'center' }}>
-                                <input type="checkbox" checked={selectedOpIds.includes(p.id)} readOnly style={{ verticalAlign: 'middle' }} />
+                                <input 
+                                  type="checkbox" 
+                                  checked={selectedOpIds.includes(p.id)} 
+                                  disabled={p.isBaixada}
+                                  readOnly 
+                                  style={{ verticalAlign: 'middle' }} 
+                                />
                               </td>
                               <td style={{ padding: '0.4rem 0.5rem', textAlign: 'right', fontWeight: 600, color: 'var(--color-text-muted)' }}>{p.numParcela}</td>
-                              <td style={{ padding: '0.4rem 0.5rem', textAlign: 'center' }}>{new Date(p.vencimento).toLocaleDateString('pt-BR')}</td>
+                              <td style={{ padding: '0.4rem 0.5rem', textAlign: 'center' }}>{new Date(p.vencimento + 'T12:00:00').toLocaleDateString('pt-BR')}</td>
                               <td style={{ padding: '0.4rem 0.5rem', textAlign: 'right', fontWeight: 500 }}>{p.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
                               <td style={{ padding: '0.4rem 0.5rem', textAlign: 'center' }}>{p.dias}</td>
+                              <td style={{ padding: '0.4rem 0.5rem', textAlign: 'center' }}>
+                                {p.isBaixada ? (
+                                  <span style={{ color: 'var(--color-warning)', fontWeight: 700, fontSize: '0.75rem' }}>Baixada</span>
+                                ) : (
+                                  <span style={{ color: 'var(--color-primary)', fontWeight: 700, fontSize: '0.75rem' }}>Aberta</span>
+                                )}
+                              </td>
                               <td style={{ padding: '0.4rem 0.5rem', textAlign: 'center', color: 'var(--color-danger)' }}>{p.percDesconto}%</td>
                               <td style={{ padding: '0.4rem 0.5rem', textAlign: 'right', color: 'var(--color-danger)' }}>- {p.valorDesconto.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
                               <td style={{ padding: '0.4rem 0.5rem', textAlign: 'right', fontWeight: 600, color: 'var(--color-success)' }}>{p.valorComDesconto.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
@@ -539,7 +672,7 @@ export default function NovaVenda() {
                           ))
                         ) : (
                           <tr>
-                            <td colSpan={9} style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-danger)', fontWeight: 600 }}>
+                            <td colSpan={10} style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-danger)', fontWeight: 600 }}>
                               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
                                 <AlertTriangle size={18} /> Não constam parcelas para esta operação no banco de dados.
                               </div>
@@ -566,7 +699,7 @@ export default function NovaVenda() {
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '1rem' }}>
                   <div><label style={fs}>Contrato (R$)</label><input name="valor" type="text" value={form.valor} onChange={handleChange} onBlur={handleBlur} required placeholder="0,00" style={{ width: '100%', fontWeight: 600, color: 'var(--color-primary)' }} /></div>
                   <div><label style={fs}>Saldo (R$)</label><input name="saldo" type="text" value={form.saldo} onChange={handleChange} onBlur={handleBlur} required placeholder="0,00" style={{ width: '100%' }} /></div>
-                  <div><label style={fs}>Líquido (R$)</label><input name="valor_liquido" type="text" value={form.valor_liquido} readOnly style={readonlyStyle} /></div>
+                  <div><label style={fs}>Líquido (R$)</label><input name="valor_liquido" type="text" value={form.valor_liquido} onChange={handleChange} onBlur={handleBlur} style={{ width: '100%' }} /></div>
                   <div><label style={fs}>Parcela (R$)</label><input name="parcela" type="text" value={form.parcela} onChange={handleChange} onBlur={handleBlur} required placeholder="0,00" style={{ width: '100%' }} /></div>
                   <div><label style={fs}>Coeficiente</label><input name="coef" type="text" value={form.coef} readOnly style={readonlyStyle} /></div>
                   <div><label style={fs}>Prazo</label><input name="prazo" type="text" value={form.prazo} readOnly style={readonlyStyle} /></div>
@@ -620,9 +753,9 @@ export default function NovaVenda() {
               <div className="card" style={{ marginBottom: '1rem' }}>
                 <legend style={ls}>Ativação, Contrato e Lote</legend>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
-                  <div><label style={fs}>Nº do Contrato</label><input name="contrato" type="text" value={form.contrato} onChange={handleChange} disabled={form.operacao === 'REFIN'} required style={form.operacao === 'REFIN' ? readonlyStyle : { width: '100%' }} /></div>
+                  <div><label style={fs}>Nº do Contrato</label><input name="contrato" type="text" value={form.contrato} onChange={handleChange} disabled={form.operacao === 'REFIN' || form.operacao === 'NOVO'} required={form.operacao !== 'NOVO'} style={form.operacao === 'REFIN' || form.operacao === 'NOVO' ? readonlyStyle : { width: '100%' }} /></div>
+                  <div><label style={fs}>Conta Ativação</label><input name="conta_ativacao" type="text" value={form.conta_ativacao} onChange={handleChange} onBlur={(e) => buscarEmpresasPorConta(e.target.value)} required style={{ width: '100%' }} /></div>
                   <div><label style={fs}>Empresa Ativação</label><input name="empresa_ativacao" type="text" value={form.empresa_ativacao} onChange={handleChange} required style={{ width: '100%' }} /></div>
-                  <div><label style={fs}>Conta Ativação</label><input name="conta_ativacao" type="text" value={form.conta_ativacao} onChange={handleChange} required style={{ width: '100%' }} /></div>
                   <div><label style={fs}>Dia Útil Adicional</label><input name="dia_util" type="text" value={form.dia_util} onChange={handleChange} required style={{ width: '100%' }} /></div>
                   <div><label style={fs}>Empresa Credora</label><input name="empresa_credora" type="text" value={form.empresa_credora} onChange={handleChange} required style={{ width: '100%' }} /></div>
                   <div style={{ display: 'flex', gap: '0.5rem' }}>

@@ -161,6 +161,10 @@ export default function OperacoesPage() {
       query = query.eq('cpf_valido', false);
     }
 
+    if (search) {
+      query = query.or(`vendedor.ilike.%${search}%,cpf.ilike.%${search}%,convenio.ilike.%${search}%,fundo.ilike.%${search}%,nome_cliente.ilike.%${search}%`);
+    }
+
 
     const { data, count, error } = await query;
     if (error) console.error('Erro ao buscar operações:', error);
@@ -243,8 +247,16 @@ export default function OperacoesPage() {
         setLoading(true);
         let query = supabase.from('operacoes').delete();
 
-        if (search) query = query.or(`cpf.ilike.%${search}%,convenio.ilike.%${search}%,fundo.ilike.%${search}%`);
-        if (filters.nome_arquivo) query = query.ilike('nome_arquivo', `%${filters.nome_arquivo}%`);
+        if (search) {
+          query = query.or(`vendedor.ilike.%${search}%,cpf.ilike.%${search}%,convenio.ilike.%${search}%,fundo.ilike.%${search}%,nome_cliente.ilike.%${search}%`);
+        }
+
+        if (filters.cliente_status === 'cadastrados') {
+          query = query.eq('cliente_cadastrado', true);
+        } else if (filters.cliente_status === 'nao_cadastrados') {
+          query = query.eq('cliente_cadastrado', false);
+        }
+
         if (filters.data_inicio) query = query.filter('vencimento', 'gte', filters.data_inicio);
         if (filters.data_fim) query = query.filter('vencimento', 'lte', filters.data_fim);
         if (filters.validez === 'validos') query = query.eq('cpf_valido', true);
@@ -275,8 +287,15 @@ export default function OperacoesPage() {
     while (hasMore) {
       let query = supabase.from('operacoes').select('*').range(page * pageSize, (page + 1) * pageSize - 1);
 
-      if (search) query = query.or(`vendedor.ilike.%${search}%,cpf.ilike.%${search}%,convenio.ilike.%${search}%`);
-      if (filters.nome_arquivo) query = query.ilike('nome_arquivo', `%${filters.nome_arquivo}%`);
+      if (search) {
+        query = query.or(`vendedor.ilike.%${search}%,cpf.ilike.%${search}%,convenio.ilike.%${search}%,fundo.ilike.%${search}%,nome_cliente.ilike.%${search}%`);
+      }
+
+      if (filters.cliente_status === 'cadastrados') {
+        query = query.eq('cliente_cadastrado', true);
+      } else if (filters.cliente_status === 'nao_cadastrados') {
+        query = query.eq('cliente_cadastrado', false);
+      }
 
       if (filters.data_inicio) query = query.filter('vencimento', 'gte', filters.data_inicio);
       if (filters.data_fim) query = query.filter('vencimento', 'lte', filters.data_fim);
@@ -681,7 +700,11 @@ export default function OperacoesPage() {
                           </button>
                         </td>
                         <td style={{ fontWeight: 600, color: 'var(--color-primary)', fontSize: '0.8rem', paddingLeft: '0.5rem' }}>{op.operacao}</td>
-                        <td style={{ fontSize: '0.8rem', whiteSpace: 'nowrap' }}>{new Date(op.vencimento + 'T12:00:00').toLocaleDateString('pt-BR')}</td>
+                        <td style={{ fontSize: '0.8rem', whiteSpace: 'nowrap' }}>
+                          {op.vencimento 
+                            ? new Date(op.vencimento + 'T12:00:00').toLocaleDateString('pt-BR') 
+                            : 'Sem Data'}
+                        </td>
 
                         <td style={{ fontFamily: 'monospace', whiteSpace: 'nowrap' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
