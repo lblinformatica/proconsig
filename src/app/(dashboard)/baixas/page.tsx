@@ -173,17 +173,38 @@ export default function BaixasPage() {
           return;
         }
 
-        // Evitar duplicados: busca registros já existentes para estes CPFs
-        const cpfs = Array.from(new Set(toInsert.map(r => r.cpf)));
+        // 1. Remover duplicados internos do arquivo baseado em CPF + OPERACAO + MES_ANO (YYYY-MM)
+        const uniqueToInsert: typeof toInsert = [];
+        const seenInFile = new Set<string>();
+        for (const r of toInsert) {
+          const mesAno = r.vencimento!.substring(0, 7);
+          const key = `${r.cpf}-${r.operacao}-${mesAno}`;
+          if (!seenInFile.has(key)) {
+            seenInFile.add(key);
+            uniqueToInsert.push(r);
+          }
+        }
+
+        if (uniqueToInsert.length === 0) {
+          showAlert('Atenção', 'Nenhum registro exclusivo encontrado no arquivo.', 'primary');
+          setImporting(false);
+          return;
+        }
+
+        // 2. Evitar duplicados contra o banco de dados baseado em CPF + OPERACAO + MES_ANO (YYYY-MM)
+        const cpfs = Array.from(new Set(uniqueToInsert.map(r => r.cpf)));
         const { data: existing } = await supabase.schema('pro_consig').from('baixas')
           .select('cpf, operacao, vencimento')
           .in('cpf', cpfs);
 
-        const existingKeys = new Set(existing?.map(e => `${e.cpf}-${e.operacao}-${e.vencimento}`) || []);
-        const finalToInsert = toInsert.filter(r => !existingKeys.has(`${r.cpf}-${r.operacao}-${r.vencimento}`));
+        const existingKeys = new Set(existing?.map(e => `${e.cpf}-${e.operacao}-${e.vencimento ? e.vencimento.substring(0, 7) : ''}`) || []);
+        const finalToInsert = uniqueToInsert.filter(r => {
+          const mesAno = r.vencimento!.substring(0, 7);
+          return !existingKeys.has(`${r.cpf}-${r.operacao}-${mesAno}`);
+        });
 
         if (finalToInsert.length === 0) {
-          showAlert('Atenção', 'Todos os registros do arquivo já existem na base de dados.', 'primary');
+          showAlert('Atenção', 'Todos os registros do arquivo já existem na base de dados (chave CPF + OPERAÇÃO + MÊS/ANO).', 'primary');
           setImporting(false);
           setShowImportModal(false);
           return;
@@ -194,8 +215,8 @@ export default function BaixasPage() {
         if (error) throw error;
 
         showAlert('Sucesso', `${finalToInsert.length} novos registros importados com sucesso!`, 'success');
-        if (finalToInsert.length < toInsert.length) {
-          showAlert('Importação Parcial', `${toInsert.length - finalToInsert.length} registros foram ignorados por já existirem.`, 'primary');
+        if (finalToInsert.length < uniqueToInsert.length) {
+          showAlert('Importação Parcial', `${uniqueToInsert.length - finalToInsert.length} registros foram ignorados por já existirem.`, 'primary');
         }
         fetchBaixas();
         setShowImportModal(false);

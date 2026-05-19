@@ -49,7 +49,7 @@ export default function NovaVenda() {
   const [baixasCliente, setBaixasCliente] = useState<any[]>([]);
 
   const [form, setForm] = useState({
-    orgao: '', empresa: '', operacao: 'REFIN', codigo_operacao: '', corretor: '',
+    orgao: '', empresa: '', operacao: 'REFIN', codigo_operacao: '', corretor: '', carteira: '',
     valor: '', saldo: '', valor_liquido: '', coef: '', parcela: '', prazo: '',
     banco: '', agencia: '', agencia_dv: '', op: '', conta: '', conta_dv: '', tipo_conta: 'corrente',
     contrato: '', empresa_ativacao: '', conta_ativacao: '',
@@ -91,7 +91,7 @@ export default function NovaVenda() {
     setSelectedOpIds([]);
     setForm(f => ({
       ...f,
-      orgao: '', empresa: '', codigo_operacao: '',
+      orgao: '', empresa: '', codigo_operacao: '', carteira: '',
       valor: '', saldo: '', valor_liquido: '', coef: '', parcela: '', prazo: '',
       banco: '', agencia: '', agencia_dv: '', op: '', conta: '', conta_dv: '',
       contrato: '', empresa_ativacao: '', conta_ativacao: '',
@@ -186,15 +186,18 @@ export default function NovaVenda() {
         const percDesconto = dias > 0 ? (dias * rate) : 0;
         const valorDesconto = o.valor * percDesconto;
 
-        // Identificar se a parcela já foi baixada
+        // Identificar se a parcela já foi baixada (chave: CPF + OPERACAO + MES_ANO)
         // o.cpf pode estar formatado, b.cpf está apenas números
         const rawOCpf = o.cpf.replace(/[^\d]/g, '');
-        const isBaixada = baixasCliente.some(b => 
-          b.cpf === rawOCpf && 
-          b.operacao === o.operacao.toString() && 
-          Number(b.parcela) === Number(o.valor) && 
-          b.vencimento === o.vencimento
-        );
+        const isBaixada = baixasCliente.some(b => {
+          const bMesAno = b.vencimento ? b.vencimento.substring(0, 7) : '';
+          const oMesAno = o.vencimento ? o.vencimento.substring(0, 7) : '';
+          return (
+            b.cpf === rawOCpf && 
+            b.operacao === o.operacao.toString() && 
+            bMesAno && oMesAno && bMesAno === oMesAno
+          );
+        });
 
         return {
           ...o,
@@ -245,8 +248,8 @@ export default function NovaVenda() {
 
   useEffect(() => {
     if (form.operacao === 'REFIN') {
-      // Se tiver parcelas exibidas mas nenhuma selecionada, traz a soma de todas como sugestão
-      const valorParaSaldo = selectedOpIds.length > 0 ? totaisRefin.bruto : parcelasExibidas.filter(p => !p.isBaixada).reduce((acc, curr) => acc + curr.valor, 0);
+      // Se tiver parcelas exibidas mas nenhuma selecionada, traz a soma de todas como sugestão considerando o líquido (valorComDesconto)
+      const valorParaSaldo = selectedOpIds.length > 0 ? totaisRefin.liquido : parcelasExibidas.filter(p => !p.isBaixada).reduce((acc, curr) => acc + curr.valorComDesconto, 0);
       
       if (valorParaSaldo > 0) {
         setForm(f => ({ ...f, saldo: valorParaSaldo.toFixed(2).replace('.', ',') }));
@@ -254,7 +257,7 @@ export default function NovaVenda() {
         setForm(f => ({ ...f, saldo: '' }));
       }
     }
-  }, [totaisRefin.bruto, form.operacao, parcelasExibidas, selectedOpIds.length]);
+  }, [totaisRefin.liquido, form.operacao, parcelasExibidas, selectedOpIds.length]);
 
   useEffect(() => {
     if (form.operacao === 'REFIN' && form.codigo_operacao) {
@@ -366,6 +369,12 @@ export default function NovaVenda() {
   }, [form.operacao, form.codigo_operacao, operacoesDisponiveis]);
 
   useEffect(() => {
+    if (opSemParcelas) {
+      setForm(f => ({ ...f, saldo: '0,00' }));
+    }
+  }, [opSemParcelas]);
+
+  useEffect(() => {
     const v = parseFloat(form.valor.replace(/\./g, '').replace(',', '.')) || 0;
     const s = parseFloat(form.saldo.replace(/\./g, '').replace(',', '.')) || 0;
     
@@ -392,6 +401,51 @@ export default function NovaVenda() {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
 
+    if (name === 'operacao') {
+      if (value === 'NOVO') {
+        setForm(f => ({
+          ...f,
+          operacao: 'NOVO',
+          codigo_operacao: '',
+          contrato: '',
+          valor: '',
+          saldo: '0,00',
+          valor_liquido: '',
+          coef: '',
+          parcela: '',
+          prazo: '',
+          empresa_ativacao: '',
+          conta_ativacao: '',
+          empresa_credora: '',
+          inicio_mes: '',
+          inicio_ano: new Date().getFullYear().toString(),
+          dia_util: ''
+        }));
+        setSelectedOpIds([]);
+      } else {
+        setForm(f => ({
+          ...f,
+          operacao: value,
+          codigo_operacao: '',
+          contrato: '',
+          valor: '',
+          saldo: '',
+          valor_liquido: '',
+          coef: '',
+          parcela: '',
+          prazo: '',
+          empresa_ativacao: '',
+          conta_ativacao: '',
+          empresa_credora: '',
+          inicio_mes: '',
+          inicio_ano: new Date().getFullYear().toString(),
+          dia_util: ''
+        }));
+        setSelectedOpIds([]);
+      }
+      return;
+    }
+
     // Campos financeiros (permitem números, ponto e vírgula)
     if (['valor', 'saldo', 'parcela', 'valor_liquido'].includes(name)) {
       const cleanValue = value.replace(/[^\d.,]/g, '');
@@ -411,10 +465,7 @@ export default function NovaVenda() {
       return;
     }
 
-    setForm({ ...form, [name]: value });
-    if (name === 'operacao' && value !== 'REFIN') {
-      setSelectedOpIds([]);
-    }
+    setForm(f => ({ ...f, [name]: value }));
   };
 
   const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
@@ -484,6 +535,7 @@ export default function NovaVenda() {
           created_by: userData.id,
           orgao: form.orgao, empresa: form.empresa, operacao: form.operacao,
           codigo_operacao: form.codigo_operacao, corretor: form.corretor,
+          carteira: form.carteira,
           valor: parseFloat(form.valor.replace(/\./g, '').replace(',', '.')) || null,
           saldo: parseFloat(form.saldo.replace(/\./g, '').replace(',', '.')) || null,
           abat: form.valor_liquido,
@@ -583,8 +635,20 @@ export default function NovaVenda() {
               {/* INSTITUCIONAL */}
               <div className="card" style={{ marginBottom: '1rem' }}>
                 <legend style={ls}>Dados Institucionais e Operação</legend>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '1rem' }}>
-                  <div><label style={fs}>Órgão</label><input name="orgao" type="text" value={form.orgao} onChange={handleChange} required style={{ width: '100%', padding: '0.5rem' }} /></div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '1rem' }}>
+                  <div>
+                    <label style={fs}>Convênio</label>
+                    <select name="orgao" value={form.orgao} onChange={handleChange} required style={{ width: '100%', padding: '0.5rem' }}>
+                      <option value="">Selecione...</option>
+                      <option value="1 - SIAPE">1 - SIAPE</option>
+                      <option value="2 - INSS">2 - INSS</option>
+                      <option value="7 - PREFEITURA">7 - PREFEITURA</option>
+                      <option value="9 - FORÇAS ARMADAS">9 - FORÇAS ARMADAS</option>
+                      <option value="11 - GOVERNO">11 - GOVERNO</option>
+                      <option value="15 - SEGURO">15 - SEGURO</option>
+                      <option value="14 - CLT">14 - CLT</option>
+                    </select>
+                  </div>
                   <div><label style={fs}>Empresa</label><input name="empresa" type="text" value={form.empresa} onChange={handleChange} required style={{ width: '100%', padding: '0.5rem' }} /></div>
                   <div><label style={fs}>Operação</label><select name="operacao" value={form.operacao} onChange={handleChange} required style={{ width: '100%', padding: '0.5rem' }}><option value="REFIN">REFIN</option><option value="NOVO">NOVO</option><option value="COMPRA">COMPRA</option></select></div>
                   <div>
@@ -606,7 +670,8 @@ export default function NovaVenda() {
                       />
                     )}
                   </div>
-                  <div><label style={fs}>Corretor</label><input name="corretor" type="text" value={form.corretor} onChange={handleChange} required style={{ width: '100%', padding: '0.5rem' }} /></div>
+                  <div><label style={fs}>Vendedor</label><input name="corretor" type="text" value={form.corretor} onChange={handleChange} required style={{ width: '100%', padding: '0.5rem' }} /></div>
+                  <div><label style={fs}>Carteira</label><input name="carteira" type="text" value={form.carteira} onChange={handleChange} style={{ width: '100%', padding: '0.5rem' }} /></div>
                 </div>
               </div>
 
@@ -707,7 +772,20 @@ export default function NovaVenda() {
                 <legend style={ls}>Valores e Condições</legend>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '1rem' }}>
                   <div><label style={fs}>Contrato (R$)</label><input name="valor" type="text" value={form.valor} onChange={handleChange} onBlur={handleBlur} required placeholder="0,00" style={{ width: '100%', fontWeight: 600, color: 'var(--color-primary)' }} /></div>
-                  <div><label style={fs}>Saldo (R$)</label><input name="saldo" type="text" value={form.saldo} onChange={handleChange} onBlur={handleBlur} required placeholder="0,00" style={{ width: '100%' }} /></div>
+                  <div>
+                    <label style={fs}>Saldo (R$)</label>
+                    <input 
+                      name="saldo" 
+                      type="text" 
+                      value={form.saldo} 
+                      onChange={handleChange} 
+                      onBlur={handleBlur} 
+                      required 
+                      placeholder="0,00" 
+                      disabled={form.operacao === 'NOVO'}
+                      style={{ width: '100%', ...(form.operacao === 'NOVO' ? readonlyStyle : {}) }} 
+                    />
+                  </div>
                   <div><label style={fs}>Líquido (R$)</label><input name="valor_liquido" type="text" value={form.valor_liquido} onChange={handleChange} onBlur={handleBlur} style={{ width: '100%' }} /></div>
                   <div><label style={fs}>Parcela (R$)</label><input name="parcela" type="text" value={form.parcela} onChange={handleChange} onBlur={handleBlur} required placeholder="0,00" style={{ width: '100%' }} /></div>
                   <div><label style={fs}>Coeficiente</label><input name="coef" type="text" value={form.coef} readOnly style={readonlyStyle} /></div>

@@ -52,7 +52,7 @@ export default function EditarVenda(props: { params: Promise<{ id: string }> }) 
   const [baixasCliente, setBaixasCliente] = useState<any[]>([]);
 
   const [form, setForm] = useState({
-    orgao: '', empresa: '', operacao: 'REFIN', codigo_operacao: '', corretor: '',
+    orgao: '', empresa: '', operacao: 'REFIN', codigo_operacao: '', corretor: '', carteira: '',
     valor: '', saldo: '', valor_liquido: '', coef: '', parcela: '', prazo: '',
     banco: '', agencia: '', agencia_dv: '', op: '', conta: '', conta_dv: '', tipo_conta: 'corrente',
     contrato: '', empresa_ativacao: '', conta_ativacao: '',
@@ -74,7 +74,7 @@ export default function EditarVenda(props: { params: Promise<{ id: string }> }) 
     setSelectedOpIds([]);
     setForm(f => ({
       ...f,
-      orgao: '', empresa: '', codigo_operacao: '',
+      orgao: '', empresa: '', codigo_operacao: '', carteira: '',
       valor: '', saldo: '', valor_liquido: '', coef: '', parcela: '', prazo: '',
       banco: '', agencia: '', agencia_dv: '', op: '', conta: '', conta_dv: '',
       contrato: '', empresa_ativacao: '', conta_ativacao: '',
@@ -108,6 +108,7 @@ export default function EditarVenda(props: { params: Promise<{ id: string }> }) 
             operacao: venda.operacao || 'REFIN',
             codigo_operacao: venda.codigo_operacao || '',
             corretor: venda.corretor || '',
+            carteira: venda.carteira || '',
             valor: venda.valor ? venda.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '',
             saldo: venda.saldo ? venda.saldo.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '',
             valor_liquido: venda.abat ? venda.abat.toString().replace('.', ',') : '',
@@ -205,13 +206,16 @@ export default function EditarVenda(props: { params: Promise<{ id: string }> }) 
       .filter(o => o.operacao.toString() === form.codigo_operacao)
       .filter(o => {
         // Identificar parcelas em aberto (não presentes na tabela de baixas)
-        // Chave: CPF + OPERACAO + VALOR + VENCIMENTO
-        const isBaixada = baixasCliente.some(b => 
-          b.cpf === o.cpf && 
-          b.operacao === o.operacao.toString() && 
-          Number(b.parcela) === Number(o.valor) && 
-          b.vencimento === o.vencimento
-        );
+        // Chave: CPF + OPERACAO + MES_ANO
+        const isBaixada = baixasCliente.some(b => {
+          const bMesAno = b.vencimento ? b.vencimento.substring(0, 7) : '';
+          const oMesAno = o.vencimento ? o.vencimento.substring(0, 7) : '';
+          return (
+            b.cpf === o.cpf && 
+            b.operacao === o.operacao.toString() && 
+            bMesAno && oMesAno && bMesAno === oMesAno
+          );
+        });
         return !isBaixada;
       })
       .sort((a, b) => new Date(a.vencimento).getTime() - new Date(b.vencimento).getTime())
@@ -263,13 +267,13 @@ export default function EditarVenda(props: { params: Promise<{ id: string }> }) 
 
   useEffect(() => {
     if (form.operacao === 'REFIN') {
-      const valorParaSaldo = selectedOpIds.length > 0 ? totaisRefin.bruto : parcelasExibidas.reduce((acc, curr) => acc + curr.valor, 0);
+      const valorParaSaldo = selectedOpIds.length > 0 ? totaisRefin.liquido : parcelasExibidas.reduce((acc, curr) => acc + curr.valorComDesconto, 0);
       
       if (valorParaSaldo > 0) {
         setForm(f => ({ ...f, saldo: valorParaSaldo.toFixed(2).replace('.', ',') }));
       }
     }
-  }, [totaisRefin.bruto, form.operacao, parcelasExibidas, selectedOpIds.length]);
+  }, [totaisRefin.liquido, form.operacao, parcelasExibidas, selectedOpIds.length]);
 
   useEffect(() => {
     if (form.operacao === 'REFIN' && form.codigo_operacao) {
@@ -390,6 +394,12 @@ export default function EditarVenda(props: { params: Promise<{ id: string }> }) 
   }, [form.operacao, form.codigo_operacao, operacoesDisponiveis]);
 
   useEffect(() => {
+    if (opSemParcelas) {
+      setForm(f => ({ ...f, saldo: '0,00' }));
+    }
+  }, [opSemParcelas]);
+
+  useEffect(() => {
     const v = parseFloat(form.valor.replace(/\./g, '').replace(',', '.')) || 0;
     const s = parseFloat(form.saldo.replace(/\./g, '').replace(',', '.')) || 0;
 
@@ -414,8 +424,54 @@ export default function EditarVenda(props: { params: Promise<{ id: string }> }) 
   }, [form.valor, form.parcela]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
-    if (e.target.name === 'operacao' && e.target.value !== 'REFIN') setSelectedOpIds([]);
+    const { name, value } = e.target;
+
+    if (name === 'operacao') {
+      if (value === 'NOVO') {
+        setForm(f => ({
+          ...f,
+          operacao: 'NOVO',
+          codigo_operacao: '',
+          contrato: '',
+          valor: '',
+          saldo: '0,00',
+          valor_liquido: '',
+          coef: '',
+          parcela: '',
+          prazo: '',
+          empresa_ativacao: '',
+          conta_ativacao: '',
+          empresa_credora: '',
+          inicio_mes: '',
+          inicio_ano: new Date().getFullYear().toString(),
+          dia_util: ''
+        }));
+        setSelectedOpIds([]);
+      } else {
+        setForm(f => ({
+          ...f,
+          operacao: value,
+          codigo_operacao: '',
+          contrato: '',
+          valor: '',
+          saldo: '',
+          valor_liquido: '',
+          coef: '',
+          parcela: '',
+          prazo: '',
+          empresa_ativacao: '',
+          conta_ativacao: '',
+          empresa_credora: '',
+          inicio_mes: '',
+          inicio_ano: new Date().getFullYear().toString(),
+          dia_util: ''
+        }));
+        setSelectedOpIds([]);
+      }
+      return;
+    }
+
+    setForm(f => ({ ...f, [name]: value }));
   };
 
   const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
@@ -446,6 +502,7 @@ export default function EditarVenda(props: { params: Promise<{ id: string }> }) 
         cpf: formatCPF(cpf),
         orgao: form.orgao, empresa: form.empresa, operacao: form.operacao,
         codigo_operacao: form.codigo_operacao, corretor: form.corretor,
+        carteira: form.carteira,
         valor: parseFloat(form.valor.replace(/\./g, '').replace(',', '.')) || null,
         saldo: parseFloat(form.saldo.replace(/\./g, '').replace(',', '.')) || null,
         abat: form.valor_liquido,
@@ -524,8 +581,20 @@ export default function EditarVenda(props: { params: Promise<{ id: string }> }) 
             <div className="animate-fade-in">
               <div className="card" style={{ marginBottom: '1rem' }}>
                 <legend style={ls}>Dados Institucionais e Operação</legend>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '1rem' }}>
-                  <div><label style={fs}>Órgão</label><input name="orgao" type="text" value={form.orgao} onChange={handleChange} required style={{ width: '100%' }} /></div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '1rem' }}>
+                  <div>
+                    <label style={fs}>Convênio</label>
+                    <select name="orgao" value={form.orgao} onChange={handleChange} required style={{ width: '100%', padding: '0.5rem' }}>
+                      <option value="">Selecione...</option>
+                      <option value="1 - SIAPE">1 - SIAPE</option>
+                      <option value="2 - INSS">2 - INSS</option>
+                      <option value="7 - PREFEITURA">7 - PREFEITURA</option>
+                      <option value="9 - FORÇAS ARMADAS">9 - FORÇAS ARMADAS</option>
+                      <option value="11 - GOVERNO">11 - GOVERNO</option>
+                      <option value="15 - SEGURO">15 - SEGURO</option>
+                      <option value="14 - CLT">14 - CLT</option>
+                    </select>
+                  </div>
                   <div><label style={fs}>Empresa</label><input name="empresa" type="text" value={form.empresa} onChange={handleChange} required style={{ width: '100%' }} /></div>
                   <div><label style={fs}>Operação</label><select name="operacao" value={form.operacao} onChange={handleChange} required style={{ width: '100%', padding: '0.5rem' }}><option value="REFIN">REFIN</option><option value="NOVO">NOVO</option><option value="COMPRA">COMPRA</option></select></div>
                   <div>
@@ -547,7 +616,8 @@ export default function EditarVenda(props: { params: Promise<{ id: string }> }) 
                       />
                     )}
                   </div>
-                  <div><label style={fs}>Corretor</label><input name="corretor" type="text" value={form.corretor} onChange={handleChange} required style={{ width: '100%', padding: '0.5rem' }} /></div>
+                  <div><label style={fs}>Vendedor</label><input name="corretor" type="text" value={form.corretor} onChange={handleChange} required style={{ width: '100%', padding: '0.5rem' }} /></div>
+                  <div><label style={fs}>Carteira</label><input name="carteira" type="text" value={form.carteira} onChange={handleChange} style={{ width: '100%', padding: '0.5rem' }} /></div>
                 </div>
               </div>
 
@@ -624,8 +694,20 @@ export default function EditarVenda(props: { params: Promise<{ id: string }> }) 
               <div className="card" style={{ marginBottom: '1rem' }}>
                 <legend style={ls}>Valores e Condições</legend>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '1rem' }}>
-                  <div><label style={fs}>Contrato (R$)</label><input name="valor" type="text" value={form.valor} onChange={handleChange} onBlur={handleBlur} required style={{ width: '100%', fontWeight: 700, color: 'var(--color-primary)' }} /></div>
-                  <div><label style={fs}>Saldo (R$)</label><input name="saldo" type="text" value={form.saldo} onChange={handleChange} onBlur={handleBlur} required style={{ width: '100%' }} /></div>
+                   <div><label style={fs}>Contrato (R$)</label><input name="valor" type="text" value={form.valor} onChange={handleChange} onBlur={handleBlur} required style={{ width: '100%', fontWeight: 700, color: 'var(--color-primary)' }} /></div>
+                  <div>
+                    <label style={fs}>Saldo (R$)</label>
+                    <input 
+                      name="saldo" 
+                      type="text" 
+                      value={form.saldo} 
+                      onChange={handleChange} 
+                      onBlur={handleBlur} 
+                      required 
+                      disabled={form.operacao === 'NOVO'}
+                      style={{ width: '100%', ...(form.operacao === 'NOVO' ? readonlyStyle : {}) }} 
+                    />
+                  </div>
                   <div><label style={fs}>Líquido (R$)</label><input name="valor_liquido" type="text" value={form.valor_liquido} onChange={handleChange} onBlur={handleBlur} style={{ width: '100%' }} /></div>
                   <div><label style={fs}>Parcela (R$)</label><input name="parcela" type="text" value={form.parcela} onChange={handleChange} onBlur={handleBlur} required style={{ width: '100%' }} /></div>
                   <div><label style={fs}>Coeficiente</label><input name="coef" type="text" value={form.coef} readOnly style={readonlyStyle} /></div>

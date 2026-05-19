@@ -19,15 +19,62 @@ export default function RelatoriosPage() {
   });
   const [modalError, setModalError] = useState('');
 
-  // Carregar dados ao entrar na tela
+  const [nivel, setNivel] = useState('');
+  const [allowedContas, setAllowedContas] = useState<string[]>([]);
+
+  // Carregar dados e perfil do usuário ao entrar na tela
   useEffect(() => {
-    buscarDados(0);
+    const init = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const { data: profile } = await supabase
+        .from('usuarios')
+        .select('nivel, grupos_permitidos')
+        .eq('supabase_user_id', session.user.id)
+        .single();
+      
+      if (profile) {
+        setNivel(profile.nivel);
+        if (profile.nivel === 'financeiro' && profile.grupos_permitidos && profile.grupos_permitidos.length > 0) {
+          const groupNumbers = profile.grupos_permitidos.map(Number);
+          const { data: contasData } = await supabase
+            .schema('pro_consig')
+            .from('contas')
+            .select('conta_ativacao')
+            .in('grupo', groupNumbers);
+          
+          if (contasData) {
+            const contasStringList = contasData.map(c => c.conta_ativacao.toString());
+            setAllowedContas(contasStringList);
+          }
+        }
+      }
+    };
+    init();
   }, []);
 
-
+  useEffect(() => {
+    if (nivel !== '') {
+      buscarDados(0);
+    }
+  }, [nivel, allowedContas]);
 
   const handleFilterChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFilters({ ...filters, [e.target.name]: e.target.value });
+  };
+
+  const handleTogglePaga = async (vendaId: string, currentStatus: string) => {
+    const newStatus = currentStatus === 'Pago' ? 'Aprovado' : 'Pago';
+    const { error } = await supabase
+      .from('vendas')
+      .update({ status: newStatus })
+      .eq('id', vendaId);
+
+    if (error) {
+      setModalError('Erro ao atualizar status da venda: ' + error.message);
+    } else {
+      setVendas(prev => prev.map(v => v.id === vendaId ? { ...v, status: newStatus } : v));
+    }
   };
 
   const buscarDados = async (p = page) => {
@@ -41,8 +88,17 @@ export default function RelatoriosPage() {
       .order('created_at', { ascending: false })
       .range(from, to);
 
+    if (nivel === 'financeiro') {
+      if (allowedContas.length > 0) {
+        query = query.in('conta_ativacao', allowedContas);
+      } else {
+        query = query.in('conta_ativacao', ['-1']);
+      }
+    }
+
     if (filters.banco) query = query.ilike('banco', `%${filters.banco}%`);
     if (filters.corretor) query = query.ilike('corretor', `%${filters.corretor}%`);
+    if (filters.status) query = query.eq('status', filters.status);
     if (filters.dataInicio) query = query.gte('created_at', filters.dataInicio);
     if (filters.dataFim) query = query.lte('created_at', filters.dataFim + 'T23:59:59');
 
@@ -74,8 +130,17 @@ export default function RelatoriosPage() {
         .range(page * pageSize, (page + 1) * pageSize - 1)
         .order('created_at', { ascending: false });
 
+      if (nivel === 'financeiro') {
+        if (allowedContas.length > 0) {
+          query = query.in('conta_ativacao', allowedContas);
+        } else {
+          query = query.in('conta_ativacao', ['-1']);
+        }
+      }
+
       if (filters.banco) query = query.ilike('banco', `%${filters.banco}%`);
       if (filters.corretor) query = query.ilike('corretor', `%${filters.corretor}%`);
+      if (filters.status) query = query.eq('status', filters.status);
       if (filters.dataInicio) query = query.gte('created_at', filters.dataInicio);
       if (filters.dataFim) query = query.lte('created_at', filters.dataFim + 'T23:59:59');
 
@@ -100,6 +165,7 @@ export default function RelatoriosPage() {
       const timestamp = new Date().toLocaleString('pt-BR');
       const rows = allData.map(v => ({
         'ID Venda': v.venda_id || '-',
+        'Status Venda': v.status === 'Pago' ? 'PAGA' : 'ABERTA',
         'Status Exportação': v.data_exportacao_atual ? 'RE-EXPORTADO' : 'NOVO (Primeira Vez)',
         'Penúltima Exportação': v.data_exportacao_anterior ? new Date(v.data_exportacao_anterior).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : '-',
         'Última Exportação': v.data_exportacao_atual ? new Date(v.data_exportacao_atual).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : '-',
@@ -111,7 +177,7 @@ export default function RelatoriosPage() {
         'Empresa': v.empresa || '-',
         'Operação': v.operacao,
         'Cód. Operação': v.codigo_operacao || '-',
-        'Corretor': v.corretor || '-',
+        'Vendedor': v.corretor || '-',
         'Valor Contrato': v.valor || 0,
         'Saldo Devedor': v.saldo || 0,
         'Valor Líquido': v.abat || 0,
@@ -167,11 +233,34 @@ export default function RelatoriosPage() {
             </div>
           </div>
           <div style={{ flex: 1, minWidth: '180px' }}>
-            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'capitalize' }}>Corretor</label>
+            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'capitalize' }}>Vendedor</label>
             <div style={{ position: 'relative' }}>
               <User size={16} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
-              <input name="corretor" type="text" value={filters.corretor} onChange={handleFilterChange} placeholder="Nome do corretor..." style={{ width: '100%', paddingLeft: '2.5rem', height: '42px' }} />
+              <input name="corretor" type="text" value={filters.corretor} onChange={handleFilterChange} placeholder="Nome do vendedor..." style={{ width: '100%', paddingLeft: '2.5rem', height: '42px' }} />
             </div>
+          </div>
+          <div style={{ flex: 1, minWidth: '150px' }}>
+            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'capitalize' }}>Status Venda</label>
+            <select
+              name="status"
+              value={filters.status}
+              onChange={handleFilterChange}
+              style={{
+                width: '100%',
+                height: '42px',
+                padding: '0 1rem',
+                borderRadius: '8px',
+                border: '1px solid var(--color-border)',
+                backgroundColor: 'var(--color-bg-surface)',
+                color: 'var(--color-text)',
+                cursor: 'pointer',
+                outline: 'none'
+              }}
+            >
+              <option value="">Todos</option>
+              <option value="Aprovado">Aberta (Não Paga)</option>
+              <option value="Pago">Paga</option>
+            </select>
           </div>
           <div style={{ width: '180px' }}>
             <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'capitalize' }}>Data Inicial</label>
@@ -221,10 +310,11 @@ export default function RelatoriosPage() {
               <tr>
                 <th style={{ paddingLeft: '1.5rem' }}>ID Venda</th>
                 <th>Cliente (CPF)</th>
-                <th>Operação</th>
+                 <th>Operação</th>
                 <th>Valor</th>
-                <th>Corretor</th>
+                <th>Vendedor</th>
                 <th>Banco</th>
+                <th style={{ textAlign: 'center' }}>Paga?</th>
                 <th>Última Exportação</th>
                 <th>Data Cadastro</th>
               </tr>
@@ -232,7 +322,7 @@ export default function RelatoriosPage() {
             <tbody>
               {vendas.length === 0 ? (
                 <tr>
-                  <td colSpan={8} style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-muted)' }}>Nenhum dado para exibir com esses filtros.</td>
+                  <td colSpan={9} style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-muted)' }}>Nenhum dado para exibir com esses filtros.</td>
                 </tr>
               ) : (
                 vendas.map((v) => (
@@ -243,6 +333,14 @@ export default function RelatoriosPage() {
                     <td style={{ fontWeight: 600 }}>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v.valor || 0)}</td>
                     <td>{v.corretor}</td>
                     <td>{v.banco}</td>
+                    <td style={{ textAlign: 'center' }}>
+                      <input 
+                        type="checkbox" 
+                        checked={v.status === 'Pago'} 
+                        onChange={() => handleTogglePaga(v.id, v.status)}
+                        style={{ cursor: 'pointer', transform: 'scale(1.2)' }}
+                      />
+                    </td>
                     <td style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                         <Clock size={14} />

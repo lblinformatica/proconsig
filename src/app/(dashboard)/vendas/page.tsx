@@ -116,7 +116,7 @@ export default function VendasList() {
       fetchVendas();
     }
   };
-  
+
   const handleCopy = (cpf: string, id: string) => {
     navigator.clipboard.writeText(cpf);
     setCopiedId(id);
@@ -178,7 +178,7 @@ export default function VendasList() {
                       <th>Operação</th>
                       <th>Valor</th>
                       <th>Parcela</th>
-                      <th>Operador</th>
+                      <th>Vendedor</th>
                       <th style={{ textAlign: 'right' }}>Ações</th>
                     </tr>
                   </thead>
@@ -190,13 +190,13 @@ export default function VendasList() {
                         <td style={{ fontSize: '0.85rem' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', whiteSpace: 'nowrap' }}>
                             {v.cpf}
-                            <button 
+                            <button
                               onClick={() => handleCopy(v.cpf, v.id)}
-                              style={{ 
-                                background: 'transparent', 
-                                border: 'none', 
-                                padding: '0.2rem', 
-                                cursor: 'pointer', 
+                              style={{
+                                background: 'transparent',
+                                border: 'none',
+                                padding: '0.2rem',
+                                cursor: 'pointer',
                                 color: copiedId === v.id ? 'var(--color-success)' : 'var(--color-text-muted)',
                                 display: 'flex'
                               }}
@@ -216,10 +216,10 @@ export default function VendasList() {
                               <Edit2 size={16} />
                             </Link>
                             {nivel === 'admin' && (
-                              <button 
-                                className="btn btn-danger" 
-                                style={{ padding: '0.4rem', background: 'transparent', color: 'var(--color-danger)', border: 'none' }} 
-                                onClick={() => showConfirm('Excluir Venda', 'Tem certeza que deseja excluir esta venda permanentemente?', () => handleDelete(v.id), 'danger')} 
+                              <button
+                                className="btn btn-danger"
+                                style={{ padding: '0.4rem', background: 'transparent', color: 'var(--color-danger)', border: 'none' }}
+                                onClick={() => showConfirm('Excluir Venda', 'Tem certeza que deseja excluir esta venda permanentemente?', () => handleDelete(v.id), 'danger')}
                                 title="Excluir"
                               >
                                 <Trash2 size={16} />
