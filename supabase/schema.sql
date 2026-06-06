@@ -24,8 +24,59 @@ CREATE TABLE pro_consig.clientes (
     tipo_conta TEXT NOT NULL CHECK (tipo_conta IN ('corrente', 'poupanca')),
     created_at TIMESTAMPTZ DEFAULT now(),
     updated_at TIMESTAMPTZ DEFAULT now(),
-    created_by UUID REFERENCES pro_consig.usuarios(id) ON DELETE SET NULL
+    created_by UUID REFERENCES pro_consig.usuarios(id) ON DELETE SET NULL,
+    agencia_dv VARCHAR(5),
+    conta_dv VARCHAR(5),
+    op VARCHAR(10),
+    forma_credito VARCHAR(20),
+    credito_banco VARCHAR(10),
+    credito_agencia VARCHAR(20),
+    credito_agencia_dv VARCHAR(5),
+    credito_tipo_conta VARCHAR(20),
+    credito_conta VARCHAR(30),
+    credito_conta_dv VARCHAR(5),
+    pix_tipo_chave VARCHAR(20),
+    pix_chave VARCHAR(150),
+    dia_util TEXT,
+    data_nascimento DATE,
+    sexo VARCHAR(20),
+    tipo_cliente VARCHAR(100),
+    endereco VARCHAR(255),
+    numero VARCHAR(50),
+    complemento VARCHAR(150),
+    bairro VARCHAR(100),
+    cep VARCHAR(20),
+    estado VARCHAR(100),
+    cidade VARCHAR(100),
+    naturalidade VARCHAR(100),
+    estado_civil VARCHAR(100),
+    rg VARCHAR(50),
+    uf_rg VARCHAR(10),
+    orgao_expedidor VARCHAR(100),
+    data_emissao_rg DATE,
+    conjuge VARCHAR(255),
+    nome_pai VARCHAR(255),
+    nome_mae VARCHAR(255),
+    email VARCHAR(255),
+    nacionalidade VARCHAR(100),
+    especie VARCHAR(100),
+    salario DECIMAL(15,2) DEFAULT 0.00,
+    ocupacao VARCHAR(100),
+    ocupacao_detalhe VARCHAR(255),
+    data_admissao DATE
 );
+
+-- Tabela: telefones
+CREATE TABLE pro_consig.telefones (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    cliente_id UUID NOT NULL REFERENCES pro_consig.clientes(id) ON DELETE CASCADE,
+    telefone VARCHAR(30) NOT NULL,
+    tipo VARCHAR(50) NOT NULL,
+    observacao TEXT,
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now()
+);
+
 
 -- Tabela: borderos
 CREATE TABLE pro_consig.borderos (

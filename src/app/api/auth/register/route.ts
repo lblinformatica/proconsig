@@ -59,29 +59,38 @@ export async function POST(req: Request) {
     }
 
     // 3. Obter admins para notificar
-    const { data: admins } = await supabaseAdmin
+    const { data: admins, error: adminsError } = await supabaseAdmin
       .from('usuarios')
       .select('email')
       .eq('nivel', 'admin')
       .eq('status', 'ativo');
 
-    const adminEmails = admins?.map(a => a.email) || [];
+    if (adminsError) {
+      console.error('Erro ao buscar administradores para notificação:', adminsError);
+    }
+
+    const adminEmails = admins?.map(a => a.email).filter(Boolean) as string[] || [];
+    console.log('Administradores ativos encontrados para notificar:', adminEmails);
 
     // 4. Enviar emails
     // Email para o usuário
-    await sendEmail({
+    const emailUserRes = await sendEmail({
       to: email,
       subject: 'Cadastro realizado! Aguardando aprovação',
       html: `<p>Olá ${nome},</p><p>Seu cadastro foi realizado com sucesso. Sua conta está aguardando aprovação do administrador do sistema.</p>`
     });
+    console.log(`E-mail de confirmação enviado para o usuário (${email}). Resultado:`, emailUserRes);
 
     // Email para admins
     if (adminEmails.length > 0) {
-      await sendEmail({
+      const emailAdminRes = await sendEmail({
         to: adminEmails,
         subject: 'Novo usuário aguardando aprovação',
         html: `<p>Um novo usuário solicitou acesso ao sistema:</p><ul><li>Nome: ${nome}</li><li>Conta (Username): ${conta}</li><li>E-mail: ${email}</li></ul><p>Acesse o painel do CentralPagamentos para revisar.</p>`
       });
+      console.log('E-mail de notificação enviado para os administradores. Resultado:', emailAdminRes);
+    } else {
+      console.warn('Nenhum e-mail de administrador ativo foi encontrado no banco de dados para notificação.');
     }
 
     return NextResponse.json({ success: true, message: 'Usuário registrado com sucesso.' });

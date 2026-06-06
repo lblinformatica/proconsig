@@ -96,6 +96,10 @@ export function EditUserModal({ isOpen, user, onClose, onSuccess }: EditUserModa
             </div>
           </div>
           <div style={{ marginBottom: '1rem' }}>
+            <label>E-mail</label>
+            <input type="email" value={email} onChange={e => setEmail(e.target.value)} required />
+          </div>
+          <div style={{ marginBottom: '1rem' }}>
             <label>Nível de Acesso</label>
             <select value={nivel} onChange={e => setNivel(e.target.value)}>
               <option value="operacional">Operacional</option>

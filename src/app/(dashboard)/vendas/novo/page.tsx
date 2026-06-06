@@ -57,7 +57,9 @@ export default function NovaVenda() {
     dia_util: '', empresa_credora: '', observacao: '',
     forma_credito: 'conta', pix_tipo_chave: '', pix_chave: '',
     credito_banco: '', credito_agencia: '', credito_agencia_dv: '',
-    credito_conta: '', credito_conta_dv: '', credito_tipo_conta: 'corrente'
+    credito_conta: '', credito_conta_dv: '', credito_tipo_conta: 'corrente',
+    novo_cliente: '',
+    atualizacao_cadastral: ''
   });
 
   // Buscar nome do usuário logado para o campo Corretor
@@ -98,7 +100,9 @@ export default function NovaVenda() {
       inicio_mes: '', dia_util: '', empresa_credora: '', observacao: '',
       forma_credito: 'conta', pix_tipo_chave: '', pix_chave: '',
       credito_banco: '', credito_agencia: '', credito_agencia_dv: '',
-      credito_conta: '', credito_conta_dv: ''
+      credito_conta: '', credito_conta_dv: '',
+      novo_cliente: '',
+      atualizacao_cadastral: ''
     }));
   };
 
@@ -489,6 +493,18 @@ export default function NovaVenda() {
     e.preventDefault();
     if (!clientFound) return showAlert('Atenção', 'Você precisa buscar e validar um cliente antes de gravar a venda.');
 
+    if (!form.novo_cliente) {
+      return showAlert('Campo Obrigatório', 'Por favor, informe se é Novo Cliente.');
+    }
+
+    if (!form.atualizacao_cadastral) {
+      return showAlert('Campo Obrigatório', 'Por favor, informe se houve Atualização Cadastral.');
+    }
+
+    if (!form.banco || !form.agencia || !form.conta) {
+      return showAlert('Dados Bancários Ausentes', 'Por favor, informe os Dados Bancários (Banco, Agência e Conta) do cliente.');
+    }
+
     if (!form.prazo) {
       return showAlert('Prazo não identificado', 'Os valores informados não correspondem a nenhum prazo em nossa tabela de coeficientes. Por favor, revise os valores de Contrato e Parcela.');
     }
@@ -510,19 +526,21 @@ export default function NovaVenda() {
         throw new Error('Não foi possível identificar seu usuário no sistema.');
       }
 
-      // Validação de Duplicidade (CPF + Número da Operação/Contrato)
-      const { data: duplicate } = await supabase
-        .schema('pro_consig')
-        .from('vendas')
-        .select('id')
-        .eq('cpf', formatCPF(cpf))
-        .eq('contrato', form.contrato)
-        .maybeSingle();
+      // Validação de Duplicidade (CPF + Número da Operação/Contrato) — Permitir duplicado quando for NOVO contrato (form.operacao === 'NOVO')
+      if (form.operacao !== 'NOVO') {
+        const { data: duplicate } = await supabase
+          .schema('pro_consig')
+          .from('vendas')
+          .select('id')
+          .eq('cpf', formatCPF(cpf))
+          .eq('contrato', form.contrato)
+          .maybeSingle();
 
-      if (duplicate) {
-        setDuplicateModal(true);
-        setLoading(false);
-        return;
+        if (duplicate) {
+          setDuplicateModal(true);
+          setLoading(false);
+          return;
+        }
       }
 
       const dataInicio = (form.inicio_mes && form.inicio_ano) ? `${form.inicio_ano}-${form.inicio_mes}-01` : null;
@@ -551,7 +569,9 @@ export default function NovaVenda() {
           pix_chave: form.pix_chave, credito_banco: form.credito_banco,
           credito_agencia: form.credito_agencia, credito_agencia_dv: form.credito_agencia_dv,
           credito_conta: form.credito_conta, credito_conta_dv: form.credito_conta_dv,
-          credito_tipo_conta: form.credito_tipo_conta
+          credito_tipo_conta: form.credito_tipo_conta,
+          novo_cliente: form.novo_cliente,
+          atualizacao_cadastral: form.atualizacao_cadastral
         });
 
       if (insertError) {
@@ -672,6 +692,22 @@ export default function NovaVenda() {
                   </div>
                   <div><label style={fs}>Vendedor</label><input name="corretor" type="text" value={form.corretor} onChange={handleChange} required style={{ width: '100%', padding: '0.5rem' }} /></div>
                   <div><label style={fs}>Carteira</label><input name="carteira" type="text" value={form.carteira} onChange={handleChange} style={{ width: '100%', padding: '0.5rem' }} /></div>
+                  <div>
+                    <label style={fs}>Novo Cliente</label>
+                    <select name="novo_cliente" value={form.novo_cliente} onChange={handleChange} required style={{ width: '100%', padding: '0.5rem' }}>
+                      <option value="">Selecione...</option>
+                      <option value="Sim">Sim</option>
+                      <option value="Não">Não</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style={fs}>Atualização Cadastral</label>
+                    <select name="atualizacao_cadastral" value={form.atualizacao_cadastral} onChange={handleChange} required style={{ width: '100%', padding: '0.5rem' }}>
+                      <option value="">Selecione...</option>
+                      <option value="Sim">Sim</option>
+                      <option value="Não">Não</option>
+                    </select>
+                  </div>
                 </div>
               </div>
 

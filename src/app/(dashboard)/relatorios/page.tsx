@@ -6,6 +6,7 @@ import { Download, FileSearch, Calendar, Filter, ChevronLeft, ChevronRight, File
 import * as XLSX from 'xlsx';
 import { ConfirmModal } from '@/components/ConfirmModal';
 import { useEffect } from 'react';
+import { sendRelatorioEmail } from '@/app/actions/relatorios';
 
 export default function RelatoriosPage() {
   const [loading, setLoading] = useState(false);
@@ -28,6 +29,7 @@ export default function RelatoriosPage() {
 
   const [nivel, setNivel] = useState('');
   const [allowedContas, setAllowedContas] = useState<string[]>([]);
+  const [userEmail, setUserEmail] = useState('');
 
   // Carregar dados e perfil do usuário ao entrar na tela
   useEffect(() => {
@@ -36,12 +38,13 @@ export default function RelatoriosPage() {
       if (!session) return;
       const { data: profile } = await supabase
         .from('usuarios')
-        .select('nivel, grupos_permitidos')
+        .select('nivel, grupos_permitidos, email')
         .eq('supabase_user_id', session.user.id)
         .single();
-      
+
       if (profile) {
         setNivel(profile.nivel);
+        setUserEmail(profile.email || session.user.email || '');
         if (profile.nivel === 'financeiro' && profile.grupos_permitidos && profile.grupos_permitidos.length > 0) {
           const groupNumbers = profile.grupos_permitidos.map(Number);
           const { data: contasData } = await supabase
@@ -49,7 +52,7 @@ export default function RelatoriosPage() {
             .from('contas')
             .select('conta_ativacao')
             .in('grupo', groupNumbers);
-          
+
           if (contasData) {
             const contasStringList = contasData.map(c => c.conta_ativacao.toString());
             setAllowedContas(contasStringList);
@@ -81,6 +84,25 @@ export default function RelatoriosPage() {
       setModalError('Erro ao atualizar status da venda: ' + error.message);
     } else {
       setVendas(prev => prev.map(v => v.id === vendaId ? { ...v, status: newStatus } : v));
+    }
+  };
+
+  const handleToggleSelectAll = async () => {
+    if (vendas.length === 0) return;
+    
+    const allPaid = vendas.every(v => v.status === 'Pago');
+    const newStatus = allPaid ? 'Aprovado' : 'Pago';
+    const ids = vendas.map(v => v.id);
+
+    const { error } = await supabase
+      .from('vendas')
+      .update({ status: newStatus })
+      .in('id', ids);
+
+    if (error) {
+      setModalError('Erro ao atualizar status das vendas: ' + error.message);
+    } else {
+      setVendas(prev => prev.map(v => ids.includes(v.id) ? { ...v, status: newStatus } : v));
     }
   };
 
@@ -190,6 +212,9 @@ export default function RelatoriosPage() {
         'Operação': v.operacao,
         'Cód. Operação': v.codigo_operacao || '-',
         'Vendedor': v.corretor || '-',
+        'Carteira': v.carteira || '-',
+        'Novo Cliente': v.novo_cliente || '-',
+        'Atualização Cadastral': v.atualizacao_cadastral || '-',
         'Valor Contrato': v.valor || 0,
         'Saldo Devedor': v.saldo || 0,
         'Valor Líquido': v.abat || 0,
@@ -242,6 +267,7 @@ export default function RelatoriosPage() {
         .from('vendas')
         .select('*, usuarios!created_by(nome), clientes(nome)')
         .lte('created_at', twentyMinutesAgo)
+        .neq('status', 'Pago') // Exclui vendas pagas da exportação do borderô
         .range(pageNum * pageSize, (pageNum + 1) * pageSize - 1)
         .order('created_at', { ascending: false });
 
@@ -291,9 +317,9 @@ export default function RelatoriosPage() {
       const day = String(d.getDate()).padStart(2, '0');
       return `${year}-${month}-${day}`;
     };
-    
+
     const todayStr = getTodayLocalDateStr();
-    
+
     try {
       const { data: existingLotes, error: fetchError } = await supabase
         .schema('pro_consig')
@@ -302,18 +328,18 @@ export default function RelatoriosPage() {
         .eq('data', todayStr)
         .order('lote', { ascending: false })
         .limit(1);
-        
+
       if (fetchError) {
         console.error('Erro ao buscar lote:', fetchError);
       } else if (existingLotes && existingLotes.length > 0) {
         nextLote = existingLotes[0].lote + 1;
       }
-      
+
       const { error: insertError } = await supabase
         .schema('pro_consig')
         .from('borderos_lotes')
         .insert({ data: todayStr, lote: nextLote });
-        
+
       if (insertError) {
         console.error('Erro ao gravar lote:', insertError);
       }
@@ -407,7 +433,7 @@ export default function RelatoriosPage() {
       // SHEET 1: DETALHADO (Detailed)
       // ────────────────────────────────────────────────────────────────────────
       const wsDetailed = workbook.addWorksheet('Detalhado');
-      
+
       wsDetailed.columns = [
         { header: 'ID Venda', key: 'venda_id', width: 15 },
         { header: 'Forma Recebimento', key: 'forma_recebimento', width: 20 },
@@ -425,13 +451,16 @@ export default function RelatoriosPage() {
         { header: 'Nome', key: 'nome', width: 26 },
         { header: 'CPF', key: 'cpf', width: 15 },
         { header: 'Vendedor', key: 'vendedor', width: 17 },
+        { header: 'Carteira', key: 'carteira', width: 15 },
         { header: 'Gerado', key: 'gerado', width: 21 },
         { header: 'Cód. Operação', key: 'cod_operacao', width: 20 },
-        { header: 'Empresa Credora', key: 'empresa_credora', width: 19 }
+        { header: 'Empresa Credora', key: 'empresa_credora', width: 19 },
+        { header: 'Novo Cliente', key: 'novo_cliente', width: 15 },
+        { header: 'Atualização Cadastral', key: 'atualizacao_cadastral', width: 20 }
       ];
 
-      // Row 1: Merged Title Block (A1:S1 since we added 1 more column, total 19 columns)
-      wsDetailed.mergeCells('A1:S1');
+      // Row 1: Merged Title Block (A1:V1 since we added columns, total 22 columns)
+      wsDetailed.mergeCells('A1:V1');
       const titleCellDet = wsDetailed.getCell('A1');
       titleCellDet.value = titleText;
       titleCellDet.font = { name: 'Calibri', family: 2, size: 24, color: { argb: 'FF000000' } };
@@ -441,10 +470,10 @@ export default function RelatoriosPage() {
       // Row 2: Headers
       const headerRowDet = wsDetailed.getRow(2);
       headerRowDet.values = [
-        'ID Venda', 'Forma Recebimento', 'Banco', 'Agência ', 'DV', 'OP', 'Conta', 'DV', 'Chave PIX', 'Pix', 'Valor Crédito', 'Obs.:', 'Status PG', 'Nome', 'CPF', 'Vendedor', 'Gerado', 'Cód. Operação', 'Empresa Credora'
+        'ID Venda', 'Forma Recebimento', 'Banco', 'Agência ', 'DV', 'OP', 'Conta', 'DV', 'Chave PIX', 'Pix', 'Valor Crédito', 'Obs.:', 'Status PG', 'Nome', 'CPF', 'Vendedor', 'Carteira', 'Gerado', 'Cód. Operação', 'Empresa Credora', 'Novo Cliente', 'Atualização Cadastral'
       ];
       headerRowDet.height = 20;
-      styleRow(headerRowDet, true, false, false, 11, [1, 2, 3, 4, 5, 6, 7, 8, 9, 13, 17, 18, 19]);
+      styleRow(headerRowDet, true, false, false, 11, [1, 2, 3, 4, 5, 6, 7, 8, 9, 13, 18, 19, 20, 21, 22]);
 
       // Row 3+: Data Rows
       allData.forEach((v) => {
@@ -467,14 +496,17 @@ export default function RelatoriosPage() {
           nome: v.clientes?.nome || '',
           cpf: v.cpf || '',
           vendedor: v.corretor || '',
+          carteira: v.carteira || '',
           gerado: timestamp,
           cod_operacao: v.codigo_operacao || '',
-          empresa_credora: v.empresa_credora || ''
+          empresa_credora: v.empresa_credora || '',
+          novo_cliente: v.novo_cliente || '',
+          atualizacao_cadastral: v.atualizacao_cadastral || ''
         };
 
         const addedRow = wsDetailed.addRow(rowData);
         addedRow.height = 20;
-        styleRow(addedRow, false, false, isPix, 11, [1, 2, 3, 4, 5, 6, 7, 8, 9, 13, 17, 18, 19]);
+        styleRow(addedRow, false, false, isPix, 11, [1, 2, 3, 4, 5, 6, 7, 8, 9, 13, 18, 19, 20, 21, 22]);
       });
 
       // Total Row (Valor Crédito is now in column 11 (K))
@@ -482,13 +514,13 @@ export default function RelatoriosPage() {
       const totalRowDet = wsDetailed.getRow(lastRowIndexDet);
       totalRowDet.height = 20;
       totalRowDet.getCell(11).value = { formula: `SUM(K3:K${lastRowIndexDet - 1})` };
-      styleRow(totalRowDet, false, true, false, 11, [1, 2, 3, 4, 5, 6, 7, 8, 9, 13, 17, 18, 19]);
+      styleRow(totalRowDet, false, true, false, 11, [1, 2, 3, 4, 5, 6, 7, 8, 9, 13, 18, 19, 20, 21, 22]);
 
       // ────────────────────────────────────────────────────────────────────────
-      // SHEET 2: CONSOLIDADO (Cosolidado)
+      // SHEET 2: CONSOLIDADO (Consolidado)
       // ────────────────────────────────────────────────────────────────────────
-      const wsConsolidated = workbook.addWorksheet('Cosolidado');
-      
+      const wsConsolidated = workbook.addWorksheet('Consolidado');
+
       wsConsolidated.columns = [
         { header: 'Forma Recebimento', key: 'forma_recebimento', width: 20 },
         { header: 'Banco', key: 'banco', width: 8 },
@@ -505,11 +537,14 @@ export default function RelatoriosPage() {
         { header: 'Nome', key: 'nome', width: 26 },
         { header: 'CPF', key: 'cpf', width: 15 },
         { header: 'Vendedor', key: 'vendedor', width: 17 },
-        { header: 'Gerado', key: 'gerado', width: 21 }
+        { header: 'Carteira', key: 'carteira', width: 15 },
+        { header: 'Gerado', key: 'gerado', width: 21 },
+        { header: 'Novo Cliente', key: 'novo_cliente', width: 15 },
+        { header: 'Atualização Cadastral', key: 'atualizacao_cadastral', width: 20 }
       ];
 
-      // Row 1: Merged Title Block
-      wsConsolidated.mergeCells('A1:P1');
+      // Row 1: Merged Title Block (A1:S1 since we added columns, total 19 columns)
+      wsConsolidated.mergeCells('A1:S1');
       const titleCellCons = wsConsolidated.getCell('A1');
       titleCellCons.value = titleText;
       titleCellCons.font = { name: 'Calibri', family: 2, size: 24, color: { argb: 'FF000000' } };
@@ -519,10 +554,10 @@ export default function RelatoriosPage() {
       // Row 2: Headers
       const headerRowCons = wsConsolidated.getRow(2);
       headerRowCons.values = [
-        'Forma Recebimento', 'Banco', 'Agência ', 'DV', 'OP', 'Conta', 'DV', 'Chave PIX', 'Pix', 'Valor Crédito', 'Obs.:', 'Status PG', 'Nome', 'CPF', 'Vendedor', 'Gerado'
+        'Forma Recebimento', 'Banco', 'Agência ', 'DV', 'OP', 'Conta', 'DV', 'Chave PIX', 'Pix', 'Valor Crédito', 'Obs.:', 'Status PG', 'Nome', 'CPF', 'Vendedor', 'Carteira', 'Gerado', 'Novo Cliente', 'Atualização Cadastral'
       ];
       headerRowCons.height = 20;
-      styleRow(headerRowCons, true);
+      styleRow(headerRowCons, true, false, false, 10, [1, 2, 3, 4, 5, 6, 7, 8, 12, 17, 18, 19]);
 
       // Group data by CPF for consolidation
       const groupedData: { [cpf: string]: any[] } = {};
@@ -561,12 +596,15 @@ export default function RelatoriosPage() {
           nome: primarySale.clientes?.nome || '',
           cpf: cpf,
           vendedor: primarySale.corretor || '',
-          gerado: timestamp
+          carteira: primarySale.carteira || '',
+          gerado: timestamp,
+          novo_cliente: primarySale.novo_cliente || '',
+          atualizacao_cadastral: primarySale.atualizacao_cadastral || ''
         };
 
         const addedRow = wsConsolidated.addRow(rowData);
         addedRow.height = 20;
-        styleRow(addedRow, false, false, isPix);
+        styleRow(addedRow, false, false, isPix, 10, [1, 2, 3, 4, 5, 6, 7, 8, 12, 17, 18, 19]);
       });
 
       // Total Row
@@ -574,7 +612,135 @@ export default function RelatoriosPage() {
       const totalRowCons = wsConsolidated.getRow(lastRowIndexCons);
       totalRowCons.height = 20;
       totalRowCons.getCell(10).value = { formula: `SUM(J3:J${lastRowIndexCons - 1})` };
-      styleRow(totalRowCons, false, true);
+      styleRow(totalRowCons, false, true, false, 10, [1, 2, 3, 4, 5, 6, 7, 8, 12, 17, 18, 19]);
+
+      // ────────────────────────────────────────────────────────────────────────
+      // SHEET 3: CADASTRO E-MAIL (Cadastro E-mail)
+      // ────────────────────────────────────────────────────────────────────────
+      const wsEmail = workbook.addWorksheet('Cadastro E-mail');
+
+      wsEmail.columns = [
+        { header: 'Empresa Ativação', key: 'empresa_ativacao', width: 20 },
+        { header: 'Código Convênio', key: 'codigo_convenio', width: 18 },
+        { header: 'Conta Ativação', key: 'conta_ativacao', width: 16 },
+        { header: 'CONTRATO', key: 'contrato', width: 15 },
+        { header: 'Data', key: 'data', width: 12 },
+        { header: 'Nome', key: 'nome', width: 30 },
+        { header: 'CPF', key: 'cpf', width: 16 },
+        { header: 'Órgão', key: 'orgao', width: 20 },
+        { header: 'Dia Útil', key: 'dia_util', width: 10 },
+        { header: 'Conf', key: 'conf1', width: 8 },
+        { header: 'Inicio', key: 'inicio', width: 12 },
+        { header: 'Conf', key: 'conf2', width: 8 },
+        { header: 'Abatidas', key: 'abatidas', width: 10 },
+        { header: 'Conf', key: 'conf3', width: 8 },
+        { header: 'Vendedor', key: 'vendedor', width: 20 },
+        { header: 'Corretor', key: 'corretor', width: 15 },
+        { header: 'Banco', key: 'banco', width: 10 },
+        { header: 'Agência', key: 'agencia', width: 10 },
+        { header: 'DV', key: 'agencia_dv', width: 6 },
+        { header: 'OP', key: 'op', width: 6 },
+        { header: 'Conta', key: 'conta', width: 15 },
+        { header: 'DV', key: 'conta_dv', width: 6 },
+        { header: 'Vr. Contrato', key: 'vr_contrato', width: 15 },
+        { header: 'Liq. Cliente', key: 'liq_cliente', width: 15 },
+        { header: 'Prazo', key: 'prazo', width: 8 },
+        { header: 'Parcela', key: 'parcela', width: 15 },
+        { header: 'Coeficiente', key: 'coeficiente', width: 12 },
+        { header: 'Código WEBDEC', key: 'codigo_webdec', width: 18 }
+      ];
+
+      // Helper to extract numbers from empresa_ativacao
+      const getConvenioCode = (empresa: string) => {
+        if (!empresa) return '';
+        const match = empresa.match(/\d+/g);
+        return match ? match.join('') : '';
+      };
+
+      // Style Header Row
+      const headerRowEmail = wsEmail.getRow(1);
+      headerRowEmail.height = 20;
+      headerRowEmail.eachCell({ includeEmpty: true }, (cell) => {
+        cell.font = { name: 'Calibri', family: 2, size: 11, bold: true, italic: true };
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        cell.border = {
+          top: { style: 'thin', color: { argb: 'FFC0C0C0' } },
+          left: { style: 'thin', color: { argb: 'FFC0C0C0' } },
+          bottom: { style: 'thin', color: { argb: 'FFC0C0C0' } },
+          right: { style: 'thin', color: { argb: 'FFC0C0C0' } }
+        };
+      });
+
+      // Data Rows
+      allData.forEach((v) => {
+        const dataCadastro = v.created_at ? new Date(v.created_at) : null;
+        const dataInicio = v.inicio ? new Date(v.inicio) : null;
+
+        const rowData = {
+          empresa_ativacao: v.empresa_ativacao || '',
+          codigo_convenio: getConvenioCode(v.empresa_ativacao),
+          conta_ativacao: v.conta_ativacao || '',
+          contrato: v.contrato || '',
+          data: dataCadastro,
+          nome: v.clientes?.nome || '',
+          cpf: v.cpf || '',
+          orgao: v.orgao || '',
+          dia_util: v.dia_util || '',
+          conf1: '',
+          inicio: dataInicio,
+          conf2: '',
+          abatidas: 1,
+          conf3: '',
+          vendedor: v.corretor || '',
+          corretor: v.carteira || '',
+          banco: v.credito_banco || '',
+          agencia: v.credito_agencia || '',
+          agencia_dv: v.credito_agencia_dv || '',
+          op: v.op || '',
+          conta: v.credito_conta || '',
+          conta_dv: v.credito_conta_dv || '',
+          vr_contrato: v.valor || 0,
+          liq_cliente: parseBRLString(v.abat),
+          prazo: v.prazo ? `${v.prazo}X` : '',
+          parcela: v.parcela || 0,
+          coeficiente: v.coef || 0,
+          codigo_webdec: ''
+        };
+
+        const addedRow = wsEmail.addRow(rowData);
+        addedRow.height = 20;
+
+        addedRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+          cell.font = { name: 'Calibri', family: 2, size: 11 };
+          cell.border = {
+            top: { style: 'thin', color: { argb: 'FFC0C0C0' } },
+            left: { style: 'thin', color: { argb: 'FFC0C0C0' } },
+            bottom: { style: 'thin', color: { argb: 'FFC0C0C0' } },
+            right: { style: 'thin', color: { argb: 'FFC0C0C0' } }
+          };
+
+          // Alignment
+          const centerCols = [2, 3, 4, 5, 7, 9, 10, 11, 12, 13, 14, 17, 18, 19, 20, 21, 22, 25, 28];
+          const rightCols = [23, 24, 26, 27];
+
+          if (centerCols.includes(colNumber)) {
+            cell.alignment = { horizontal: 'center', vertical: 'middle' };
+          } else if (rightCols.includes(colNumber)) {
+            cell.alignment = { horizontal: 'right', vertical: 'middle' };
+          } else {
+            cell.alignment = { horizontal: 'left', vertical: 'middle' };
+          }
+
+          // Number Formats
+          if ([23, 24, 26].includes(colNumber)) {
+            cell.numFmt = '#,##0.00';
+          } else if (colNumber === 27) {
+            cell.numFmt = '0.000';
+          } else if (colNumber === 5 || colNumber === 11) {
+            cell.numFmt = 'yyyy-mm-dd';
+          }
+        });
+      });
 
       // ────────────────────────────────────────────────────────────────────────
       // GENERATE AND DOWNLOAD
@@ -582,7 +748,7 @@ export default function RelatoriosPage() {
       const buffer = await workbook.xlsx.writeBuffer();
       const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
       const filename = `Bordero_${todayStr.split('-').reverse().join('_')}_Lote_${nextLote}.xlsx`;
-      
+
       const link = document.createElement('a');
       link.href = URL.createObjectURL(blob);
       link.download = filename;
@@ -590,7 +756,124 @@ export default function RelatoriosPage() {
       link.click();
       document.body.removeChild(link);
 
-      setModalError(`Borderô gerado com sucesso!\nNúmero do Lote: ${nextLote}`);
+      // Marcar as vendas do relatório como pagas
+      const ids = allData.map(v => v.id);
+      const { error: updateStatusError } = await supabase
+        .from('vendas')
+        .update({ status: 'Pago' })
+        .in('id', ids);
+
+      if (updateStatusError) {
+        console.error('Erro ao marcar vendas como pagas:', updateStatusError);
+      }
+
+      // Enviar email para o usuário logado com o anexo em base64
+      let emailSuccessMsg = '';
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        console.log('Sessão obtida para envio de e-mail:', session);
+        if (session?.user?.id) {
+          // Buscar o e-mail do usuário na tabela pro_consig.usuarios
+          const { data: dbUser } = await supabase
+            .from('usuarios')
+            .select('email')
+            .eq('supabase_user_id', session.user.id)
+            .single();
+
+          const recipientEmail = dbUser?.email || session.user.email;
+
+          if (recipientEmail) {
+            console.log('Enviando e-mail do borderô para:', recipientEmail);
+            // Converter ArrayBuffer para base64
+            const uint8 = new Uint8Array(buffer);
+            let binary = '';
+            for (let i = 0; i < uint8.length; i++) {
+              binary += String.fromCharCode(uint8[i]);
+            }
+            const base64 = window.btoa(binary);
+
+            const emailRes = await sendRelatorioEmail({
+              to: recipientEmail,
+              subject: `Borderô Gerado - Lote ${nextLote}`,
+              html: `
+                <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+                  <!-- Header Banner -->
+                  <div style="background-color: #4f46e5; padding: 25px 20px; text-align: center;">
+                    <table style="margin: 0 auto; border-collapse: collapse; border: none;">
+                      <tr>
+                        <td style="padding-right: 12px; vertical-align: middle; border: none;">
+                          <img src="cid:branding_logo" alt="Logo" width="40" height="40" style="border-radius: 8px; display: block; object-fit: cover; border: none;" />
+                        </td>
+                        <td style="text-align: left; vertical-align: middle; border: none;">
+                          <h1 style="color: #ffffff; margin: 0; font-size: 22px; font-weight: 700; line-height: 1.0; letter-spacing: -0.5px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; border: none;">Central Pagamentos</h1>
+                        </td>
+                      </tr>
+                    </table>
+                  </div>
+                  
+                  <!-- Content Box -->
+                  <div style="padding: 30px 25px; background-color: #ffffff; color: #1e293b; line-height: 1.6;">
+                    <p style="margin-top: 0; font-size: 16px;">Olá,</p>
+                    <p style="font-size: 15px;">O Borderô correspondente ao lote <strong style="color: #4f46e5; font-size: 16px;">${nextLote}</strong> foi gerado com sucesso pelo sistema em <strong>${todayFormatted}</strong>.</p>
+                    
+                    <!-- Details Card -->
+                    <div style="background-color: #f8fafc; border: 1px solid #f1f5f9; border-radius: 8px; padding: 20px; margin: 25px 0;">
+                      <h3 style="margin-top: 0; margin-bottom: 15px; color: #334155; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;">Informações do Lote</h3>
+                      <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                        <tr>
+                          <td style="padding: 6px 0; color: #64748b;">Número do Lote:</td>
+                          <td style="padding: 6px 0; font-weight: 600; text-align: right; color: #0f172a;">Lote ${nextLote}</td>
+                        </tr>
+                        <tr>
+                          <td style="padding: 6px 0; color: #64748b;">Data de Geração:</td>
+                          <td style="padding: 6px 0; font-weight: 600; text-align: right; color: #0f172a;">${todayFormatted}</td>
+                        </tr>
+                        <tr>
+                          <td style="padding: 6px 0; color: #64748b;">Arquivo:</td>
+                          <td style="padding: 6px 0; font-weight: 600; text-align: right; color: #0f172a;">${filename}</td>
+                        </tr>
+                      </table>
+                    </div>
+
+                    <p style="font-size: 15px;">O arquivo Excel consolidado contendo as 3 planilhas (<strong>Detalhado</strong>, <strong>Consolidado</strong> e <strong>Cadastro E-mail</strong>) já foi anexado a este e-mail para o seu controle.</p>
+                    
+                    <p style="font-size: 14px; color: #64748b; margin-bottom: 0;">Se precisar de suporte, entre em contato com o administrador do sistema.</p>
+                  </div>
+                  
+                  <!-- Footer -->
+                  <div style="background-color: #f1f5f9; padding: 15px 20px; text-align: center; border-top: 1px solid #e2e8f0;">
+                    <p style="margin: 0; font-size: 11px; color: #94a3b8;">© 2026 ProConsig - Central Pagamentos. Todos os direitos reservados.</p>
+                  </div>
+                </div>
+              `,
+              base64Attachment: base64,
+              filename: filename
+            });
+            
+            if (emailRes && !emailRes.success) {
+              console.error('Erro retornado pela Server Action de e-mail:', emailRes.error);
+              emailSuccessMsg = `\n\n(Aviso: O e-mail não pôde ser enviado. Erro: ${emailRes.error})`;
+            } else {
+              console.log('E-mail enviado com sucesso com id:', emailRes?.data);
+              emailSuccessMsg = `\n\n(E-mail com anexo enviado para: ${recipientEmail})`;
+            }
+          } else {
+            console.warn('Nenhum e-mail de usuário logado encontrado.');
+            emailSuccessMsg = `\n\n(Aviso: E-mail não enviado porque não foi encontrado o endereço eletrônico)`;
+          }
+        } else {
+          console.warn('Nenhum usuário logado encontrado na sessão do Supabase.');
+          emailSuccessMsg = `\n\n(Aviso: E-mail não enviado porque não há sessão ativa)`;
+        }
+      } catch (emailErr: any) {
+        console.error('Erro ao enviar email com anexo:', emailErr);
+        emailSuccessMsg = `\n\n(Aviso: Erro ao enviar e-mail: ${emailErr.message || emailErr})`;
+      }
+
+      // Atualizar dados locais da tabela
+      buscarDados(page);
+
+      setModalError(`Borderô gerado com sucesso!\nAs vendas foram marcadas como pagas.\nNúmero do Lote: ${nextLote}${emailSuccessMsg}`);
     } catch (err: any) {
       setModalError('Erro ao gerar o Excel do Borderô: ' + err.message);
     }
@@ -695,13 +978,26 @@ export default function RelatoriosPage() {
           <table className="table">
             <thead>
               <tr>
-                <th style={{ paddingLeft: '1.5rem' }}>ID Venda</th>
+                <th style={{ paddingLeft: '1.5rem', width: '100px', textAlign: 'left' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <input
+                      type="checkbox"
+                      checked={vendas.length > 0 && vendas.every(v => v.status === 'Pago')}
+                      onChange={handleToggleSelectAll}
+                      style={{ cursor: 'pointer', transform: 'scale(1.2)' }}
+                      title="Selecionar todas como pagas"
+                    />
+                    <span>Paga?</span>
+                  </div>
+                </th>
+                <th>ID Venda</th>
                 <th>Cliente / CPF</th>
-                 <th>Operação</th>
+                <th>Operação</th>
                 <th>Valor</th>
                 <th>Vendedor</th>
+                <th>Novo?</th>
+                <th>Atualiz. Cad.?</th>
                 <th>Banco</th>
-                <th style={{ textAlign: 'center' }}>Paga?</th>
                 <th>Última Exportação</th>
                 <th>Data Cadastro</th>
               </tr>
@@ -709,12 +1005,20 @@ export default function RelatoriosPage() {
             <tbody>
               {vendas.length === 0 ? (
                 <tr>
-                  <td colSpan={9} style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-muted)' }}>Nenhum dado para exibir com esses filtros.</td>
+                  <td colSpan={11} style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-muted)' }}>Nenhum dado para exibir com esses filtros.</td>
                 </tr>
               ) : (
                 vendas.map((v) => (
                   <tr key={v.id}>
-                    <td style={{ paddingLeft: '1.5rem', fontWeight: 600, color: 'var(--color-primary)' }}>{v.venda_id || '-'}</td>
+                    <td style={{ paddingLeft: '1.5rem', textAlign: 'center' }}>
+                      <input
+                        type="checkbox"
+                        checked={v.status === 'Pago'}
+                        onChange={() => handleTogglePaga(v.id, v.status)}
+                        style={{ cursor: 'pointer', transform: 'scale(1.2)' }}
+                      />
+                    </td>
+                    <td style={{ fontWeight: 600, color: 'var(--color-primary)' }}>{v.venda_id || '-'}</td>
                     <td>
                       <div style={{ fontWeight: 500 }}>{v.clientes?.nome || '-'}</div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '0.15rem' }}>
@@ -739,15 +1043,9 @@ export default function RelatoriosPage() {
                     <td style={{ fontSize: '0.85rem' }}>{v.operacao}</td>
                     <td style={{ fontWeight: 600 }}>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v.valor || 0)}</td>
                     <td>{v.corretor}</td>
+                    <td>{v.novo_cliente || '-'}</td>
+                    <td>{v.atualizacao_cadastral || '-'}</td>
                     <td>{v.banco}</td>
-                    <td style={{ textAlign: 'center' }}>
-                      <input 
-                        type="checkbox" 
-                        checked={v.status === 'Pago'} 
-                        onChange={() => handleTogglePaga(v.id, v.status)}
-                        style={{ cursor: 'pointer', transform: 'scale(1.2)' }}
-                      />
-                    </td>
                     <td style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                         <Clock size={14} />
