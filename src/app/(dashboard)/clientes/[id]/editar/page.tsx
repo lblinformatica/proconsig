@@ -226,6 +226,8 @@ export default function EditarCliente() {
       val = formatCEP(value);
     } else if (id === 'salario') {
       val = formatMoney(value);
+    } else if (id === 'email') {
+      val = value.toLowerCase();
     } else if (typeof val === 'string') {
       val = val.toUpperCase();
     }

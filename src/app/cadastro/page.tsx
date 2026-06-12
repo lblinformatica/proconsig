@@ -351,7 +351,7 @@ export default function Cadastro() {
                 <label htmlFor="nome" >Nome Completo</label>
                 <div className="reg-input-wrap">
                   <User size={16} className="reg-input-icon" />
-                  <input id="nome" type="text" className="reg-input" value={nome} onChange={e => setNome(e.target.value)} placeholder="Seu nome completo" required autoFocus />
+                  <input id="nome" type="text" className="reg-input" value={nome} onChange={e => setNome(e.target.value.toUpperCase())} placeholder="Seu nome completo" required autoFocus />
                 </div>
               </div>
 
@@ -369,7 +369,7 @@ export default function Cadastro() {
                 <label htmlFor="email" >E-mail</label>
                 <div className="reg-input-wrap">
                   <Mail size={16} className="reg-input-icon" />
-                  <input id="email" type="email" className="reg-input" value={email} onChange={e => setEmail(e.target.value)} placeholder="seu@email.com" required autoComplete="email" />
+                  <input id="email" type="email" className="reg-input" value={email} onChange={e => setEmail(e.target.value.toLowerCase())} placeholder="seu@email.com" required autoComplete="email" />
                 </div>
               </div>
 
