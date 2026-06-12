@@ -469,7 +469,9 @@ export default function NovaVenda() {
       return;
     }
 
-    setForm(f => ({ ...f, [name]: value }));
+    // Convert value to uppercase for all text/input fields
+    const upperValue = typeof value === 'string' ? value.toUpperCase() : value;
+    setForm(f => ({ ...f, [name]: upperValue }));
   };
 
   const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
@@ -503,6 +505,18 @@ export default function NovaVenda() {
 
     if (!form.banco || !form.agencia || !form.conta) {
       return showAlert('Dados Bancários Ausentes', 'Por favor, informe os Dados Bancários (Banco, Agência e Conta) do cliente.');
+    }
+
+    if (form.forma_credito === 'conta') {
+      if (!form.credito_banco || !form.credito_agencia || !form.credito_conta) {
+        return showAlert('Dados de Crédito Ausentes', 'Por favor, informe os Dados Bancários para Crédito (Banco, Agência e Conta).');
+      }
+    } else if (form.forma_credito === 'pix') {
+      if (!form.pix_chave) {
+        return showAlert('Chave PIX Ausente', 'Por favor, informe a Chave PIX do cliente.');
+      }
+    } else {
+      return showAlert('Forma de Crédito Ausente', 'Por favor, informe a Forma de Crédito.');
     }
 
     if (!form.prazo) {
@@ -571,7 +585,9 @@ export default function NovaVenda() {
           credito_conta: form.credito_conta, credito_conta_dv: form.credito_conta_dv,
           credito_tipo_conta: form.credito_tipo_conta,
           novo_cliente: form.novo_cliente,
-          atualizacao_cadastral: form.atualizacao_cadastral
+          atualizacao_cadastral: form.atualizacao_cadastral,
+          restam: form.operacao === 'REFIN' ? parcelasExibidas.length : null,
+          abatidas: form.operacao === 'REFIN' ? selectedOpIds.length : null
         });
 
       if (insertError) {

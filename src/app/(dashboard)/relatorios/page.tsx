@@ -632,6 +632,7 @@ export default function RelatoriosPage() {
         { header: 'Conf', key: 'conf1', width: 8 },
         { header: 'Inicio', key: 'inicio', width: 12 },
         { header: 'Conf', key: 'conf2', width: 8 },
+        { header: 'Restam', key: 'restam', width: 10 },
         { header: 'Abatidas', key: 'abatidas', width: 10 },
         { header: 'Conf', key: 'conf3', width: 8 },
         { header: 'Vendedor', key: 'vendedor', width: 20 },
@@ -647,7 +648,10 @@ export default function RelatoriosPage() {
         { header: 'Prazo', key: 'prazo', width: 8 },
         { header: 'Parcela', key: 'parcela', width: 15 },
         { header: 'Coeficiente', key: 'coeficiente', width: 12 },
-        { header: 'Código WEBDEC', key: 'codigo_webdec', width: 18 }
+        { header: 'Código WEBDEC', key: 'codigo_webdec', width: 18 },
+        { header: 'Novo Cliente', key: 'novo_cliente', width: 15 },
+        { header: 'Atualização Cadastral', key: 'atualizacao_cadastral', width: 20 },
+        { header: 'Observação', key: 'observacao', width: 35 }
       ];
 
       // Helper to extract numbers from empresa_ativacao
@@ -674,7 +678,7 @@ export default function RelatoriosPage() {
       // Data Rows
       allData.forEach((v) => {
         const dataCadastro = v.created_at ? new Date(v.created_at) : null;
-        const dataInicio = v.inicio ? new Date(v.inicio) : null;
+        const dataInicio = v.inicio ? new Date(v.inicio + 'T12:00:00') : null;
 
         const rowData = {
           empresa_ativacao: v.empresa_ativacao || '',
@@ -684,12 +688,13 @@ export default function RelatoriosPage() {
           data: dataCadastro,
           nome: v.clientes?.nome || '',
           cpf: v.cpf || '',
-          orgao: v.orgao || '',
+          orgao: v.empresa || '', // Órgão column gets the 'empresa' field as per instructions
           dia_util: v.dia_util || '',
           conf1: '',
           inicio: dataInicio,
           conf2: '',
-          abatidas: 1,
+          restam: v.restam !== null && v.restam !== undefined ? v.restam : '',
+          abatidas: v.abatidas !== null && v.abatidas !== undefined ? v.abatidas : '',
           conf3: '',
           vendedor: v.corretor || '',
           corretor: v.carteira || '',
@@ -704,7 +709,10 @@ export default function RelatoriosPage() {
           prazo: v.prazo ? `${v.prazo}X` : '',
           parcela: v.parcela || 0,
           coeficiente: v.coef || 0,
-          codigo_webdec: ''
+          codigo_webdec: '',
+          novo_cliente: v.novo_cliente || '',
+          atualizacao_cadastral: v.atualizacao_cadastral || '',
+          observacao: v.observacao || ''
         };
 
         const addedRow = wsEmail.addRow(rowData);
@@ -720,8 +728,8 @@ export default function RelatoriosPage() {
           };
 
           // Alignment
-          const centerCols = [2, 3, 4, 5, 7, 9, 10, 11, 12, 13, 14, 17, 18, 19, 20, 21, 22, 25, 28];
-          const rightCols = [23, 24, 26, 27];
+          const centerCols = [2, 3, 4, 5, 7, 9, 10, 11, 12, 13, 14, 15, 18, 19, 20, 21, 22, 23, 26, 29, 30, 31];
+          const rightCols = [24, 25, 27, 28];
 
           if (centerCols.includes(colNumber)) {
             cell.alignment = { horizontal: 'center', vertical: 'middle' };
@@ -732,12 +740,14 @@ export default function RelatoriosPage() {
           }
 
           // Number Formats
-          if ([23, 24, 26].includes(colNumber)) {
+          if ([24, 25, 27].includes(colNumber)) {
             cell.numFmt = '#,##0.00';
-          } else if (colNumber === 27) {
+          } else if (colNumber === 28) {
             cell.numFmt = '0.000';
-          } else if (colNumber === 5 || colNumber === 11) {
+          } else if (colNumber === 5) {
             cell.numFmt = 'yyyy-mm-dd';
+          } else if (colNumber === 11) {
+            cell.numFmt = 'mm/yyyy';
           }
         });
       });

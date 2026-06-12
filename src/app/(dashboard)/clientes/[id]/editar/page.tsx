@@ -226,6 +226,8 @@ export default function EditarCliente() {
       val = formatCEP(value);
     } else if (id === 'salario') {
       val = formatMoney(value);
+    } else if (typeof val === 'string') {
+      val = val.toUpperCase();
     }
     setForm(f => ({ ...f, [id]: val }));
     if (id === 'cpf') setCpfError('');
@@ -876,7 +878,7 @@ export default function EditarCliente() {
 
             <form onSubmit={handleAddPhone} style={{
               display: 'grid',
-              gridTemplateColumns: '1.5fr 1fr 1fr',
+              gridTemplateColumns: '1.5fr 1fr 1.5fr auto',
               gap: '1rem',
               alignItems: 'end',
               backgroundColor: 'var(--color-bg-body)',
@@ -908,6 +910,16 @@ export default function EditarCliente() {
                   <option value="WhatsApp">WhatsApp</option>
                 </select>
               </div>
+              <div>
+                <label style={{ ...fieldStyle, fontSize: '0.85rem' }}>Observação</label>
+                <input
+                  type="text"
+                  value={phoneForm.observacao}
+                  onChange={e => setPhoneForm(p => ({ ...p, observacao: e.target.value.toUpperCase() }))}
+                  placeholder="Ex: WhatsApp"
+                  style={{ width: '100%', padding: '0.5rem', fontSize: '0.875rem' }}
+                />
+              </div>
               <button
                 type="submit"
                 className="btn btn-primary"
@@ -917,7 +929,8 @@ export default function EditarCliente() {
                   alignItems: 'center',
                   justifyContent: 'center',
                   gap: '0.5rem',
-                  fontSize: '0.875rem'
+                  fontSize: '0.875rem',
+                  padding: '0 1.25rem'
                 }}
               >
                 <Plus size={16} />

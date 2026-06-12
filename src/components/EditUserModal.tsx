@@ -86,7 +86,7 @@ export function EditUserModal({ isOpen, user, onClose, onSuccess }: EditUserModa
         <form onSubmit={handleSubmit}>
           <div style={{ marginBottom: '1rem' }}>
             <label>Nome Completo</label>
-            <input type="text" value={nome} onChange={e => setNome(e.target.value)} required />
+            <input type="text" value={nome} onChange={e => setNome(e.target.value.toUpperCase())} required />
           </div>
           <div style={{ marginBottom: '1rem' }}>
             <label>Conta de Acesso (Username)</label>
@@ -97,7 +97,7 @@ export function EditUserModal({ isOpen, user, onClose, onSuccess }: EditUserModa
           </div>
           <div style={{ marginBottom: '1rem' }}>
             <label>E-mail</label>
-            <input type="email" value={email} onChange={e => setEmail(e.target.value)} required />
+            <input type="email" value={email} onChange={e => setEmail(e.target.value.toUpperCase())} required />
           </div>
           <div style={{ marginBottom: '1rem' }}>
             <label>Nível de Acesso</label>

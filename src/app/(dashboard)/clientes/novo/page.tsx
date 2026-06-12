@@ -174,6 +174,8 @@ export default function NovoCliente() {
       val = formatCEP(value);
     } else if (id === 'salario') {
       val = formatMoney(value);
+    } else if (typeof val === 'string') {
+      val = val.toUpperCase();
     }
     setForm(f => ({ ...f, [id]: val }));
     if (id === 'cpf') setCpfError('');
@@ -845,7 +847,7 @@ export default function NovoCliente() {
                   type="text"
                   placeholder="Ex: WhatsApp"
                   value={phoneForm.observacao}
-                  onChange={(e) => setPhoneForm(p => ({ ...p, observacao: e.target.value }))}
+                  onChange={(e) => setPhoneForm(p => ({ ...p, observacao: e.target.value.toUpperCase() }))}
                   style={{ flex: 1 }}
                 />
                 <button
