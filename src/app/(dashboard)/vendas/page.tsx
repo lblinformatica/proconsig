@@ -186,7 +186,7 @@ export default function VendasList() {
                     {vendas.map((v) => (
                       <tr key={v.id}>
                         <td style={{ fontFamily: 'monospace', fontWeight: 600, color: 'var(--color-primary)', fontSize: '0.85rem' }}>{v.venda_id}</td>
-                        <td>{new Date(v.created_at).toLocaleDateString('pt-BR')}</td>
+                        <td style={{ fontSize: '0.875rem' }}>{new Date(v.created_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
                         <td style={{ fontSize: '0.85rem' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', whiteSpace: 'nowrap' }}>
                             {v.cpf}

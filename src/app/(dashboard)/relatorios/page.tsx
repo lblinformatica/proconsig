@@ -1062,7 +1062,7 @@ export default function RelatoriosPage() {
                         {v.data_exportacao_atual ? new Date(v.data_exportacao_atual).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : 'Nunca Exportado'}
                       </div>
                     </td>
-                    <td style={{ fontSize: '0.8rem' }}>{new Date(v.created_at).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}</td>
+                    <td style={{ fontSize: '0.8rem' }}>{new Date(v.created_at).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
                   </tr>
                 ))
               )}
