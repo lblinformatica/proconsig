@@ -115,7 +115,7 @@ export default function VendaDetails(props: { params: Promise<{ id: string }> })
             <span className="badge badge-info" style={{ fontSize: '0.9rem', padding: '0.35rem 0.75rem' }}>{venda.operacao}</span>
           </div>
         </div>
-        
+
         <Link href={`/vendas/${venda.id}/editar`} className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', height: '42px', padding: '0 1.25rem' }}>
           <Edit2 size={16} /> Editar Registro
         </Link>
@@ -123,10 +123,10 @@ export default function VendaDetails(props: { params: Promise<{ id: string }> })
 
       {/* Main Grid Content */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem' }}>
-        
+
         {/* Left Column */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-          
+
           {/* Client Info Card */}
           <div className="card" style={{ padding: '1.5rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.25rem', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.75rem' }}>
@@ -135,7 +135,7 @@ export default function VendaDetails(props: { params: Promise<{ id: string }> })
               </div>
               <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>Dados do Cliente</h3>
             </div>
-            
+
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', fontSize: '0.9rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span style={{ color: 'var(--color-text-muted)' }}>Nome Completo:</span>
@@ -153,7 +153,7 @@ export default function VendaDetails(props: { params: Promise<{ id: string }> })
                 <span style={{ color: 'var(--color-text-muted)' }}>Atualização Cadastral?</span>
                 <span style={{ fontWeight: 600 }}>{venda.atualizacao_cadastral || '-'}</span>
               </div>
-              
+
               <div style={{ marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px dashed var(--color-border)', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                 <div style={{ fontWeight: 600, color: 'var(--color-text-muted)', fontSize: '0.8rem', textTransform: 'uppercase' }}>Domicílio Bancário Principal</div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -186,13 +186,13 @@ export default function VendaDetails(props: { params: Promise<{ id: string }> })
               </div>
               <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>Recebimento / Crédito</h3>
             </div>
-            
+
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', fontSize: '0.9rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span style={{ color: 'var(--color-text-muted)' }}>Forma de Crédito:</span>
                 <span style={{ fontWeight: 600, textTransform: 'uppercase' }}>{venda.forma_credito || 'Conta'}</span>
               </div>
-              
+
               {venda.forma_credito === 'pix' ? (
                 <>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -231,7 +231,7 @@ export default function VendaDetails(props: { params: Promise<{ id: string }> })
               </div>
               <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>Observações</h3>
             </div>
-            
+
             <div style={{ fontSize: '0.9rem', color: venda.observacao ? 'var(--color-text)' : 'var(--color-text-muted)', whiteSpace: 'pre-line', lineHeight: '1.5' }}>
               {venda.observacao || 'Nenhuma observação informada.'}
             </div>
@@ -241,7 +241,7 @@ export default function VendaDetails(props: { params: Promise<{ id: string }> })
 
         {/* Right Column */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-          
+
           {/* Financial Values Card */}
           <div className="card" style={{ padding: '1.5rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.25rem', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.75rem' }}>
@@ -250,7 +250,7 @@ export default function VendaDetails(props: { params: Promise<{ id: string }> })
               </div>
               <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>Financeiro e Coeficientes</h3>
             </div>
-            
+
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', fontSize: '0.9rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ color: 'var(--color-text-muted)' }}>Valor do Contrato (Bruto):</span>
@@ -264,7 +264,7 @@ export default function VendaDetails(props: { params: Promise<{ id: string }> })
                 <span style={{ color: 'var(--color-success)', fontWeight: 600 }}>Valor Líquido (Crédito):</span>
                 <span style={{ fontWeight: 700, fontSize: '1.1rem', color: 'var(--color-success)' }}>{formatBRL(venda.abat)}</span>
               </div>
-              
+
               <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.5rem' }}>
                 <span style={{ color: 'var(--color-text-muted)' }}>Valor da Parcela:</span>
                 <span style={{ fontWeight: 600 }}>{formatBRL(venda.parcela)}</span>
@@ -288,7 +288,7 @@ export default function VendaDetails(props: { params: Promise<{ id: string }> })
               </div>
               <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>Informações Operacionais</h3>
             </div>
-            
+
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', fontSize: '0.9rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span style={{ color: 'var(--color-text-muted)' }}>Número do Contrato:</span>
@@ -299,12 +299,16 @@ export default function VendaDetails(props: { params: Promise<{ id: string }> })
                 <span style={{ fontWeight: 600 }}>{venda.empresa_credora || '-'}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: 'var(--color-text-muted)' }}>Órgão:</span>
+                <span style={{ color: 'var(--color-text-muted)' }}>Convênio:</span>
                 <span>{venda.orgao || '-'}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: 'var(--color-text-muted)' }}>Empresa (Consignante):</span>
+                <span style={{ color: 'var(--color-text-muted)' }}>Empresa:</span>
                 <span>{venda.empresa || '-'}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--color-text-muted)' }}>Vendedor:</span>
+                <span>{venda.corretor || '-'}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span style={{ color: 'var(--color-text-muted)' }}>Carteira:</span>
@@ -314,7 +318,7 @@ export default function VendaDetails(props: { params: Promise<{ id: string }> })
                 <span style={{ color: 'var(--color-text-muted)' }}>Código de Operação:</span>
                 <span>{venda.codigo_operacao || '-'}</span>
               </div>
-              
+
               <div style={{ marginTop: '0.5rem', paddingTop: '0.5rem', borderTop: '1px dashed var(--color-border)', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span style={{ color: 'var(--color-text-muted)' }}>Empresa de Ativação:</span>
@@ -325,7 +329,7 @@ export default function VendaDetails(props: { params: Promise<{ id: string }> })
                   <span>{venda.conta_ativacao || '-'}</span>
                 </div>
               </div>
-              
+
               <div style={{ marginTop: '0.5rem', paddingTop: '0.5rem', borderTop: '1px dashed var(--color-border)', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span style={{ color: 'var(--color-text-muted)' }}>Início Desconto (Referência):</span>
@@ -355,7 +359,7 @@ export default function VendaDetails(props: { params: Promise<{ id: string }> })
               </div>
               <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>Auditoria</h3>
             </div>
-            
+
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', fontSize: '0.9rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span style={{ color: 'var(--color-text-muted)' }}>Cadastrado por:</span>
