@@ -105,7 +105,56 @@ export async function adminChangeUserStatus(
       await sendEmail({
         to: user.email,
         subject: 'Sua conta foi aprovada!',
-        html: `<p>Olá ${user.nome},</p><p>Sua conta (<strong>${user.conta}</strong>) foi aprovada pelo administrador.</p><p>Você já pode acessar o painel gerenciador usando suas credenciais.</p>`
+        html: `
+          <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+            <!-- Header Banner -->
+            <div style="background-color: #4f46e5; padding: 25px 20px; text-align: center;">
+              <table style="margin: 0 auto; border-collapse: collapse; border: none;">
+                <tr>
+                  <td style="padding-right: 12px; vertical-align: middle; border: none;">
+                    <img src="cid:branding_logo" alt="Logo" width="40" height="40" style="border-radius: 8px; display: block; object-fit: cover; border: none;" />
+                  </td>
+                  <td style="text-align: left; vertical-align: middle; border: none;">
+                    <h1 style="color: #ffffff; margin: 0; font-size: 22px; font-weight: 700; line-height: 1.0; letter-spacing: -0.5px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; border: none;">Central Pagamentos</h1>
+                  </td>
+                </tr>
+              </table>
+            </div>
+            
+            <!-- Content Box -->
+            <div style="padding: 30px 25px; background-color: #ffffff; color: #1e293b; line-height: 1.6;">
+              <p style="margin-top: 0; font-size: 16px;">Olá <strong>${user.nome}</strong>,</p>
+              <p style="font-size: 15px;">Sua conta no sistema <strong>Central Pagamentos</strong> foi aprovada com sucesso pelo administrador.</p>
+              <p style="font-size: 15px;">Você já pode acessar a plataforma utilizando suas credenciais de login.</p>
+              
+              <!-- Details Card -->
+              <div style="background-color: #f8fafc; border: 1px solid #f1f5f9; border-radius: 8px; padding: 20px; margin: 25px 0;">
+                <h3 style="margin-top: 0; margin-bottom: 15px; color: #334155; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;">Credenciais de Acesso</h3>
+                <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                  <tr>
+                    <td style="padding: 6px 0; color: #64748b;">Nome de Usuário (Conta):</td>
+                    <td style="padding: 6px 0; font-weight: 600; text-align: right; color: #0f172a;">${user.conta}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 6px 0; color: #64748b;">E-mail Cadastrado:</td>
+                    <td style="padding: 6px 0; font-weight: 600; text-align: right; color: #0f172a;">${user.email}</td>
+                  </tr>
+                </table>
+              </div>
+
+              <div style="text-align: center; margin: 25px 0;">
+                <a href="${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/login" style="background-color: #4f46e5; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: 600; display: inline-block; font-size: 15px;">Acessar Central de Pagamentos</a>
+              </div>
+
+              <p style="font-size: 14px; color: #64748b; margin-bottom: 0;">Se precisar de ajuda ou tiver alguma dúvida, entre em contato com a equipe de suporte.</p>
+            </div>
+            
+            <!-- Footer -->
+            <div style="background-color: #f1f5f9; padding: 15px 20px; text-align: center; border-top: 1px solid #e2e8f0;">
+              <p style="margin: 0; font-size: 11px; color: #94a3b8;">© 2026 ProConsig - Central Pagamentos. Todos os direitos reservados.</p>
+            </div>
+          </div>
+        `
       }).catch(err => console.error('Error sending approval email:', err));
     }
 
