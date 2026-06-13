@@ -10,23 +10,29 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'E-mail é obrigatório' }, { status: 400 });
     }
 
+    console.log('[Recuperar] Iniciando recuperação para:', email);
+
     // 1. Buscar o perfil para obter a 'conta' (que forma o pseudo-email)
     const { data: profile, error: profileError } = await supabaseAdmin
       .from('usuarios')
-      .select('conta, nome')
-      .eq('email', email.toLowerCase())
+      .select('conta, nome, email')
+      .ilike('email', email.trim())
       .single();
 
     if (profileError || !profile) {
+      console.warn('[Recuperar] E-mail não encontrado no banco de dados. Erro:', profileError);
       // Retornar sucesso silencioso por segurança, mas o UI do usuário pode decidir o que mostrar
       return NextResponse.json({
         success: true,
         info: 'E-mail não encontrado na base (silencioso)',
-        tried: email.toLowerCase()
+        tried: email.trim().toLowerCase()
       });
     }
 
+    console.log('[Recuperar] Perfil encontrado:', profile);
+
     const pseudoEmail = `${profile.conta.toLowerCase().replace(/\s+/g, '')}@proconsig.system`;
+    console.log('[Recuperar] Gerando link para o pseudo-email:', pseudoEmail);
 
     // 2. Gerar link de recuperação via Supabase Admin
     // Esse link redirecionará para a URL de site configurada no Supabase (geralmente localhost:3000 ou vercel-url)
@@ -40,11 +46,12 @@ export async function POST(req: Request) {
     });
 
     if (linkError) {
-      console.error('Link Error:', linkError);
+      console.error('[Recuperar] Erro do Supabase Admin ao gerar link:', linkError);
       return NextResponse.json({ error: 'Erro ao gerar link de recuperação.' }, { status: 500 });
     }
 
     const resetLink = linkData.properties.action_link;
+    console.log('[Recuperar] Link gerado com sucesso. Enviando e-mail...');
 
     // 3. Enviar o email via Resend para o email REAL
     const emailResult = await sendEmail({
@@ -97,10 +104,11 @@ export async function POST(req: Request) {
     });
 
     if (!emailResult.success) {
-      console.error('Email send failed:', emailResult.error);
+      console.error('[Recuperar] Envio do e-mail falhou:', emailResult.error);
       return NextResponse.json({ error: 'Falha ao enviar e-mail. Verifique o serviço de notificações.' }, { status: 500 });
     }
 
+    console.log('[Recuperar] E-mail de recuperação enviado com sucesso para:', email);
     return NextResponse.json({ success: true });
   } catch (err: any) {
     console.error('Recovery Error:', err);
