@@ -24,26 +24,25 @@ const readonlyStyle = {
 
 const getPrazoByCoef = (coef: number): number | string => {
   if (coef >= 1.170 && coef <= 1.190) return 1;
-  if (coef >= 0.531 && coef <= 0.632) return 3;
+  if (coef >= 0.531 && coef <= 0.635) return 3;
   if (coef >= 0.366 && coef <= 0.399) return 4;
   if (coef >= 0.320 && coef <= 0.341) return 6;
-  if (coef >= 0.260 && coef <= 0.291) return 8;
-  if (coef >= 0.189 && coef <= 0.199) return 12;
-  if (coef >= 0.149 && coef <= 0.160) return 15;
+  if (coef >= 0.260 && coef <= 0.295) return 8;
+  if (coef >= 0.189 && coef <= 0.205) return 12;
+  if (coef >= 0.149 && coef <= 0.165) return 15;
   return '';
 };
-
 export default function EditarVenda(props: { params: Promise<{ id: string }> }) {
   const params = use(props.params);
   const router = useRouter();
-  
+
   const [fetching, setFetching] = useState(true);
   const [loading, setLoading] = useState(false);
   const [searchLoading, setSearchLoading] = useState(false);
   const [error, setError] = useState('');
   const [duplicateModal, setDuplicateModal] = useState(false);
   const [alertModal, setAlertModal] = useState<{ show: boolean, title: string, message: string }>({ show: false, title: '', message: '' });
-  
+
   const [cpf, setCpf] = useState('');
   const [clientFound, setClientFound] = useState<any>(null);
   const [searchInitiated, setSearchInitiated] = useState(false);
@@ -98,7 +97,7 @@ export default function EditarVenda(props: { params: Promise<{ id: string }> }) 
 
         if (venda) {
           setCpf(venda.cpf);
-          
+
           let mes = '', ano = new Date().getFullYear().toString();
           if (venda.inicio) {
             const d = new Date(venda.inicio);
@@ -178,7 +177,7 @@ export default function EditarVenda(props: { params: Promise<{ id: string }> }) 
 
     // Verificar Inadimplência
     const { data: inadimplente } = await supabase.schema('pro_consig').from('inadimplentes').select('id').eq('cpf', rawCpf).limit(1).maybeSingle();
-    
+
     if (inadimplente) {
       setSearchLoading(false);
       return showAlert('Cliente com restritivo interno (Inadimplência)', 'Este CPF possui restrição interna e não é permitido prosseguir com a venda.');
@@ -217,8 +216,8 @@ export default function EditarVenda(props: { params: Promise<{ id: string }> }) 
           const bMesAno = b.vencimento ? b.vencimento.substring(0, 7) : '';
           const oMesAno = o.vencimento ? o.vencimento.substring(0, 7) : '';
           return (
-            b.cpf === o.cpf && 
-            b.operacao === o.operacao.toString() && 
+            b.cpf === o.cpf &&
+            b.operacao === o.operacao.toString() &&
             bMesAno && oMesAno && bMesAno === oMesAno
           );
         });
@@ -274,7 +273,7 @@ export default function EditarVenda(props: { params: Promise<{ id: string }> }) 
   useEffect(() => {
     if (form.operacao === 'REFIN') {
       const valorParaSaldo = selectedOpIds.length > 0 ? totaisRefin.liquido : parcelasExibidas.reduce((acc, curr) => acc + curr.valorComDesconto, 0);
-      
+
       if (valorParaSaldo > 0) {
         setForm(f => ({ ...f, saldo: valorParaSaldo.toFixed(2).replace('.', ',') }));
       }
@@ -284,7 +283,7 @@ export default function EditarVenda(props: { params: Promise<{ id: string }> }) 
   useEffect(() => {
     if (form.operacao === 'REFIN' && form.codigo_operacao) {
       setForm(f => ({ ...f, contrato: f.codigo_operacao }));
-      
+
       const opSelecionada = operacoesDisponiveis.find(o => o.operacao.toString() === form.codigo_operacao);
       if (opSelecionada) {
         const valorContratoRaw = String(opSelecionada.contrato || '0').replace(/[^\d.,]/g, '').replace(',', '.');
@@ -300,8 +299,8 @@ export default function EditarVenda(props: { params: Promise<{ id: string }> }) 
         const fetchContas = async () => {
           try {
             const { data: allContas } = await supabase.schema('pro_consig').from('contas').select('*');
-            const contaData = allContas?.find(c => 
-              Number(c.grupo) === Number(opSelecionada.grupo) && 
+            const contaData = allContas?.find(c =>
+              Number(c.grupo) === Number(opSelecionada.grupo) &&
               Number(c.conta_ativacao) === Number(opSelecionada.contacobranca)
             );
 
@@ -351,7 +350,7 @@ export default function EditarVenda(props: { params: Promise<{ id: string }> }) 
         const dataVenc = new Date(maisAntiga.vencimento + 'T12:00:00');
         const mes = (dataVenc.getMonth() + 1).toString().padStart(2, '0');
         const ano = dataVenc.getFullYear().toString();
-        
+
         setForm(f => ({
           ...f,
           inicio_mes: mes,
@@ -368,13 +367,13 @@ export default function EditarVenda(props: { params: Promise<{ id: string }> }) 
       const grupo = opSelecionada?.grupo;
 
       let query = supabase.schema('pro_consig').from('contas').select('*').eq('conta_ativacao', conta);
-      
+
       if (grupo) {
         query = query.eq('grupo', grupo);
       }
 
       const { data, error } = await query;
-      
+
       if (error) throw error;
 
       if (data && data.length > 0) {
@@ -394,7 +393,7 @@ export default function EditarVenda(props: { params: Promise<{ id: string }> }) 
   const opSemParcelas = useMemo(() => {
     if (form.operacao !== 'REFIN' || !form.codigo_operacao) return false;
     const op = operacoesDisponiveis.find(o => String(o.operacao) === form.codigo_operacao);
-    
+
     // NOVA ESTRATÉGIA: Se o n° parcela for 0, não tem parcelas
     return op && (op.num_parcela === 0 || op.num_parcela === '0');
   }, [form.operacao, form.codigo_operacao, operacoesDisponiveis]);
@@ -486,7 +485,7 @@ export default function EditarVenda(props: { params: Promise<{ id: string }> }) 
 
     // Campos numéricos puros (apenas dígitos)
     const numericFields = [
-      'conta_ativacao', 'dia_util', 'inicio_ano', 'prazo', 
+      'conta_ativacao', 'dia_util', 'inicio_ano', 'prazo',
       'agencia', 'agencia_dv', 'conta', 'conta_dv', 'op',
       'credito_agencia', 'credito_agencia_dv', 'credito_conta', 'credito_conta_dv'
     ];
@@ -636,13 +635,13 @@ export default function EditarVenda(props: { params: Promise<{ id: string }> }) 
             <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
               <div style={{ maxWidth: '280px', flex: 1 }}>
                 <label style={fs}>CPF do Cliente</label>
-                <input 
-                  type="text" 
-                  value={cpf} 
-                  onChange={e => setCpf(formatCPF(e.target.value))} 
+                <input
+                  type="text"
+                  value={cpf}
+                  onChange={e => setCpf(formatCPF(e.target.value))}
                   onFocus={resetScreen}
-                  placeholder="000.000.000-00" 
-                  style={{ width: '100%' }} 
+                  placeholder="000.000.000-00"
+                  style={{ width: '100%' }}
                 />
               </div>
               <button type="button" className="btn btn-secondary" style={{ marginTop: '1.5rem', padding: '0.65rem' }} onClick={buscarCliente} disabled={searchLoading}><Search size={20} /></button>
@@ -684,14 +683,14 @@ export default function EditarVenda(props: { params: Promise<{ id: string }> }) 
                         {codigosUnicos.map(c => <option key={c} value={c}>{c}</option>)}
                       </select>
                     ) : (
-                      <input 
-                        name="codigo_operacao" 
-                        type="text" 
-                        value={form.codigo_operacao} 
-                        onChange={handleChange} 
-                        required={form.operacao !== 'NOVO'} 
+                      <input
+                        name="codigo_operacao"
+                        type="text"
+                        value={form.codigo_operacao}
+                        onChange={handleChange}
+                        required={form.operacao !== 'NOVO'}
                         disabled={form.operacao === 'NOVO'}
-                        style={{ width: '100%', padding: '0.5rem', ...(form.operacao === 'NOVO' ? readonlyStyle : {}) }} 
+                        style={{ width: '100%', padding: '0.5rem', ...(form.operacao === 'NOVO' ? readonlyStyle : {}) }}
                       />
                     )}
                   </div>
@@ -720,7 +719,7 @@ export default function EditarVenda(props: { params: Promise<{ id: string }> }) 
               {form.operacao === 'REFIN' && form.codigo_operacao ? (
                 <div className="card animate-fade-in" style={{ marginBottom: '1rem', border: '1px solid var(--color-primary-light)', backgroundColor: 'rgba(79, 70, 229, 0.01)' }}>
                   <legend style={ls}><div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><ListFilter size={18} /> Detalhes da Operação {form.codigo_operacao}</div></legend>
-                  
+
                   {opSemParcelas ? (
                     <div style={{ textAlign: 'center', padding: '2rem', color: '#ef4444', fontWeight: 600 }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
@@ -732,75 +731,75 @@ export default function EditarVenda(props: { params: Promise<{ id: string }> }) 
                       <div className="table-wrapper" style={{ border: '1px solid var(--color-border)' }}>
                         <table className="table table-sm" style={{ borderCollapse: 'separate', borderSpacing: 0 }}>
                           <thead>
-                        <tr>
-                          <th style={{ width: '44px', position: 'sticky', top: 0, zIndex: 10, backgroundColor: 'var(--color-bg-surface-hover)', borderBottom: '2px solid var(--color-border)', textAlign: 'center', padding: '0.5rem' }}>
-                            <input type="checkbox" checked={isAllSelected} onChange={handleSelectAll} style={{ cursor: 'pointer', verticalAlign: 'middle' }} />
-                          </th>
-                          <th style={{ width: '60px', position: 'sticky', top: 0, zIndex: 10, backgroundColor: 'var(--color-bg-surface-hover)', borderBottom: '2px solid var(--color-border)', textAlign: 'right' }}>Parcela</th>
-                          <th style={{ position: 'sticky', top: 0, zIndex: 10, backgroundColor: 'var(--color-bg-surface-hover)', borderBottom: '2px solid var(--color-border)', textAlign: 'center' }}>Vencimento</th>
-                          <th style={{ position: 'sticky', top: 0, zIndex: 10, backgroundColor: 'var(--color-bg-surface-hover)', borderBottom: '2px solid var(--color-border)', textAlign: 'right' }}>Valor (R$)</th>
-                          <th style={{ position: 'sticky', top: 0, zIndex: 10, backgroundColor: 'var(--color-bg-surface-hover)', borderBottom: '2px solid var(--color-border)', textAlign: 'center' }}>Dias</th>
-                          <th style={{ position: 'sticky', top: 0, zIndex: 10, backgroundColor: 'var(--color-bg-surface-hover)', borderBottom: '2px solid var(--color-border)', textAlign: 'center' }}>% Desconto</th>
-                          <th style={{ position: 'sticky', top: 0, zIndex: 10, backgroundColor: 'var(--color-bg-surface-hover)', borderBottom: '2px solid var(--color-border)', textAlign: 'right' }}>Desconto (R$)</th>
-                          <th style={{ position: 'sticky', top: 0, zIndex: 10, backgroundColor: 'var(--color-bg-surface-hover)', borderBottom: '2px solid var(--color-border)', textAlign: 'right' }}>Líquido (R$)</th>
-                          <th style={{ position: 'sticky', top: 0, zIndex: 10, backgroundColor: 'var(--color-bg-surface-hover)', borderBottom: '2px solid var(--color-border)', textAlign: 'center' }}>Grupo</th>
-                        </tr>
-                      </thead>
-                      <tbody style={{ fontSize: '0.8125rem' }}>
-                        {parcelasExibidas.length > 0 ? (
-                          parcelasExibidas.map(p => (
-                            <tr key={p.id} onClick={() => toggleOpSelection(p.id)} style={{ cursor: 'pointer', backgroundColor: selectedOpIds.includes(p.id) ? 'rgba(79, 70, 229, 0.06)' : 'transparent' }}>
-                              <td style={{ padding: '0.4rem 0.5rem', width: '44px', textAlign: 'center' }}>
-                                <input type="checkbox" checked={selectedOpIds.includes(p.id)} readOnly style={{ verticalAlign: 'middle' }} />
-                              </td>
-                              <td style={{ padding: '0.4rem 0.5rem', textAlign: 'right', fontWeight: 600, color: 'var(--color-text-muted)' }}>{p.numParcela}</td>
-                              <td style={{ padding: '0.4rem 0.5rem', textAlign: 'center' }}>{new Date(p.vencimento + 'T12:00:00').toLocaleDateString('pt-BR')}</td>
-                              <td style={{ padding: '0.4rem 0.5rem', textAlign: 'right', fontWeight: 500 }}>{p.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                              <td style={{ padding: '0.4rem 0.5rem', textAlign: 'center' }}>{p.dias}</td>
-                              <td style={{ padding: '0.4rem 0.5rem', textAlign: 'center', color: 'var(--color-danger)' }}>{p.percDesconto}%</td>
-                              <td style={{ padding: '0.4rem 0.5rem', textAlign: 'right', color: 'var(--color-danger)' }}>- {p.valorDesconto.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                              <td style={{ padding: '0.4rem 0.5rem', textAlign: 'right', fontWeight: 600, color: 'var(--color-success)' }}>{p.valorComDesconto.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                              <td style={{ padding: '0.4rem 0.5rem', textAlign: 'center', fontWeight: 600 }}>{p.grupo}</td>
+                            <tr>
+                              <th style={{ width: '44px', position: 'sticky', top: 0, zIndex: 10, backgroundColor: 'var(--color-bg-surface-hover)', borderBottom: '2px solid var(--color-border)', textAlign: 'center', padding: '0.5rem' }}>
+                                <input type="checkbox" checked={isAllSelected} onChange={handleSelectAll} style={{ cursor: 'pointer', verticalAlign: 'middle' }} />
+                              </th>
+                              <th style={{ width: '60px', position: 'sticky', top: 0, zIndex: 10, backgroundColor: 'var(--color-bg-surface-hover)', borderBottom: '2px solid var(--color-border)', textAlign: 'right' }}>Parcela</th>
+                              <th style={{ position: 'sticky', top: 0, zIndex: 10, backgroundColor: 'var(--color-bg-surface-hover)', borderBottom: '2px solid var(--color-border)', textAlign: 'center' }}>Vencimento</th>
+                              <th style={{ position: 'sticky', top: 0, zIndex: 10, backgroundColor: 'var(--color-bg-surface-hover)', borderBottom: '2px solid var(--color-border)', textAlign: 'right' }}>Valor (R$)</th>
+                              <th style={{ position: 'sticky', top: 0, zIndex: 10, backgroundColor: 'var(--color-bg-surface-hover)', borderBottom: '2px solid var(--color-border)', textAlign: 'center' }}>Dias</th>
+                              <th style={{ position: 'sticky', top: 0, zIndex: 10, backgroundColor: 'var(--color-bg-surface-hover)', borderBottom: '2px solid var(--color-border)', textAlign: 'center' }}>% Desconto</th>
+                              <th style={{ position: 'sticky', top: 0, zIndex: 10, backgroundColor: 'var(--color-bg-surface-hover)', borderBottom: '2px solid var(--color-border)', textAlign: 'right' }}>Desconto (R$)</th>
+                              <th style={{ position: 'sticky', top: 0, zIndex: 10, backgroundColor: 'var(--color-bg-surface-hover)', borderBottom: '2px solid var(--color-border)', textAlign: 'right' }}>Líquido (R$)</th>
+                              <th style={{ position: 'sticky', top: 0, zIndex: 10, backgroundColor: 'var(--color-bg-surface-hover)', borderBottom: '2px solid var(--color-border)', textAlign: 'center' }}>Grupo</th>
                             </tr>
-                          ))
-                        ) : (
-                          <tr>
-                            <td colSpan={9} style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-danger)', fontWeight: 600 }}>
-                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
-                                <AlertTriangle size={18} /> Não constam parcelas para esta operação no banco de dados.
-                              </div>
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                  <div style={{ marginTop: '0.75rem', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.75rem' }}>
-                    <div className="card" style={{ padding: '0.5rem', textAlign: 'center', border: '1px solid var(--color-border)' }}><span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>Total Parcelas</span><div style={{ fontSize: '1rem', fontWeight: 700 }}>{totaisRefin.total}</div></div>
-                    <div className="card" style={{ padding: '0.5rem', textAlign: 'center', border: '1px solid var(--color-border)' }}><span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>Selecionadas</span><div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-primary)' }}>{totaisRefin.qtd}</div></div>
-                    <div className="card" style={{ padding: '0.5rem', textAlign: 'center', border: '1px solid var(--color-border)' }}><span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>Saldo Bruto</span><div style={{ fontSize: '1rem', fontWeight: 700 }}>R$ {totaisRefin.bruto.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div></div>
-                    <div className="card" style={{ padding: '0.5rem', textAlign: 'center', border: '1px solid var(--color-border)' }}><span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>Saldo Líquido</span><div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-success)' }}>R$ {totaisRefin.liquido.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div></div>
-                  </div>
-                </>
-              )}
-            </div>
-          ) : null}
+                          </thead>
+                          <tbody style={{ fontSize: '0.8125rem' }}>
+                            {parcelasExibidas.length > 0 ? (
+                              parcelasExibidas.map(p => (
+                                <tr key={p.id} onClick={() => toggleOpSelection(p.id)} style={{ cursor: 'pointer', backgroundColor: selectedOpIds.includes(p.id) ? 'rgba(79, 70, 229, 0.06)' : 'transparent' }}>
+                                  <td style={{ padding: '0.4rem 0.5rem', width: '44px', textAlign: 'center' }}>
+                                    <input type="checkbox" checked={selectedOpIds.includes(p.id)} readOnly style={{ verticalAlign: 'middle' }} />
+                                  </td>
+                                  <td style={{ padding: '0.4rem 0.5rem', textAlign: 'right', fontWeight: 600, color: 'var(--color-text-muted)' }}>{p.numParcela}</td>
+                                  <td style={{ padding: '0.4rem 0.5rem', textAlign: 'center' }}>{new Date(p.vencimento + 'T12:00:00').toLocaleDateString('pt-BR')}</td>
+                                  <td style={{ padding: '0.4rem 0.5rem', textAlign: 'right', fontWeight: 500 }}>{p.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                  <td style={{ padding: '0.4rem 0.5rem', textAlign: 'center' }}>{p.dias}</td>
+                                  <td style={{ padding: '0.4rem 0.5rem', textAlign: 'center', color: 'var(--color-danger)' }}>{p.percDesconto}%</td>
+                                  <td style={{ padding: '0.4rem 0.5rem', textAlign: 'right', color: 'var(--color-danger)' }}>- {p.valorDesconto.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                  <td style={{ padding: '0.4rem 0.5rem', textAlign: 'right', fontWeight: 600, color: 'var(--color-success)' }}>{p.valorComDesconto.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                  <td style={{ padding: '0.4rem 0.5rem', textAlign: 'center', fontWeight: 600 }}>{p.grupo}</td>
+                                </tr>
+                              ))
+                            ) : (
+                              <tr>
+                                <td colSpan={9} style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-danger)', fontWeight: 600 }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+                                    <AlertTriangle size={18} /> Não constam parcelas para esta operação no banco de dados.
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                      <div style={{ marginTop: '0.75rem', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.75rem' }}>
+                        <div className="card" style={{ padding: '0.5rem', textAlign: 'center', border: '1px solid var(--color-border)' }}><span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>Total Parcelas</span><div style={{ fontSize: '1rem', fontWeight: 700 }}>{totaisRefin.total}</div></div>
+                        <div className="card" style={{ padding: '0.5rem', textAlign: 'center', border: '1px solid var(--color-border)' }}><span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>Selecionadas</span><div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-primary)' }}>{totaisRefin.qtd}</div></div>
+                        <div className="card" style={{ padding: '0.5rem', textAlign: 'center', border: '1px solid var(--color-border)' }}><span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>Saldo Bruto</span><div style={{ fontSize: '1rem', fontWeight: 700 }}>R$ {totaisRefin.bruto.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div></div>
+                        <div className="card" style={{ padding: '0.5rem', textAlign: 'center', border: '1px solid var(--color-border)' }}><span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>Saldo Líquido</span><div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-success)' }}>R$ {totaisRefin.liquido.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div></div>
+                      </div>
+                    </>
+                  )}
+                </div>
+              ) : null}
 
               <div className="card" style={{ marginBottom: '1rem' }}>
                 <legend style={ls}>Valores e Condições</legend>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '1rem' }}>
-                   <div><label style={fs}>Contrato (R$)</label><input name="valor" type="text" value={form.valor} onChange={handleChange} onBlur={handleBlur} required style={{ width: '100%', fontWeight: 700, color: 'var(--color-primary)' }} /></div>
+                  <div><label style={fs}>Contrato (R$)</label><input name="valor" type="text" value={form.valor} onChange={handleChange} onBlur={handleBlur} required style={{ width: '100%', fontWeight: 700, color: 'var(--color-primary)' }} /></div>
                   <div>
                     <label style={fs}>Saldo (R$)</label>
-                    <input 
-                      name="saldo" 
-                      type="text" 
-                      value={form.saldo} 
-                      onChange={handleChange} 
-                      onBlur={handleBlur} 
-                      required 
+                    <input
+                      name="saldo"
+                      type="text"
+                      value={form.saldo}
+                      onChange={handleChange}
+                      onBlur={handleBlur}
+                      required
                       disabled={form.operacao === 'NOVO'}
-                      style={{ width: '100%', ...(form.operacao === 'NOVO' ? readonlyStyle : {}) }} 
+                      style={{ width: '100%', ...(form.operacao === 'NOVO' ? readonlyStyle : {}) }}
                     />
                   </div>
                   <div><label style={fs}>Líquido (R$)</label><input name="valor_liquido" type="text" value={form.valor_liquido} onChange={handleChange} onBlur={handleBlur} style={{ width: '100%' }} /></div>
@@ -877,7 +876,7 @@ export default function EditarVenda(props: { params: Promise<{ id: string }> }) 
               </div>
             </div>
           ) : (
-             <div style={{ textAlign: 'center', padding: '4rem' }}>Aguardando CPF...</div>
+            <div style={{ textAlign: 'center', padding: '4rem' }}>Aguardando CPF...</div>
           )}
         </form>
       </div>
