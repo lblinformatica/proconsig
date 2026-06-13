@@ -47,6 +47,7 @@ export default function NovaVenda() {
   const [operacoesDisponiveis, setOperacoesDisponiveis] = useState<any[]>([]);
   const [selectedOpIds, setSelectedOpIds] = useState<number[]>([]);
   const [baixasCliente, setBaixasCliente] = useState<any[]>([]);
+  const [hasOperationsButAllSold, setHasOperationsButAllSold] = useState(false);
 
   const [form, setForm] = useState({
     orgao: '', empresa: '', operacao: 'REFIN', codigo_operacao: '', corretor: '', carteira: '',
@@ -91,6 +92,7 @@ export default function NovaVenda() {
     setSearchInitiated(false);
     setOperacoesDisponiveis([]);
     setSelectedOpIds([]);
+    setHasOperationsButAllSold(false);
     setForm(f => ({
       ...f,
       orgao: '', empresa: '', codigo_operacao: '', carteira: '',
@@ -161,12 +163,43 @@ export default function NovaVenda() {
 
       if (ops) {
         const soldContracts = new Set(existingVendas?.map(v => v.contrato) || []);
-        // Filtra apenas as operações cujo código (contrato) não está na tabela de vendas
-        setOperacoesDisponiveis(ops.filter(o => !soldContracts.has(o.operacao.toString())));
+        const disponiveis = ops.filter(o => !soldContracts.has(o.operacao.toString()));
+        setOperacoesDisponiveis(disponiveis);
+
+        if (ops.length > 0 && disponiveis.length === 0) {
+          setHasOperationsButAllSold(true);
+          showAlert(
+            'Contratos Já Cadastrados',
+            'Todos os contratos deste CPF já constam registrados em Vendas. Só serão permitidas operações do tipo NOVO e COMPRA.'
+          );
+          setForm(f => ({
+            ...f,
+            operacao: 'NOVO',
+            codigo_operacao: '',
+            contrato: '',
+            valor: '',
+            saldo: '0,00',
+            valor_liquido: '',
+            coef: '',
+            parcela: '',
+            prazo: '',
+            empresa_ativacao: '',
+            conta_ativacao: '',
+            empresa_credora: '',
+            inicio_mes: '',
+            inicio_ano: new Date().getFullYear().toString(),
+            dia_util: ''
+          }));
+        } else {
+          setHasOperationsButAllSold(false);
+        }
+      } else {
+        setHasOperationsButAllSold(false);
       }
     } else {
       setClientFound(null);
       setOperacoesDisponiveis([]);
+      setHasOperationsButAllSold(false);
     }
     setSearchLoading(false);
   };
@@ -469,9 +502,26 @@ export default function NovaVenda() {
       return;
     }
 
-    // Convert value to uppercase for all text/input fields
-    const upperValue = typeof value === 'string' ? value.toUpperCase() : value;
-    setForm(f => ({ ...f, [name]: upperValue }));
+    // Convert value to uppercase for all text/input fields, preserving case for select dropdowns and emails
+    const skipUppercaseFields = [
+      'novo_cliente',
+      'atualizacao_cadastral',
+      'tipo_conta',
+      'credito_tipo_conta',
+      'forma_credito',
+      'pix_tipo_chave',
+      'inicio_mes'
+    ];
+
+    let finalValue = value;
+    if (typeof value === 'string') {
+      if (name.toLowerCase().includes('email')) {
+        finalValue = value.toLowerCase();
+      } else if (!skipUppercaseFields.includes(name)) {
+        finalValue = value.toUpperCase();
+      }
+    }
+    setForm(f => ({ ...f, [name]: finalValue }));
   };
 
   const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
@@ -686,7 +736,14 @@ export default function NovaVenda() {
                     </select>
                   </div>
                   <div><label style={fs}>Empresa</label><input name="empresa" type="text" value={form.empresa} onChange={handleChange} required style={{ width: '100%', padding: '0.5rem' }} /></div>
-                  <div><label style={fs}>Operação</label><select name="operacao" value={form.operacao} onChange={handleChange} required style={{ width: '100%', padding: '0.5rem' }}><option value="REFIN">REFIN</option><option value="NOVO">NOVO</option><option value="COMPRA">COMPRA</option></select></div>
+                  <div>
+                    <label style={fs}>Operação</label>
+                    <select name="operacao" value={form.operacao} onChange={handleChange} required style={{ width: '100%', padding: '0.5rem' }}>
+                      {!hasOperationsButAllSold && <option value="REFIN">REFIN</option>}
+                      <option value="NOVO">NOVO</option>
+                      <option value="COMPRA">COMPRA</option>
+                    </select>
+                  </div>
                   <div>
                     <label style={fs}>Cód. Operação</label>
                     {form.operacao === 'REFIN' && codigosUnicos.length > 0 ? (

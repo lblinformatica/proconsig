@@ -477,9 +477,45 @@ export default function EditarVenda(props: { params: Promise<{ id: string }> }) 
       return;
     }
 
-    // Convert value to uppercase for all text/input fields
-    const upperValue = typeof value === 'string' ? value.toUpperCase() : value;
-    setForm(f => ({ ...f, [name]: upperValue }));
+    // Campos financeiros (permitem números, ponto e vírgula)
+    if (['valor', 'saldo', 'parcela', 'valor_liquido'].includes(name)) {
+      const cleanValue = value.replace(/[^\d.,]/g, '');
+      setForm(f => ({ ...f, [name]: cleanValue }));
+      return;
+    }
+
+    // Campos numéricos puros (apenas dígitos)
+    const numericFields = [
+      'conta_ativacao', 'dia_util', 'inicio_ano', 'prazo', 
+      'agencia', 'agencia_dv', 'conta', 'conta_dv', 'op',
+      'credito_agencia', 'credito_agencia_dv', 'credito_conta', 'credito_conta_dv'
+    ];
+    if (numericFields.includes(name)) {
+      const cleanValue = value.replace(/\D/g, '');
+      setForm(f => ({ ...f, [name]: cleanValue }));
+      return;
+    }
+
+    // Convert value to uppercase for all text/input fields, preserving case for select dropdowns and emails
+    const skipUppercaseFields = [
+      'novo_cliente',
+      'atualizacao_cadastral',
+      'tipo_conta',
+      'credito_tipo_conta',
+      'forma_credito',
+      'pix_tipo_chave',
+      'inicio_mes'
+    ];
+
+    let finalValue = value;
+    if (typeof value === 'string') {
+      if (name.toLowerCase().includes('email')) {
+        finalValue = value.toLowerCase();
+      } else if (!skipUppercaseFields.includes(name)) {
+        finalValue = value.toUpperCase();
+      }
+    }
+    setForm(f => ({ ...f, [name]: finalValue }));
   };
 
   const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
