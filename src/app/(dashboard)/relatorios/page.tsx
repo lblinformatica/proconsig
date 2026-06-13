@@ -7,6 +7,7 @@ import * as XLSX from 'xlsx';
 import { ConfirmModal } from '@/components/ConfirmModal';
 import { useEffect } from 'react';
 import { sendRelatorioEmail } from '@/app/actions/relatorios';
+import { validateCPF, formatCPF } from '@/lib/cpf';
 
 export default function RelatoriosPage() {
   const [loading, setLoading] = useState(false);
@@ -16,7 +17,7 @@ export default function RelatoriosPage() {
   const PAGE_SIZE = 25;
 
   const [filters, setFilters] = useState({
-    banco: '', status: 'Aprovado', dataInicio: '', dataFim: '', corretor: ''
+    cpf: '', status: 'Aprovado', dataInicio: '', dataFim: '', corretor: ''
   });
   const [modalError, setModalError] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -70,7 +71,12 @@ export default function RelatoriosPage() {
   }, [nivel, allowedContas]);
 
   const handleFilterChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    setFilters({ ...filters, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    if (name === 'cpf') {
+      setFilters(prev => ({ ...prev, cpf: formatCPF(value) }));
+    } else {
+      setFilters(prev => ({ ...prev, [name]: value }));
+    }
   };
 
   const handleTogglePaga = async (vendaId: string, currentStatus: string) => {
@@ -107,6 +113,10 @@ export default function RelatoriosPage() {
   };
 
   const buscarDados = async (p = page) => {
+    if (filters.cpf && !validateCPF(filters.cpf)) {
+      setModalError('Por favor, informe um CPF válido para realizar a busca.');
+      return;
+    }
     setLoading(true);
     const from = p * PAGE_SIZE;
     const to = from + PAGE_SIZE - 1;
@@ -128,7 +138,7 @@ export default function RelatoriosPage() {
       }
     }
 
-    if (filters.banco) query = query.ilike('banco', `%${filters.banco}%`);
+    if (filters.cpf) query = query.eq('cpf', formatCPF(filters.cpf));
     if (filters.corretor) query = query.ilike('corretor', `%${filters.corretor}%`);
     if (filters.status) query = query.eq('status', filters.status);
     if (filters.dataInicio) query = query.gte('created_at', filters.dataInicio);
@@ -149,6 +159,10 @@ export default function RelatoriosPage() {
   const [countResult, setCountResult] = useState(0);
 
   const exportExcel = async () => {
+    if (filters.cpf && !validateCPF(filters.cpf)) {
+      setModalError('Por favor, informe um CPF válido para realizar a busca.');
+      return;
+    }
     setLoading(true);
     let allData: any[] = [];
     let page = 0;
@@ -172,7 +186,7 @@ export default function RelatoriosPage() {
         }
       }
 
-      if (filters.banco) query = query.ilike('banco', `%${filters.banco}%`);
+      if (filters.cpf) query = query.eq('cpf', formatCPF(filters.cpf));
       if (filters.corretor) query = query.ilike('corretor', `%${filters.corretor}%`);
       if (filters.status) query = query.eq('status', filters.status);
       if (filters.dataInicio) query = query.gte('created_at', filters.dataInicio);
@@ -254,6 +268,10 @@ export default function RelatoriosPage() {
   };
 
   const exportBordero = async () => {
+    if (filters.cpf && !validateCPF(filters.cpf)) {
+      setModalError('Por favor, informe um CPF válido para realizar a busca.');
+      return;
+    }
     setLoading(true);
     let allData: any[] = [];
     let pageNum = 0;
@@ -279,7 +297,7 @@ export default function RelatoriosPage() {
         }
       }
 
-      if (filters.banco) query = query.ilike('banco', `%${filters.banco}%`);
+      if (filters.cpf) query = query.eq('cpf', formatCPF(filters.cpf));
       if (filters.corretor) query = query.ilike('corretor', `%${filters.corretor}%`);
       if (filters.status) query = query.eq('status', filters.status);
       if (filters.dataInicio) query = query.gte('created_at', filters.dataInicio);
@@ -901,10 +919,10 @@ export default function RelatoriosPage() {
       <div className="card" style={{ marginBottom: '2rem', padding: '1.25rem' }}>
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
           <div style={{ flex: 1, minWidth: '180px' }}>
-            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'capitalize' }}>Banco</label>
+            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'capitalize' }}>CPF</label>
             <div style={{ position: 'relative' }}>
               <Search size={16} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
-              <input name="banco" type="text" value={filters.banco} onChange={handleFilterChange} placeholder="Buscar banco..." style={{ width: '100%', paddingLeft: '2.5rem', height: '42px' }} />
+              <input name="cpf" type="text" value={filters.cpf} onChange={handleFilterChange} placeholder="000.000.000-00" maxLength={14} style={{ width: '100%', paddingLeft: '2.5rem', height: '42px' }} />
             </div>
           </div>
           <div style={{ flex: 1, minWidth: '180px' }}>
