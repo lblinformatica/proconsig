@@ -335,6 +335,14 @@ export default function VendaDetails(props: { params: Promise<{ id: string }> })
                   <span style={{ color: 'var(--color-text-muted)' }}>Dia Útil do Desconto:</span>
                   <span>{venda.dia_util ? `${venda.dia_util}º dia útil` : '-'}</span>
                 </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: 'var(--color-text-muted)' }}>Parcelas Restantes:</span>
+                  <span>{venda.restam !== null && venda.restam !== undefined ? venda.restam : '-'}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: 'var(--color-text-muted)' }}>Parcelas Abatidas:</span>
+                  <span>{venda.abatidas !== null && venda.abatidas !== undefined ? venda.abatidas : '-'}</span>
+                </div>
               </div>
             </div>
           </div>
