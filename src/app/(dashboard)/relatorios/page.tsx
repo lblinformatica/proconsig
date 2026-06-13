@@ -638,6 +638,7 @@ export default function RelatoriosPage() {
       const wsEmail = workbook.addWorksheet('Cadastro E-mail');
 
       wsEmail.columns = [
+        { header: 'Empresa Credora', key: 'empresa_credora', width: 20 },
         { header: 'Empresa Ativação', key: 'empresa_ativacao', width: 20 },
         { header: 'Código Convênio', key: 'codigo_convenio', width: 18 },
         { header: 'Conta Ativação', key: 'conta_ativacao', width: 16 },
@@ -699,6 +700,7 @@ export default function RelatoriosPage() {
         const dataInicio = v.inicio ? new Date(v.inicio + 'T12:00:00') : null;
 
         const rowData = {
+          empresa_credora: v.empresa_credora || '',
           empresa_ativacao: v.empresa_ativacao || '',
           codigo_convenio: getConvenioCode(v.empresa_ativacao),
           conta_ativacao: v.conta_ativacao || '',
@@ -746,8 +748,8 @@ export default function RelatoriosPage() {
           };
 
           // Alignment
-          const centerCols = [2, 3, 4, 5, 7, 9, 10, 11, 12, 13, 14, 15, 18, 19, 20, 21, 22, 23, 26, 29, 30, 31];
-          const rightCols = [24, 25, 27, 28];
+          const centerCols = [3, 4, 5, 6, 8, 10, 11, 12, 13, 14, 15, 16, 19, 20, 21, 22, 23, 24, 27, 30, 31, 32];
+          const rightCols = [25, 26, 28, 29];
 
           if (centerCols.includes(colNumber)) {
             cell.alignment = { horizontal: 'center', vertical: 'middle' };
@@ -758,13 +760,13 @@ export default function RelatoriosPage() {
           }
 
           // Number Formats
-          if ([24, 25, 27].includes(colNumber)) {
+          if ([25, 26, 28].includes(colNumber)) {
             cell.numFmt = '#,##0.00';
-          } else if (colNumber === 28) {
+          } else if (colNumber === 29) {
             cell.numFmt = '0.000';
-          } else if (colNumber === 5) {
+          } else if (colNumber === 6) {
             cell.numFmt = 'yyyy-mm-dd';
-          } else if (colNumber === 11) {
+          } else if (colNumber === 12) {
             cell.numFmt = 'mm/yyyy';
           }
         });
