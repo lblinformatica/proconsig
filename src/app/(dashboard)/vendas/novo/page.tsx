@@ -288,8 +288,8 @@ export default function NovaVenda() {
         
         setForm(f => ({
           ...f,
-          valor: valorContratoNum.toLocaleString('pt-BR', { minimumFractionDigits: 2 }),
-          parcela: opSelecionada.parcela_valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 }),
+          valor: valorContratoNum.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+          parcela: opSelecionada.parcela_valor.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
           coef: (opSelecionada.coef || 0).toFixed(3).replace('.', ',')
         }));
 
@@ -823,7 +823,7 @@ export default function NovaVenda() {
                               </td>
                               <td style={{ padding: '0.4rem 0.5rem', textAlign: 'right', fontWeight: 600, color: 'var(--color-text-muted)' }}>{p.numParcela}</td>
                               <td style={{ padding: '0.4rem 0.5rem', textAlign: 'center' }}>{new Date(p.vencimento + 'T12:00:00').toLocaleDateString('pt-BR')}</td>
-                              <td style={{ padding: '0.4rem 0.5rem', textAlign: 'right', fontWeight: 500 }}>{p.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                              <td style={{ padding: '0.4rem 0.5rem', textAlign: 'right', fontWeight: 500 }}>{p.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                               <td style={{ padding: '0.4rem 0.5rem', textAlign: 'center' }}>{p.dias}</td>
                               <td style={{ padding: '0.4rem 0.5rem', textAlign: 'center' }}>
                                 {p.isBaixada ? (
@@ -833,8 +833,8 @@ export default function NovaVenda() {
                                 )}
                               </td>
                               <td style={{ padding: '0.4rem 0.5rem', textAlign: 'center', color: 'var(--color-danger)' }}>{p.percDesconto}%</td>
-                              <td style={{ padding: '0.4rem 0.5rem', textAlign: 'right', color: 'var(--color-danger)' }}>- {p.valorDesconto.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
-                              <td style={{ padding: '0.4rem 0.5rem', textAlign: 'right', fontWeight: 600, color: 'var(--color-success)' }}>{p.valorComDesconto.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                              <td style={{ padding: '0.4rem 0.5rem', textAlign: 'right', color: 'var(--color-danger)' }}>- {p.valorDesconto.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                              <td style={{ padding: '0.4rem 0.5rem', textAlign: 'right', fontWeight: 600, color: 'var(--color-success)' }}>{p.valorComDesconto.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                               <td style={{ padding: '0.4rem 0.5rem', textAlign: 'center', fontWeight: 600 }}>{p.grupo}</td>
                             </tr>
                           ))
@@ -853,8 +853,8 @@ export default function NovaVenda() {
                   <div style={{ marginTop: '0.75rem', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.75rem' }}>
                     <div className="card" style={{ padding: '0.5rem', textAlign: 'center', border: '1px solid var(--color-border)' }}><span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>Total Parcelas</span><div style={{ fontSize: '1rem', fontWeight: 700 }}>{totaisRefin.total}</div></div>
                     <div className="card" style={{ padding: '0.5rem', textAlign: 'center', border: '1px solid var(--color-border)' }}><span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>Selecionadas</span><div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-primary)' }}>{totaisRefin.qtd}</div></div>
-                    <div className="card" style={{ padding: '0.5rem', textAlign: 'center', border: '1px solid var(--color-border)' }}><span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>Saldo Bruto</span><div style={{ fontSize: '1rem', fontWeight: 700 }}>R$ {totaisRefin.bruto.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div></div>
-                    <div className="card" style={{ padding: '0.5rem', textAlign: 'center', border: '1px solid var(--color-border)' }}><span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>Saldo Líquido</span><div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-success)' }}>R$ {totaisRefin.liquido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div></div>
+                    <div className="card" style={{ padding: '0.5rem', textAlign: 'center', border: '1px solid var(--color-border)' }}><span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>Saldo Bruto</span><div style={{ fontSize: '1rem', fontWeight: 700 }}>R$ {totaisRefin.bruto.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div></div>
+                    <div className="card" style={{ padding: '0.5rem', textAlign: 'center', border: '1px solid var(--color-border)' }}><span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>Saldo Líquido</span><div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-success)' }}>R$ {totaisRefin.liquido.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div></div>
                   </div>
                 </>
               )}

@@ -322,7 +322,7 @@ export default function BaixasPage() {
                       </td>
                       <td style={{ padding: '1rem', fontSize: '0.875rem', fontWeight: 600 }}>{item.nome}</td>
                       <td style={{ padding: '1rem', fontSize: '0.875rem' }}>{item.operacao}</td>
-                      <td style={{ padding: '1rem', fontSize: '0.875rem', textAlign: 'right', fontWeight: 600 }}>R$ {item.parcela.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                      <td style={{ padding: '1rem', fontSize: '0.875rem', textAlign: 'right', fontWeight: 600 }}>R$ {item.parcela.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                       <td style={{ padding: '1rem', fontSize: '0.875rem', textAlign: 'center' }}>{item.vencimento ? new Date(item.vencimento + 'T12:00:00').toLocaleDateString('pt-BR') : '-'}</td>
                       <td style={{ padding: '1rem', fontSize: '0.875rem', textAlign: 'center', color: 'var(--color-success)', fontWeight: 600 }}>{item.data_baixa ? new Date(item.data_baixa + 'T12:00:00').toLocaleDateString('pt-BR') : '-'}</td>
                       <td style={{ padding: '1rem', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{item.nome_arquivo}</td>

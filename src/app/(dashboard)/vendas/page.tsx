@@ -207,8 +207,8 @@ export default function VendasList() {
                           </div>
                         </td>
                         <td><span className="badge badge-info">{v.operacao}</span></td>
-                        <td style={{ fontWeight: 600 }}>R$ {v.valor?.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
-                        <td>R$ {v.parcela?.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                        <td style={{ fontWeight: 600 }}>R$ {v.valor?.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                        <td>R$ {v.parcela?.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                         <td style={{ fontSize: '0.875rem' }}>{v.usuarios?.nome || '-'}</td>
                         <td style={{ textAlign: 'right' }}>
                           <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
