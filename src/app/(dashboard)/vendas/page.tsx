@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabaseClient';
-import { Edit2, Trash2, Search, Plus, ChevronLeft, ChevronRight, Filter, Copy, Check } from 'lucide-react';
+import { Edit2, Trash2, Search, Plus, ChevronLeft, ChevronRight, Filter, Copy, Check, Eye } from 'lucide-react';
 import Link from 'next/link';
 import { ConfirmModal } from '@/components/ConfirmModal';
 
@@ -212,6 +212,9 @@ export default function VendasList() {
                         <td style={{ fontSize: '0.875rem' }}>{v.usuarios?.nome || '-'}</td>
                         <td style={{ textAlign: 'right' }}>
                           <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                            <Link href={`/vendas/${v.id}`} className="btn btn-secondary" style={{ padding: '0.4rem' }} title="Visualizar">
+                              <Eye size={16} />
+                            </Link>
                             <Link href={`/vendas/${v.id}/editar`} className="btn btn-secondary" style={{ padding: '0.4rem' }} title="Editar">
                               <Edit2 size={16} />
                             </Link>
