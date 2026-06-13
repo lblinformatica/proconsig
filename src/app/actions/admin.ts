@@ -35,7 +35,7 @@ export async function adminUpdateUser(
     // 2. Update Auth User (this changes the email they use to login)
     let updateProps: any = { email_confirm: true };
     if (data.conta) {
-      updateProps.email = `${data.conta.toLowerCase()}@proconsig.system`;
+      updateProps.email = `${data.conta.toLowerCase().replace(/\s+/g, '')}@proconsig.system`;
     }
 
     const { error: authError } = await supabaseAdmin.auth.admin.updateUserById(

@@ -26,7 +26,7 @@ export async function POST(req: Request) {
       });
     }
 
-    const pseudoEmail = `${profile.conta.toLowerCase()}@proconsig.system`;
+    const pseudoEmail = `${profile.conta.toLowerCase().replace(/\s+/g, '')}@proconsig.system`;
 
     // 2. Gerar link de recuperação via Supabase Admin
     // Esse link redirecionará para a URL de site configurada no Supabase (geralmente localhost:3000 ou vercel-url)

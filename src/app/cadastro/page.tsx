@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { User, AtSign, Mail, Lock, ArrowRight, Eye, EyeOff, CheckCircle } from 'lucide-react';
+import { User, AtSign, Mail, Lock, ArrowRight, Eye, EyeOff, CheckCircle, Sun, Moon } from 'lucide-react';
 
 export default function Cadastro() {
   const router = useRouter();
@@ -22,8 +22,26 @@ export default function Cadastro() {
 
   useEffect(() => {
     const saved = localStorage.getItem('theme');
-    setIsDark(saved === 'dark' || saved === null);
+    const dark = saved === 'dark' || saved === null;
+    setIsDark(dark);
+    if (dark) {
+      document.documentElement.setAttribute('data-theme', 'dark');
+    } else {
+      document.documentElement.removeAttribute('data-theme');
+    }
   }, []);
+
+  const toggleDarkMode = () => {
+    const newMode = !isDark;
+    setIsDark(newMode);
+    if (newMode) {
+      document.documentElement.setAttribute('data-theme', 'dark');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      document.documentElement.removeAttribute('data-theme');
+      localStorage.setItem('theme', 'light');
+    }
+  };
 
   const handleCadastro = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -244,6 +262,27 @@ export default function Cadastro() {
     .reg-login { margin-top: 1rem; text-align: center; font-size: 0.85rem; }
     .reg-login a { font-weight: 600; margin-left: 0.25rem; transition: color 0.2s; }
 
+    .theme-toggle-btn {
+      position: absolute;
+      top: 1.5rem;
+      right: 1.5rem;
+      z-index: 10;
+      padding: 0.5rem;
+      border-radius: 50%;
+      background: transparent;
+      border: none;
+      box-shadow: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+    }
+    .is-dark .theme-toggle-btn { color: #94a3b8; }
+    .is-dark .theme-toggle-btn:hover { color: #f8fafc; background: rgba(255,255,255,0.06); }
+    .is-light .theme-toggle-btn { color: #475569; }
+    .is-light .theme-toggle-btn:hover { color: #0f172a; background: rgba(0,0,0,0.05); }
+
     /* Success screen */
     .reg-success-card {
       border-radius: 1rem; padding: 2.5rem 2rem; text-align: center;
@@ -259,6 +298,9 @@ export default function Cadastro() {
       <>
         <style>{styles}</style>
         <div className={`reg-page ${theme}`}>
+          <button onClick={toggleDarkMode} className="theme-toggle-btn" title="Alternar Tema" type="button">
+            {isDark ? <Sun size={20} /> : <Moon size={20} />}
+          </button>
           <div className="reg-left">
             <Image src="/branding.png" alt="CentralPagamentos background" fill sizes="50vw" className="reg-left-bg" priority />
             <div className="reg-left-overlay" />
@@ -305,6 +347,9 @@ export default function Cadastro() {
     <>
       <style>{styles}</style>
       <div className={`reg-page ${theme}`}>
+        <button onClick={toggleDarkMode} className="theme-toggle-btn" title="Alternar Tema" type="button">
+          {isDark ? <Sun size={20} /> : <Moon size={20} />}
+        </button>
         {/* Left panel — identical to login page to avoid layout shift on navigation */}
         <div className="reg-left">
           <Image src="/branding.png" alt="CentralPagamentos background" fill sizes="50vw" className="reg-left-bg" priority />
@@ -351,7 +396,7 @@ export default function Cadastro() {
                 <label htmlFor="nome" >Nome Completo</label>
                 <div className="reg-input-wrap">
                   <User size={16} className="reg-input-icon" />
-                  <input id="nome" type="text" className="reg-input" value={nome} onChange={e => setNome(e.target.value.toUpperCase())} placeholder="Seu nome completo" required autoFocus />
+                  <input id="nome" type="text" className="reg-input" value={nome} onChange={e => setNome(e.target.value)} placeholder="Seu nome completo" required autoFocus />
                 </div>
               </div>
 
@@ -360,7 +405,7 @@ export default function Cadastro() {
                 <label htmlFor="conta" >Nome de Usuário (Conta)</label>
                 <div className="reg-input-wrap">
                   <AtSign size={16} className="reg-input-icon" />
-                  <input id="conta" type="text" className="reg-input" value={conta} onChange={e => setConta(e.target.value)} placeholder="ex: seunome" required autoComplete="username" />
+                  <input id="conta" type="text" className="reg-input" value={conta} onChange={e => setConta(e.target.value.replace(/\s+/g, ''))} placeholder="ex: seunome" required autoComplete="username" />
                 </div>
               </div>
 

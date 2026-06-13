@@ -6,7 +6,7 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import { ConfirmModal } from '@/components/ConfirmModal';
-import { User, Lock, ArrowRight, Eye, EyeOff } from 'lucide-react';
+import { User, Lock, ArrowRight, Eye, EyeOff, Sun, Moon } from 'lucide-react';
 
 export default function Login() {
   const router = useRouter();
@@ -20,8 +20,26 @@ export default function Login() {
 
   useEffect(() => {
     const saved = localStorage.getItem('theme');
-    setIsDark(saved === 'dark' || saved === null); // default to dark if never set
+    const dark = saved === 'dark' || saved === null;
+    setIsDark(dark);
+    if (dark) {
+      document.documentElement.setAttribute('data-theme', 'dark');
+    } else {
+      document.documentElement.removeAttribute('data-theme');
+    }
   }, []);
+
+  const toggleDarkMode = () => {
+    const newMode = !isDark;
+    setIsDark(newMode);
+    if (newMode) {
+      document.documentElement.setAttribute('data-theme', 'dark');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      document.documentElement.removeAttribute('data-theme');
+      localStorage.setItem('theme', 'light');
+    }
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,7 +47,7 @@ export default function Login() {
     setError('');
 
     try {
-      const pseudoEmail = `${conta.toLowerCase()}@proconsig.system`;
+      const pseudoEmail = `${conta.toLowerCase().replace(/\s+/g, '')}@proconsig.system`;
       const { data, error: authError } = await supabase.auth.signInWithPassword({
         email: pseudoEmail,
         password,
@@ -512,6 +530,27 @@ export default function Login() {
           height: 1px;
           background: rgba(255,255,255,0.07);
         }
+
+        .theme-toggle-btn {
+          position: absolute;
+          top: 1.5rem;
+          right: 1.5rem;
+          z-index: 10;
+          padding: 0.5rem;
+          border-radius: 50%;
+          background: transparent;
+          border: none;
+          box-shadow: none;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: all 0.2s ease;
+        }
+        .is-dark .theme-toggle-btn { color: #94a3b8; }
+        .is-dark .theme-toggle-btn:hover { color: #f8fafc; background: rgba(255,255,255,0.06); }
+        .is-light .theme-toggle-btn { color: #475569; }
+        .is-light .theme-toggle-btn:hover { color: #0f172a; background: rgba(0,0,0,0.05); }
       `}</style>
 
       <ConfirmModal
@@ -524,6 +563,9 @@ export default function Login() {
       />
 
       <div className={`login-page ${isDark ? 'is-dark' : 'is-light'}`}>
+        <button onClick={toggleDarkMode} className="theme-toggle-btn" title="Alternar Tema" type="button">
+          {isDark ? <Sun size={20} /> : <Moon size={20} />}
+        </button>
         {/* ── Left panel ── */}
         <div className="login-left">
           <Image
@@ -585,7 +627,7 @@ export default function Login() {
                     type="text"
                     className="login-input"
                     value={conta}
-                    onChange={(e) => setConta(e.target.value)}
+                    onChange={(e) => setConta(e.target.value.replace(/\s+/g, ''))}
                     placeholder="ex: seunome"
                     required
                     autoComplete="username"

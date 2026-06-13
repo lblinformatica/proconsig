@@ -21,7 +21,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Já existe uma conta com o nome de usuário informado.' }, { status: 400 });
     }
 
-    const pseudoEmail = `${conta.toLowerCase()}@proconsig.system`;
+    const pseudoEmail = `${conta.toLowerCase().replace(/\s+/g, '')}@proconsig.system`;
 
     // 1. Criar o usuário no Supabase Auth usando o Admin Client (já marca email como confirmado se quisermos)
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
