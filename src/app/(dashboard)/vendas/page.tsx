@@ -85,7 +85,7 @@ export default function VendasList() {
 
     let query = supabase
       .from('vendas')
-      .select('*, usuarios!created_by(nome)', { count: 'exact' })
+      .select('*, usuarios!created_by(nome), clientes(nome)', { count: 'exact' })
       .order('created_at', { ascending: false })
       .range(from, to);
 
@@ -174,7 +174,7 @@ export default function VendasList() {
                     <tr>
                       <th>ID Venda</th>
                       <th>Data</th>
-                      <th>CPF</th>
+                      <th>Cliente / CPF</th>
                       <th>Operação</th>
                       <th>Valor</th>
                       <th>Parcela</th>
@@ -187,23 +187,28 @@ export default function VendasList() {
                       <tr key={v.id}>
                         <td style={{ fontFamily: 'monospace', fontWeight: 600, color: 'var(--color-primary)', fontSize: '0.85rem' }}>{v.venda_id}</td>
                         <td style={{ fontSize: '0.875rem' }}>{new Date(v.created_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
-                        <td style={{ fontSize: '0.85rem' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', whiteSpace: 'nowrap' }}>
-                            {v.cpf}
-                            <button
-                              onClick={() => handleCopy(v.cpf, v.id)}
-                              style={{
-                                background: 'transparent',
-                                border: 'none',
-                                padding: '0.2rem',
-                                cursor: 'pointer',
-                                color: copiedId === v.id ? 'var(--color-success)' : 'var(--color-text-muted)',
-                                display: 'flex'
-                              }}
-                              title="Copiar CPF"
-                            >
-                              {copiedId === v.id ? <Check size={14} /> : <Copy size={14} />}
-                            </button>
+                        <td>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                            <span style={{ fontWeight: 600, textTransform: 'uppercase', fontSize: '0.85rem' }}>
+                              {v.clientes?.nome || '-'}
+                            </span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--color-text-muted)', fontSize: '0.8rem' }}>
+                              {v.cpf}
+                              <button
+                                onClick={() => handleCopy(v.cpf, v.id)}
+                                style={{
+                                  background: 'transparent',
+                                  border: 'none',
+                                  padding: '0.2rem',
+                                  cursor: 'pointer',
+                                  color: copiedId === v.id ? 'var(--color-success)' : 'var(--color-text-muted)',
+                                  display: 'flex'
+                                }}
+                                title="Copiar CPF"
+                              >
+                                {copiedId === v.id ? <Check size={14} /> : <Copy size={14} />}
+                              </button>
+                            </div>
                           </div>
                         </td>
                         <td><span className="badge badge-info">{v.operacao}</span></td>
