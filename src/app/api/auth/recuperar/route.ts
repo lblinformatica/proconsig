@@ -51,17 +51,47 @@ export async function POST(req: Request) {
       to: email,
       subject: 'Recuperação de Senha - CentralPagamentos',
       html: `
-        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2 style="color: #4f46e5;">Recuperação de Acesso</h2>
-          <p>Olá <strong>${profile.nome}</strong>,</p>
-          <p>Recebemos uma solicitação para redefinir a sua senha no <strong>CentralPagamentos</strong>.</p>
-          <p>Clique no botão abaixo para criar uma nova senha:</p>
-          <div style="margin: 30px 0;">
-            <a href="${resetLink}" style="padding: 12px 24px; background-color: #4f46e5; color: white; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">Redefinir Minha Senha</a>
+        <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+          <!-- Header Banner -->
+          <div style="background-color: #4f46e5; padding: 25px 20px; text-align: center;">
+            <table style="margin: 0 auto; border-collapse: collapse; border: none;">
+              <tr>
+                <td style="padding-right: 12px; vertical-align: middle; border: none;">
+                  <img src="cid:branding_logo" alt="Logo" width="40" height="40" style="border-radius: 8px; display: block; object-fit: cover; border: none;" />
+                </td>
+                <td style="text-align: left; vertical-align: middle; border: none;">
+                  <h1 style="color: #ffffff; margin: 0; font-size: 22px; font-weight: 700; line-height: 1.0; letter-spacing: -0.5px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; border: none;">Central Pagamentos</h1>
+                </td>
+              </tr>
+            </table>
           </div>
-          <p style="color: #64748b; font-size: 0.875rem;">Se você não solicitou isso, pode ignorar este e-mail com segurança.</p>
-          <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
-          <p style="color: #94a3b8; font-size: 0.75rem;">Este link expirará em 30 minutos.</p>
+          
+          <!-- Content Box -->
+          <div style="padding: 30px 25px; background-color: #ffffff; color: #1e293b; line-height: 1.6;">
+            <p style="margin-top: 0; font-size: 16px;">Olá <strong>${profile.nome}</strong>,</p>
+            <p style="font-size: 15px;">Recebemos uma solicitação para redefinir a sua senha no <strong>Central Pagamentos</strong>.</p>
+            <p style="font-size: 15px;">Para criar uma nova senha, clique no botão de redefinição abaixo:</p>
+            
+            <div style="text-align: center; margin: 25px 0;">
+              <a href="${resetLink}" style="background-color: #4f46e5; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: 600; display: inline-block; font-size: 15px;">Redefinir Minha Senha</a>
+            </div>
+
+            <!-- Warning Card -->
+            <div style="background-color: #f8fafc; border: 1px solid #f1f5f9; border-radius: 8px; padding: 15px; margin: 25px 0; font-size: 13px; color: #64748b;">
+              <p style="margin: 0 0 8px 0; font-weight: 600; color: #475569;">Atenção:</p>
+              <ul style="margin: 0; padding-left: 20px; line-height: 1.5;">
+                <li>Este link é de uso único e expirará em <strong>30 minutos</strong>.</li>
+                <li>Se você não solicitou a redefinição de sua senha, por favor ignore este e-mail. Nenhuma alteração foi feita na sua conta.</li>
+              </ul>
+            </div>
+
+            <p style="font-size: 14px; color: #64748b; margin-bottom: 0;">Se precisar de assistência adicional, entre em contato com o suporte.</p>
+          </div>
+          
+          <!-- Footer -->
+          <div style="background-color: #f1f5f9; padding: 15px 20px; text-align: center; border-top: 1px solid #e2e8f0;">
+            <p style="margin: 0; font-size: 11px; color: #94a3b8;">© 2026 ProConsig - Central Pagamentos. Todos os direitos reservados.</p>
+          </div>
         </div>
       `
     });
