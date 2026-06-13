@@ -13,13 +13,12 @@ export async function POST(req: Request) {
     console.log('[Recuperar] Iniciando recuperação para:', email);
 
     // 1. Buscar o perfil para obter a 'conta' (que forma o pseudo-email)
-    const { data: profile, error: profileError } = await supabaseAdmin
+    const { data: profiles, error: profileError } = await supabaseAdmin
       .from('usuarios')
-      .select('conta, nome, email')
-      .ilike('email', email.trim())
-      .single();
+      .select('conta, nome, email, status')
+      .ilike('email', email.trim());
 
-    if (profileError || !profile) {
+    if (profileError || !profiles || profiles.length === 0) {
       console.warn('[Recuperar] E-mail não encontrado no banco de dados. Erro:', profileError);
       // Retornar sucesso silencioso por segurança, mas o UI do usuário pode decidir o que mostrar
       return NextResponse.json({
@@ -29,7 +28,11 @@ export async function POST(req: Request) {
       });
     }
 
-    console.log('[Recuperar] Perfil encontrado:', profile);
+    // Se houver mais de um perfil com o mesmo e-mail, priorizamos o que está "ativo"
+    const activeProfile = profiles.find(p => p.status === 'ativo');
+    const profile = activeProfile || profiles[0];
+
+    console.log('[Recuperar] Perfis encontrados:', profiles.length, '| Escolhido:', profile);
 
     const pseudoEmail = `${profile.conta.toLowerCase().replace(/\s+/g, '')}@proconsig.system`;
     console.log('[Recuperar] Gerando link para o pseudo-email:', pseudoEmail);
