@@ -117,8 +117,8 @@ export default function DashboardPage() {
         // Sum sales (vendido)
         const sales = monthlySales.filter(s => {
           if (!s.corretor) return false;
-          const sClean = s.corretor.trim().toUpperCase();
-          return sClean === seller.codigo || sClean === key || sClean === formattedKey || sClean.includes(key);
+          const code = s.corretor.split('-')[0].trim().toUpperCase();
+          return code === seller.codigo.toUpperCase();
         });
         const totalVendido = sales.reduce((sum, item) => sum + (item.valor || 0), 0);
 
@@ -131,8 +131,8 @@ export default function DashboardPage() {
         // Sum operations
         const ops = monthlyOps.filter(o => {
           if (!o.vendedor) return false;
-          const oClean = o.vendedor.trim().toUpperCase();
-          return oClean === seller.codigo || oClean === key || oClean === formattedKey || oClean.includes(key);
+          const code = o.vendedor.split('-')[0].trim().toUpperCase();
+          return code === seller.codigo.toUpperCase();
         });
         const totalOperacoes = ops.reduce((sum, item) => sum + (item.valor || 0), 0);
 
@@ -258,7 +258,7 @@ export default function DashboardPage() {
                     {/* Meta Mensal */}
                     <div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: '0.2rem' }}>
-                        <span>Mensal: <strong>{formatBrl(item.totalVendido)}</strong></span>
+                        <span>Mensal (Vendas): <strong>{formatBrl(item.totalVendido)}</strong></span>
                         <span>
                           Meta: {item.metaCadastrada > 0 ? (
                             <span style={{ color: 'var(--color-warning)', fontWeight: 600 }}>Cadastrada</span>
