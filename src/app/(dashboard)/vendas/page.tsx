@@ -189,7 +189,7 @@ export default function VendasList() {
                         <td style={{ fontSize: '0.875rem' }}>{new Date(v.created_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
                         <td>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
-                            <span style={{ fontWeight: 600, textTransform: 'uppercase', fontSize: '0.85rem' }}>
+                            <span style={{ fontWeight: 600, textTransform: 'uppercase', fontSize: '0.8rem' }}>
                               {v.clientes?.nome || '-'}
                             </span>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--color-text-muted)', fontSize: '0.8rem' }}>

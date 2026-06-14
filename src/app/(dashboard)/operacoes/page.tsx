@@ -71,6 +71,35 @@ export default function OperacoesPage() {
   const [operacoes, setOperacoes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [vendedoresMap, setVendedoresMap] = useState<Record<string, string>>({});
+  const [vendedoresList, setVendedoresList] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchVendedores = async () => {
+      const { data } = await supabase
+        .schema('pro_consig')
+        .from('vendedores')
+        .select('id, codigo, nome');
+      if (data) {
+        setVendedoresList(data);
+        const map: Record<string, string> = {};
+        data.forEach((v: any) => {
+          const formatted = `${v.codigo} - ${v.nome}`;
+          map[v.nome.trim().toUpperCase()] = formatted;
+          map[formatted.trim().toUpperCase()] = formatted;
+          map[v.codigo.trim().toUpperCase()] = formatted;
+        });
+        setVendedoresMap(map);
+      }
+    };
+    fetchVendedores();
+  }, []);
+
+  const getVendedorDisplay = (vendedorStr: string) => {
+    if (!vendedorStr) return '-';
+    const clean = vendedorStr.trim().toUpperCase();
+    return vendedoresMap[clean] || vendedorStr;
+  };
   const [page, setPage] = useState(0);
   const [total, setTotal] = useState(0);
   const [filters, setFilters] = useState({
@@ -78,7 +107,8 @@ export default function OperacoesPage() {
     data_fim: '',
     validez: 'todos', // 'todos', 'validos', 'invalidos'
     cliente_status: 'todos', // 'todos', 'cadastrados', 'nao_cadastrados'
-    nome_arquivo: ''
+    nome_arquivo: '',
+    vendedor: 'todos'
   });
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
@@ -162,7 +192,16 @@ export default function OperacoesPage() {
     }
 
     if (search) {
-      query = query.or(`vendedor.ilike.%${search}%,cpf.ilike.%${search}%,convenio.ilike.%${search}%,fundo.ilike.%${search}%,nome_cliente.ilike.%${search}%`);
+      query = query.ilike('cpf', `%${search}%`);
+    }
+
+    if (filters.vendedor !== 'todos') {
+      const sellerObj = vendedoresList.find(v => v.id === filters.vendedor);
+      if (sellerObj) {
+        const name = sellerObj.nome.trim().toUpperCase();
+        const formatted = `${sellerObj.codigo} - ${sellerObj.nome}`.trim().toUpperCase();
+        query = query.or(`vendedor.eq."${name}",vendedor.eq."${formatted}"`);
+      }
     }
 
 
@@ -171,7 +210,7 @@ export default function OperacoesPage() {
     if (data) setOperacoes(data);
     if (count !== null) setTotal(count);
     setLoading(false);
-  }, [page, search, filters]);
+  }, [page, search, filters, vendedoresList]);
 
   const fetchHistory = useCallback(async () => {
     const { data, error } = await supabase
@@ -241,21 +280,16 @@ export default function OperacoesPage() {
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const v = e.target.value;
-    // Se contiver letras, não formata como CPF (pode ser busca por nome/vendedor/fundo/convenio)
-    if (/[a-zA-Z]/.test(v)) {
-      setSearch(v);
-    } else {
-      const digits = v.replace(/\D/g, '').slice(0, 11);
-      let formatted = digits;
-      if (digits.length > 9) {
-        formatted = `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`;
-      } else if (digits.length > 6) {
-        formatted = `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6)}`;
-      } else if (digits.length > 3) {
-        formatted = `${digits.slice(0, 3)}.${digits.slice(3)}`;
-      }
-      setSearch(formatted);
+    const digits = v.replace(/\D/g, '').slice(0, 11);
+    let formatted = digits;
+    if (digits.length > 9) {
+      formatted = `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`;
+    } else if (digits.length > 6) {
+      formatted = `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6)}`;
+    } else if (digits.length > 3) {
+      formatted = `${digits.slice(0, 3)}.${digits.slice(3)}`;
     }
+    setSearch(formatted);
     setPage(0);
   };
 
@@ -268,7 +302,16 @@ export default function OperacoesPage() {
         let query = supabase.from('operacoes').delete();
 
         if (search) {
-          query = query.or(`vendedor.ilike.%${search}%,cpf.ilike.%${search}%,convenio.ilike.%${search}%,fundo.ilike.%${search}%,nome_cliente.ilike.%${search}%`);
+          query = query.ilike('cpf', `%${search}%`);
+        }
+
+        if (filters.vendedor !== 'todos') {
+          const sellerObj = vendedoresList.find(v => v.id === filters.vendedor);
+          if (sellerObj) {
+            const name = sellerObj.nome.trim().toUpperCase();
+            const formatted = `${sellerObj.codigo} - ${sellerObj.nome}`.trim().toUpperCase();
+            query = query.or(`vendedor.eq."${name}",vendedor.eq."${formatted}"`);
+          }
         }
 
         if (filters.cliente_status === 'cadastrados') {
@@ -432,6 +475,7 @@ export default function OperacoesPage() {
         const fileName = file.name;
         const sessionId = crypto.randomUUID();
         const importTimestamp = new Date().toISOString();
+        const ignoredSellers = new Set<string>();
 
         for (const row of data) {
           // Mapeamento Robusto
@@ -443,6 +487,17 @@ export default function OperacoesPage() {
           // Agora só ignora se realmente não tiver o CPF, que é a chave principal
           if (!cpf) {
             results.ignored++;
+            continue;
+          }
+
+          // Validar se o vendedor existe (pelo código numérico antes do hífen)
+          const vendedorRaw = String(findVal(row, ['Vendedor', 'Consultor']) || '').trim();
+          const code = vendedorRaw.split('-')[0].trim();
+          const sellerExists = code ? vendedoresList.some(v => v.codigo === code) : false;
+
+          if (!sellerExists) {
+            results.ignored++;
+            ignoredSellers.add(vendedorRaw || 'Vazio/Não Informado');
             continue;
           }
 
@@ -465,7 +520,7 @@ export default function OperacoesPage() {
             vencimento: parseExcelDate(vencimentoRaw),
             cpf,
             valor: isNaN(valorNum) ? 0 : valorNum,
-            vendedor: String(findVal(row, ['Vendedor', 'Consultor']) || ''),
+            vendedor: vendedorRaw,
             contacobranca: String(findVal(row, ['Conta de Cob.', 'Conta Cobranca', 'Conta Cob']) || ''),
             fundo: String(findVal(row, ['Fundo', 'Fundo Investimento']) || ''),
             convenio: String(findVal(row, ['Convênio', 'Convenio']) || ''),
@@ -513,8 +568,13 @@ export default function OperacoesPage() {
           results.ignored += procData.ignored;
         }
 
+        let alertMessage = `Registros Importados: ${results.imported}\nRegistros Ignorados: ${results.ignored}\nRegistros Duplicados: ${results.duplicates}`;
+        if (ignoredSellers.size > 0) {
+          alertMessage += `\n\nOs registros dos seguintes vendedores não cadastrados foram ignorados:\n- ${Array.from(ignoredSellers).join('\n- ')}`;
+        }
+
         setShowImportModal(false);
-        showAlert('Importação Concluída', `Registros Importados: ${results.imported}\nRegistros Ignorados: ${results.ignored}\nRegistros Duplicados: ${results.duplicates}`, 'success');
+        showAlert('Importação Concluída', alertMessage, 'success');
         fetchOperacoes();
       } catch (err: any) {
         console.error('Erro ao processar arquivo:', err);
@@ -573,18 +633,31 @@ export default function OperacoesPage() {
         {/* Filters */}
         <div className="card" style={{ marginBottom: '2rem' }}>
           <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
-            <div style={{ flex: '2', minWidth: '200px' }}>
-              <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: '0.25rem', display: 'block' }}>Busca Geral</label>
+            <div style={{ flex: '1.2', minWidth: '180px' }}>
+              <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: '0.25rem', display: 'block' }}>CPF</label>
               <div style={{ position: 'relative' }}>
                 <Search size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
                 <input
                   type="text"
-                  placeholder="Vendedor, CPF..."
+                  placeholder="Buscar por CPF..."
                   value={search}
                   onChange={handleSearchChange}
                   style={{ paddingLeft: '2.75rem', width: '100%' }}
                 />
               </div>
+            </div>
+            <div style={{ flex: '1.2', minWidth: '180px' }}>
+              <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: '0.25rem', display: 'block' }}>Vendedor</label>
+              <select
+                value={filters.vendedor}
+                onChange={e => setFilters(f => ({ ...f, vendedor: e.target.value }))}
+                style={{ width: '100%', padding: '0.5rem' }}
+              >
+                <option value="todos">Todos</option>
+                {vendedoresList.map(v => (
+                  <option key={v.id} value={v.id}>{v.codigo} - {v.nome}</option>
+                ))}
+              </select>
             </div>
             <div style={{ flex: '1', minWidth: '150px' }}>
               <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: '0.25rem', display: 'block' }}>Status Cliente</label>
@@ -699,6 +772,7 @@ export default function OperacoesPage() {
                       <th style={{ width: '100px' }}>Vencimento</th>
                       <th style={{ width: '140px' }}>CPF</th>
                       <th style={{ width: '120px', textAlign: 'center' }}>Cliente</th>
+                      <th style={{ width: '150px' }}>Vendedor</th>
                       <th style={{ width: '90px' }}>Status CPF</th>
                       <th style={{ width: '70px' }}>Grupo</th>
                       <th style={{ width: '110px' }}>Valor</th>
@@ -750,6 +824,9 @@ export default function OperacoesPage() {
                               <span title="Cliente Não Cadastrado" style={{ color: 'var(--color-danger)' }}><UserMinus size={18} /></span>
                             )}
                           </div>
+                        </td>
+                        <td style={{ fontSize: '0.85rem' }}>
+                          {getVendedorDisplay(op.vendedor)}
                         </td>
 
                         <td>

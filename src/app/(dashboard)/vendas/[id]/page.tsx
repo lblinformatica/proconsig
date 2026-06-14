@@ -14,6 +14,21 @@ export default function VendaDetails(props: { params: Promise<{ id: string }> })
   const [venda, setVenda] = useState<any>(null);
   const [cliente, setCliente] = useState<any>(null);
   const [error, setError] = useState('');
+  const [vendedores, setVendedores] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchVendedores = async () => {
+      const { data } = await supabase.schema('pro_consig').from('vendedores').select('codigo, nome');
+      if (data) setVendedores(data);
+    };
+    fetchVendedores();
+  }, []);
+
+  const getVendedorFormatted = (codigo: string) => {
+    if (!codigo) return '-';
+    const v = vendedores.find(x => x.codigo === codigo);
+    return v ? `${v.codigo} - ${v.nome}` : codigo;
+  };
 
   useEffect(() => {
     const fetchDetails = async () => {
@@ -308,11 +323,11 @@ export default function VendaDetails(props: { params: Promise<{ id: string }> })
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span style={{ color: 'var(--color-text-muted)' }}>Vendedor:</span>
-                <span>{venda.corretor || '-'}</span>
+                <span>{getVendedorFormatted(venda.corretor)}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span style={{ color: 'var(--color-text-muted)' }}>Carteira:</span>
-                <span>{venda.carteira || '-'}</span>
+                <span>{getVendedorFormatted(venda.carteira)}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span style={{ color: 'var(--color-text-muted)' }}>Código de Operação:</span>

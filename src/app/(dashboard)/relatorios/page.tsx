@@ -15,6 +15,21 @@ export default function RelatoriosPage() {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
   const PAGE_SIZE = 25;
+  const [vendedores, setVendedores] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchVendedores = async () => {
+      const { data } = await supabase.schema('pro_consig').from('vendedores').select('codigo, nome');
+      if (data) setVendedores(data);
+    };
+    fetchVendedores();
+  }, []);
+
+  const getVendedorFormatted = (codigo: string) => {
+    if (!codigo) return '-';
+    const v = vendedores.find(x => x.codigo === codigo);
+    return v ? `${v.codigo} - ${v.nome}` : codigo;
+  };
 
   const [filters, setFilters] = useState({
     cpf: '', status: 'Aprovado', dataInicio: '', dataFim: '', corretor: ''
@@ -95,7 +110,7 @@ export default function RelatoriosPage() {
 
   const handleToggleSelectAll = async () => {
     if (vendas.length === 0) return;
-    
+
     const allPaid = vendas.every(v => v.status === 'Pago');
     const newStatus = allPaid ? 'Aprovado' : 'Pago';
     const ids = vendas.map(v => v.id);
@@ -139,7 +154,16 @@ export default function RelatoriosPage() {
     }
 
     if (filters.cpf) query = query.eq('cpf', formatCPF(filters.cpf));
-    if (filters.corretor) query = query.ilike('corretor', `%${filters.corretor}%`);
+    if (filters.corretor) {
+      const matchedCodes = vendedores
+        .filter(x => x.nome.toUpperCase().includes(filters.corretor.toUpperCase()) || x.codigo.includes(filters.corretor))
+        .map(x => x.codigo);
+      if (matchedCodes.length > 0) {
+        query = query.in('corretor', matchedCodes);
+      } else {
+        query = query.eq('corretor', 'NON_EXISTENT_SELLER');
+      }
+    }
     if (filters.status) query = query.eq('status', filters.status);
     if (filters.dataInicio) query = query.gte('created_at', filters.dataInicio);
     if (filters.dataFim) query = query.lte('created_at', filters.dataFim + 'T23:59:59');
@@ -187,7 +211,16 @@ export default function RelatoriosPage() {
       }
 
       if (filters.cpf) query = query.eq('cpf', formatCPF(filters.cpf));
-      if (filters.corretor) query = query.ilike('corretor', `%${filters.corretor}%`);
+      if (filters.corretor) {
+        const matchedCodes = vendedores
+          .filter(x => x.nome.toUpperCase().includes(filters.corretor.toUpperCase()) || x.codigo.includes(filters.corretor))
+          .map(x => x.codigo);
+        if (matchedCodes.length > 0) {
+          query = query.in('corretor', matchedCodes);
+        } else {
+          query = query.eq('corretor', 'NON_EXISTENT_SELLER');
+        }
+      }
       if (filters.status) query = query.eq('status', filters.status);
       if (filters.dataInicio) query = query.gte('created_at', filters.dataInicio);
       if (filters.dataFim) query = query.lte('created_at', filters.dataFim + 'T23:59:59');
@@ -225,8 +258,8 @@ export default function RelatoriosPage() {
         'Empresa': v.empresa || '-',
         'Operação': v.operacao,
         'Cód. Operação': v.codigo_operacao || '-',
-        'Vendedor': v.corretor || '-',
-        'Carteira': v.carteira || '-',
+        'Vendedor': getVendedorFormatted(v.corretor),
+        'Carteira': getVendedorFormatted(v.carteira),
         'Novo Cliente': v.novo_cliente || '-',
         'Atualização Cadastral': v.atualizacao_cadastral || '-',
         'Valor Contrato': v.valor || 0,
@@ -298,7 +331,16 @@ export default function RelatoriosPage() {
       }
 
       if (filters.cpf) query = query.eq('cpf', formatCPF(filters.cpf));
-      if (filters.corretor) query = query.ilike('corretor', `%${filters.corretor}%`);
+      if (filters.corretor) {
+        const matchedCodes = vendedores
+          .filter(x => x.nome.toUpperCase().includes(filters.corretor.toUpperCase()) || x.codigo.includes(filters.corretor))
+          .map(x => x.codigo);
+        if (matchedCodes.length > 0) {
+          query = query.in('corretor', matchedCodes);
+        } else {
+          query = query.eq('corretor', 'NON_EXISTENT_SELLER');
+        }
+      }
       if (filters.status) query = query.eq('status', filters.status);
       if (filters.dataInicio) query = query.gte('created_at', filters.dataInicio);
       if (filters.dataFim) query = query.lte('created_at', filters.dataFim + 'T23:59:59');
@@ -513,8 +555,8 @@ export default function RelatoriosPage() {
           status_pg: '',
           nome: v.clientes?.nome || '',
           cpf: v.cpf || '',
-          vendedor: v.corretor || '',
-          carteira: v.carteira || '',
+          vendedor: getVendedorFormatted(v.corretor),
+          carteira: getVendedorFormatted(v.carteira),
           gerado: timestamp,
           cod_operacao: v.codigo_operacao || '',
           empresa_credora: v.empresa_credora || '',
@@ -613,8 +655,8 @@ export default function RelatoriosPage() {
           status_pg: '',
           nome: primarySale.clientes?.nome || '',
           cpf: cpf,
-          vendedor: primarySale.corretor || '',
-          carteira: primarySale.carteira || '',
+          vendedor: getVendedorFormatted(primarySale.corretor),
+          carteira: getVendedorFormatted(primarySale.carteira),
           gerado: timestamp,
           novo_cliente: primarySale.novo_cliente || '',
           atualizacao_cadastral: primarySale.atualizacao_cadastral || ''
@@ -716,8 +758,8 @@ export default function RelatoriosPage() {
           restam: v.restam !== null && v.restam !== undefined ? v.restam : '',
           abatidas: v.abatidas !== null && v.abatidas !== undefined ? v.abatidas : '',
           conf3: '',
-          vendedor: v.corretor || '',
-          corretor: v.carteira || '',
+          vendedor: getVendedorFormatted(v.corretor),
+          corretor: getVendedorFormatted(v.carteira),
           banco: v.credito_banco || '',
           agencia: v.credito_agencia || '',
           agencia_dv: v.credito_agencia_dv || '',
@@ -879,7 +921,7 @@ export default function RelatoriosPage() {
               base64Attachment: base64,
               filename: filename
             });
-            
+
             if (emailRes && !emailRes.success) {
               console.error('Erro retornado pela Server Action de e-mail:', emailRes.error);
               emailSuccessMsg = `\n\n(Aviso: O e-mail não pôde ser enviado. Erro: ${emailRes.error})`;
@@ -1050,8 +1092,8 @@ export default function RelatoriosPage() {
                     </td>
                     <td style={{ fontWeight: 600, color: 'var(--color-primary)' }}>{v.venda_id || '-'}</td>
                     <td>
-                      <div style={{ fontWeight: 500 }}>{v.clientes?.nome || '-'}</div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '0.15rem' }}>
+                      <div style={{ fontWeight: 600, fontSize: '0.8rem' }}>{v.clientes?.nome || '-'}</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: '0.15rem' }}>
                         {v.cpf}
                         <button
                           onClick={() => handleCopyCPF(v.cpf, v.id)}
@@ -1072,7 +1114,7 @@ export default function RelatoriosPage() {
                     </td>
                     <td style={{ fontSize: '0.85rem' }}>{v.operacao}</td>
                     <td style={{ fontWeight: 600 }}>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v.valor || 0)}</td>
-                    <td>{v.corretor}</td>
+                    <td style={{ fontSize: '0.8rem' }}>{getVendedorFormatted(v.corretor)}</td>
                     <td>{v.novo_cliente || '-'}</td>
                     <td>{v.atualizacao_cadastral || '-'}</td>
                     <td>{v.banco}</td>

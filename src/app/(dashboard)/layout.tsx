@@ -5,7 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import Link from 'next/link';
 import Image from 'next/image';
-import { LogOut, Home, Users, FileText, CheckSquare, BarChart, Menu, Moon, Sun, Bell, CheckCheck, List, AlertCircle } from 'lucide-react';
+import { LogOut, Home, Users, FileText, CheckSquare, BarChart, Menu, Moon, Sun, Bell, CheckCheck, List, AlertCircle, User } from 'lucide-react';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -227,7 +227,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     justifyContent: isSidebarCollapsed ? 'center' : 'flex-start',
     border: isActive ? 'none' : 'transparent',
     boxShadow: 'none',
-    padding: isSidebarCollapsed ? '0.625rem' : '0.625rem 1.25rem'
+    padding: isSidebarCollapsed ? '0.625rem' : '0.625rem 1.25rem',
+    fontSize: '0.825rem'
   });
 
   return (
@@ -270,6 +271,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </Link>
               <Link href="/clientes" className={`btn ${pathname.includes('/clientes') ? 'btn-primary' : 'btn-secondary'}`} style={navItemStyle(pathname.includes('/clientes'))} title="Clientes">
                 <Users size={18} style={{ flexShrink: 0 }} /> {!isSidebarCollapsed && <span style={{ whiteSpace: 'nowrap' }}>Clientes</span>}
+              </Link>
+              <Link href="/vendedores" className={`btn ${pathname.includes('/vendedores') ? 'btn-primary' : 'btn-secondary'}`} style={navItemStyle(pathname.includes('/vendedores'))} title="Vendedores">
+                <User size={18} style={{ flexShrink: 0 }} /> {!isSidebarCollapsed && <span style={{ whiteSpace: 'nowrap' }}>Vendedores</span>}
               </Link>
               <Link href="/vendas" className={`btn ${pathname.includes('/vendas') ? 'btn-primary' : 'btn-secondary'}`} style={navItemStyle(pathname.includes('/vendas'))} title="Vendas">
                 <FileText size={18} style={{ flexShrink: 0 }} /> {!isSidebarCollapsed && <span style={{ whiteSpace: 'nowrap' }}>Vendas</span>}

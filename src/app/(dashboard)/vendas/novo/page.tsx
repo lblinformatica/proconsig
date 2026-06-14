@@ -40,6 +40,20 @@ export default function NovaVenda() {
   const [error, setError] = useState('');
   const [duplicateModal, setDuplicateModal] = useState(false);
   const [alertModal, setAlertModal] = useState<{ show: boolean, title: string, message: string }>({ show: false, title: '', message: '' });
+  const [vendedores, setVendedores] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchVendedores = async () => {
+      const { data } = await supabase
+        .schema('pro_consig')
+        .from('vendedores')
+        .select('codigo, nome')
+        .eq('ativo', true)
+        .order('codigo', { ascending: true });
+      if (data) setVendedores(data);
+    };
+    fetchVendedores();
+  }, []);
 
   const [cpf, setCpf] = useState('');
   const [clientFound, setClientFound] = useState<any>(null);
@@ -419,6 +433,51 @@ export default function NovaVenda() {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
 
+    if (name === 'codigo_operacao') {
+      if (!value) {
+        setForm(f => ({
+          ...f,
+          codigo_operacao: '',
+          contrato: '',
+          corretor: '',
+          carteira: ''
+        }));
+        return;
+      }
+      const opObj = operacoesDisponiveis.find(o => o.operacao.toString() === value);
+      if (opObj) {
+        const rawVendedorName = opObj.vendedor ? opObj.vendedor.trim().toUpperCase() : '';
+        let matchingVendedor = '';
+        if (rawVendedorName) {
+          const foundVendedor = vendedores.find(v => {
+            const formatted = `${v.codigo} - ${v.nome}`.toUpperCase();
+            return v.nome.toUpperCase() === rawVendedorName || 
+                   formatted === rawVendedorName || 
+                   rawVendedorName.includes(v.nome.toUpperCase());
+          });
+          if (foundVendedor) {
+            matchingVendedor = foundVendedor.codigo;
+          }
+        }
+        setForm(f => ({
+          ...f,
+          codigo_operacao: value,
+          contrato: opObj.contrato || value,
+          corretor: matchingVendedor,
+          carteira: matchingVendedor
+        }));
+        return;
+      } else {
+        setForm(f => ({
+          ...f,
+          codigo_operacao: value,
+          corretor: '',
+          carteira: ''
+        }));
+        return;
+      }
+    }
+
     if (name === 'operacao') {
       if (value === 'NOVO') {
         setForm(f => ({
@@ -730,7 +789,7 @@ export default function NovaVenda() {
                     </select>
                   </div>
                   <div>
-                    <label style={fs}>Cód. Operação</label>
+                    <label style={fs}>Operação</label>
                     {form.operacao === 'REFIN' && codigosUnicos.length > 0 ? (
                       <select name="codigo_operacao" value={form.codigo_operacao} onChange={handleChange} required style={{ width: '100%', padding: '0.5rem' }}>
                         <option value="">Selecione...</option>
@@ -748,8 +807,26 @@ export default function NovaVenda() {
                       />
                     )}
                   </div>
-                  <div><label style={fs}>Vendedor</label><input name="corretor" type="text" value={form.corretor} onChange={handleChange} required style={{ width: '100%', padding: '0.5rem' }} /></div>
-                  <div><label style={fs}>Carteira</label><input name="carteira" type="text" value={form.carteira} onChange={handleChange} style={{ width: '100%', padding: '0.5rem' }} /></div>
+                  <div>
+                    <label style={fs}>Vendedor</label>
+                    <select name="corretor" value={form.corretor} onChange={handleChange} required style={{ width: '100%', padding: '0.5rem' }}>
+                      <option value="">Selecione...</option>
+                      {vendedores.map(v => {
+                        const formatted = `${v.codigo} - ${v.nome}`;
+                        return <option key={v.codigo} value={v.codigo}>{formatted}</option>;
+                      })}
+                    </select>
+                  </div>
+                  <div>
+                    <label style={fs}>Carteira</label>
+                    <select name="carteira" value={form.carteira} onChange={handleChange} style={{ width: '100%', padding: '0.5rem' }}>
+                      <option value="">Selecione...</option>
+                      {vendedores.map(v => {
+                        const formatted = `${v.codigo} - ${v.nome}`;
+                        return <option key={v.codigo} value={v.codigo}>{formatted}</option>;
+                      })}
+                    </select>
+                  </div>
                   <div>
                     <label style={fs}>Novo Cliente</label>
                     <select name="novo_cliente" value={form.novo_cliente} onChange={handleChange} required style={{ width: '100%', padding: '0.5rem' }}>
