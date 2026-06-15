@@ -4,6 +4,10 @@ import { sendEmail } from '@/lib/email';
 
 export async function POST(req: Request) {
   try {
+    const host = req.headers.get('host') || 'localhost:3000';
+    const protocol = host.includes('localhost') ? 'http' : 'https';
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || `${protocol}://${host}`;
+
     const { email } = await req.json();
 
     if (!email) {
@@ -44,7 +48,7 @@ export async function POST(req: Request) {
       type: 'recovery',
       email: pseudoEmail,
       options: {
-        redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/redefinir`,
+        redirectTo: `${siteUrl}/redefinir`,
       }
     });
 

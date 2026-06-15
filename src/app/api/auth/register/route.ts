@@ -4,6 +4,10 @@ import { sendEmail } from '@/lib/email';
 
 export async function POST(req: Request) {
   try {
+    const host = req.headers.get('host') || 'localhost:3000';
+    const protocol = host.includes('localhost') ? 'http' : 'https';
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || `${protocol}://${host}`;
+
     const { nome, conta, email, password } = await req.json();
 
     if (!nome || !conta || !email || !password) {
@@ -178,7 +182,7 @@ export async function POST(req: Request) {
               <p style="font-size: 15px; margin-bottom: 25px;">Por favor, acesse o painel administrativo para aprovar ou rejeitar o acesso deste usuário.</p>
               
               <div style="text-align: center; margin: 25px 0;">
-                <a href="${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/usuarios" style="background-color: #4f46e5; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: 600; display: inline-block; font-size: 15px;">Acessar Painel de Usuários</a>
+                <a href="${siteUrl}/usuarios" style="background-color: #4f46e5; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: 600; display: inline-block; font-size: 15px;">Acessar Painel de Usuários</a>
               </div>
             </div>
             

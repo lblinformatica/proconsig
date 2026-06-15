@@ -2,6 +2,7 @@
 
 import { sendEmail } from '@/lib/email';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { headers } from 'next/headers';
 
 export async function adminUpdateUser(
   userId: string, 
@@ -102,6 +103,11 @@ export async function adminChangeUserStatus(
 
     // Send email on approval
     if ((actionType === 'approve_op' || actionType === 'approve_admin') && user.status === 'pendente') {
+      const headersList = await headers();
+      const host = headersList.get('host') || 'localhost:3000';
+      const protocol = host.includes('localhost') ? 'http' : 'https';
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || `${protocol}://${host}`;
+
       await sendEmail({
         to: user.email,
         subject: 'Sua conta foi aprovada!',
@@ -141,11 +147,11 @@ export async function adminChangeUserStatus(
                   </tr>
                 </table>
               </div>
-
+ 
               <div style="text-align: center; margin: 25px 0;">
-                <a href="${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/login" style="background-color: #4f46e5; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: 600; display: inline-block; font-size: 15px;">Acessar Central de Pagamentos</a>
+                <a href="${siteUrl}/login" style="background-color: #4f46e5; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: 600; display: inline-block; font-size: 15px;">Acessar Central de Pagamentos</a>
               </div>
-
+ 
               <p style="font-size: 14px; color: #64748b; margin-bottom: 0;">Se precisar de ajuda ou tiver alguma dúvida, entre em contato com a equipe de suporte.</p>
             </div>
             
