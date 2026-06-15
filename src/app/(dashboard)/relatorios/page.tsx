@@ -51,8 +51,8 @@ export default function RelatoriosPage() {
       }
     }
     if (v.conta_ativacao) {
-      const matched = contas.find(c => 
-        Number(c.conta_ativacao) === Number(v.conta_ativacao) && 
+      const matched = contas.find(c =>
+        Number(c.conta_ativacao) === Number(v.conta_ativacao) &&
         (c.empresa_ativacao === v.empresa_ativacao || c.empresa_credora === v.empresa_credora)
       );
       if (matched && matched.grupo !== undefined && matched.grupo !== null) {
@@ -461,7 +461,7 @@ export default function RelatoriosPage() {
           .in('operacao', uniqueOpCodes);
         opsData = data || [];
       }
-      
+
       const opGroupMap: { [opCode: string]: number } = {};
       opsData.forEach(op => {
         if (op.operacao) {
@@ -591,8 +591,8 @@ export default function RelatoriosPage() {
         if (v.codigo_operacao && opGroupMap[v.codigo_operacao.toString()]) {
           saleGrupo = opGroupMap[v.codigo_operacao.toString()].toString();
         } else {
-          const matched = allContas?.find(c => 
-            Number(c.conta_ativacao) === Number(v.conta_ativacao) && 
+          const matched = allContas?.find(c =>
+            Number(c.conta_ativacao) === Number(v.conta_ativacao) &&
             (c.empresa_ativacao === v.empresa_ativacao || c.empresa_credora === v.empresa_credora)
           );
           if (matched) {
@@ -714,8 +714,8 @@ export default function RelatoriosPage() {
         if (primarySale.codigo_operacao && opGroupMap[primarySale.codigo_operacao.toString()]) {
           saleGrupo = opGroupMap[primarySale.codigo_operacao.toString()].toString();
         } else {
-          const matched = allContas?.find(c => 
-            Number(c.conta_ativacao) === Number(primarySale.conta_ativacao) && 
+          const matched = allContas?.find(c =>
+            Number(c.conta_ativacao) === Number(primarySale.conta_ativacao) &&
             (c.empresa_ativacao === primarySale.empresa_ativacao || c.empresa_credora === primarySale.empresa_credora)
           );
           if (matched) {
@@ -1159,7 +1159,7 @@ export default function RelatoriosPage() {
                 <th>Vendedor</th>
                 <th>Grupo</th>
                 <th>Novo?</th>
-                <th>Atualiz. Cad.?</th>
+                <th>Atualização?</th>
                 <th>Banco</th>
                 <th>Última Exportação</th>
                 <th>Data Cadastro</th>

@@ -5,7 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import Link from 'next/link';
 import Image from 'next/image';
-import { LogOut, Home, Users, FileText, CheckSquare, BarChart, Menu, Moon, Sun, Bell, CheckCheck, List, AlertCircle, User } from 'lucide-react';
+import { LogOut, Home, Users, FileText, CheckSquare, BarChart, Menu, Moon, Sun, Bell, CheckCheck, List, AlertCircle, User, History } from 'lucide-react';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -124,7 +124,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   // Redireciona o usuário com nível financeiro se tentar acessar outras rotas por navegação client-side
   useEffect(() => {
-    if (userProfile?.nivel === 'financeiro' && !pathname.startsWith('/relatorios')) {
+    if (userProfile?.nivel === 'financeiro' && !pathname.startsWith('/relatorios') && !pathname.startsWith('/historico')) {
       router.push('/relatorios');
     }
   }, [pathname, userProfile, router]);
@@ -234,7 +234,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     justifyContent: isSidebarCollapsed ? 'center' : 'flex-start',
     border: isActive ? 'none' : 'transparent',
     boxShadow: 'none',
-    padding: isSidebarCollapsed ? '0.625rem' : '0.625rem 1.25rem',
+    padding: isSidebarCollapsed ? '0.5rem' : '0.5rem 1rem',
     fontSize: '0.825rem'
   });
 
@@ -242,35 +242,32 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     <div className="dashboard-layout">
       {/* Sidebar */}
       <aside className="dashboard-sidebar" style={{ width: isSidebarCollapsed ? '80px' : '230px' }}>
-        <div style={{ padding: isSidebarCollapsed ? '1rem 0.5rem' : '1.25rem 1rem', borderBottom: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexDirection: isSidebarCollapsed ? 'column' : 'row', gap: '0.5rem' }}>
-          <div style={{ overflow: 'hidden', display: 'flex', flexDirection: isSidebarCollapsed ? 'column' : 'row', alignItems: 'center', gap: '0.75rem' }}>
+        <div style={{ padding: isSidebarCollapsed ? '0.75rem 0.5rem' : '0.75rem 0.75rem', borderBottom: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexDirection: isSidebarCollapsed ? 'column' : 'row', gap: '0.4rem' }}>
+          <div style={{ overflow: 'hidden', display: 'flex', flexDirection: isSidebarCollapsed ? 'column' : 'row', alignItems: 'center', gap: '0.5rem' }}>
             <Image
               src="/branding.png"
               alt="Logo"
-              width={isSidebarCollapsed ? 32 : 40}
-              height={isSidebarCollapsed ? 32 : 40}
-              style={{ borderRadius: '8px', objectFit: 'cover' }}
+              width={isSidebarCollapsed ? 28 : 34}
+              height={isSidebarCollapsed ? 28 : 34}
+              style={{ borderRadius: '6px', objectFit: 'cover' }}
             />
             {!isSidebarCollapsed && (
               <div style={{ display: 'flex', flexDirection: 'column' }}>
-                <h1 style={{ color: 'var(--color-primary)', margin: 0, fontSize: '0.9rem', whiteSpace: 'nowrap' }}>
-                  Central
+                <h1 style={{ color: 'var(--color-primary)', margin: 0, fontSize: '0.85rem', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
+                  Central Pagamentos
                 </h1>
-                <h1 style={{ color: 'var(--color-primary)', margin: 0, fontSize: '0.9rem', whiteSpace: 'nowrap' }}>
-                  Pagamentos
-                </h1>
-                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '0.1rem', whiteSpace: 'nowrap' }}>
+                <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: '0.05rem', whiteSpace: 'nowrap' }}>
                   Nível: <span style={{ textTransform: 'capitalize', fontWeight: 'bold' }}>{userProfile?.nivel}</span>
                 </div>
               </div>
             )}
           </div>
-          <button onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)} className="btn btn-secondary" style={{ padding: '0.25rem', border: 'none', boxShadow: 'none', background: 'transparent', color: 'var(--color-text-main)' }} title="Menu">
-            <Menu size={20} />
+          <button onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)} className="btn btn-secondary" style={{ padding: '0.2rem', border: 'none', boxShadow: 'none', background: 'transparent', color: 'var(--color-text-main)' }} title="Menu">
+            <Menu size={18} />
           </button>
         </div>
 
-        <nav style={{ flexGrow: 1, padding: isSidebarCollapsed ? '1rem 0.5rem' : '1rem', display: 'flex', flexDirection: 'column', gap: '0.25rem', overflowY: 'auto' }}>
+        <nav style={{ flexGrow: 1, padding: isSidebarCollapsed ? '0.75rem 0.5rem' : '0.75rem 0.75rem', display: 'flex', flexDirection: 'column', gap: '0.15rem', overflowY: 'auto' }}>
           {userProfile?.nivel !== 'financeiro' && (
             <>
               <Link href="/dashboard" className={`btn ${pathname === '/dashboard' ? 'btn-primary' : 'btn-secondary'}`} style={navItemStyle(pathname === '/dashboard')} title="Início">
@@ -306,20 +303,25 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </Link>
           )}
           {(userProfile?.nivel === 'admin' || userProfile?.nivel === 'financeiro') && (
-            <Link href="/relatorios" className={`btn ${pathname.includes('/relatorios') ? 'btn-primary' : 'btn-secondary'}`} style={navItemStyle(pathname.includes('/relatorios'))} title="Relatórios">
-              <BarChart size={18} style={{ flexShrink: 0 }} /> {!isSidebarCollapsed && <span style={{ whiteSpace: 'nowrap' }}>Relatórios</span>}
-            </Link>
+            <>
+              <Link href="/relatorios" className={`btn ${pathname.includes('/relatorios') ? 'btn-primary' : 'btn-secondary'}`} style={navItemStyle(pathname.includes('/relatorios'))} title="Relatórios">
+                <BarChart size={18} style={{ flexShrink: 0 }} /> {!isSidebarCollapsed && <span style={{ whiteSpace: 'nowrap' }}>Relatórios</span>}
+              </Link>
+              <Link href="/historico" className={`btn ${pathname.includes('/historico') ? 'btn-primary' : 'btn-secondary'}`} style={navItemStyle(pathname.includes('/historico'))} title="Histórico">
+                <History size={18} style={{ flexShrink: 0 }} /> {!isSidebarCollapsed && <span style={{ whiteSpace: 'nowrap' }}>Histórico</span>}
+              </Link>
+            </>
           )}
         </nav>
 
-        <div style={{ padding: isSidebarCollapsed ? '1rem 0.5rem' : '1rem', borderTop: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column', alignItems: isSidebarCollapsed ? 'center' : 'stretch' }}>
+        <div style={{ padding: isSidebarCollapsed ? '0.75rem 0.5rem' : '0.75rem', borderTop: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column', alignItems: isSidebarCollapsed ? 'center' : 'stretch' }}>
           {!isSidebarCollapsed && (
-            <div style={{ marginBottom: '1rem', fontSize: '0.875rem', overflow: 'hidden' }}>
+            <div style={{ marginBottom: '0.75rem', fontSize: '0.85rem', overflow: 'hidden' }}>
               <strong style={{ display: 'block', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{userProfile?.nome}</strong>
               <span style={{ color: 'var(--color-text-muted)', display: 'block', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{userProfile?.email}</span>
             </div>
           )}
-          <button onClick={handleLogout} className="btn btn-secondary" style={{ width: '100%', justifyContent: 'center', padding: isSidebarCollapsed ? '0.625rem' : '0.625rem 1.25rem' }} title="Sair">
+          <button onClick={handleLogout} className="btn btn-secondary" style={{ width: '100%', justifyContent: 'center', padding: isSidebarCollapsed ? '0.5rem' : '0.5rem 1rem' }} title="Sair">
             <LogOut size={18} style={{ flexShrink: 0 }} /> {!isSidebarCollapsed && <span style={{ whiteSpace: 'nowrap' }}>Sair</span>}
           </button>
         </div>

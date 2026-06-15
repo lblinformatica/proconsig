@@ -671,7 +671,7 @@ export default function NovaVenda() {
 
       const { data: userData, error: userError } = await supabase
         .from('usuarios')
-        .select('id')
+        .select('id, nome')
         .eq('supabase_user_id', session.user.id)
         .single();
 
@@ -698,7 +698,7 @@ export default function NovaVenda() {
 
       const dataInicio = (form.inicio_mes && form.inicio_ano) ? `${form.inicio_ano}-${form.inicio_mes}-01` : null;
 
-      const { error: insertError } = await supabase
+      const { data: newVenda, error: insertError } = await supabase
         .schema('pro_consig')
         .from('vendas')
         .insert({
@@ -727,10 +727,31 @@ export default function NovaVenda() {
           atualizacao_cadastral: form.atualizacao_cadastral,
           restam: form.operacao === 'REFIN' ? parcelasExibidas.length : null,
           abatidas: form.operacao === 'REFIN' ? selectedOpIds.length : null
-        });
+        })
+        .select('id, venda_id')
+        .single();
 
-      if (insertError) {
-        throw new Error(`${insertError.message} (${insertError.code})`);
+      if (insertError || !newVenda) {
+        throw new Error(`${insertError?.message || 'Erro ao criar a venda.'} (${insertError?.code || ''})`);
+      }
+
+      // Gravando no histórico se o saldo digitado for diferente do saldo calculado pelo sistema
+      const valorParaSaldo = selectedOpIds.length > 0 ? totaisRefin.liquido : parcelasExibidas.filter(p => !p.isBaixada).reduce((acc, curr) => acc + curr.valorComDesconto, 0);
+      const typedSaldo = parseFloat(form.saldo.replace(/\./g, '').replace(',', '.')) || 0;
+
+      if (Math.abs(typedSaldo - valorParaSaldo) > 0.009) {
+        await supabase
+          .schema('pro_consig')
+          .from('historico_saldos')
+          .insert({
+            venda_id: newVenda.id,
+            venda_codigo: newVenda.venda_id,
+            usuario_id: userData.id,
+            usuario_nome: userData.nome || 'Usuário',
+            valor_original: valorParaSaldo,
+            valor_novo: typedSaldo,
+            tipo_operacao: 'Nova Venda'
+          });
       }
 
       router.push('/vendas');

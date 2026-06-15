@@ -63,6 +63,8 @@ export default function EditarVenda(props: { params: Promise<{ id: string }> }) 
   const [selectedOpIds, setSelectedOpIds] = useState<number[]>([]);
   const [baixasCliente, setBaixasCliente] = useState<any[]>([]);
   const [lastAutoObs, setLastAutoObs] = useState('');
+  const [originalSaldoDb, setOriginalSaldoDb] = useState<number | null>(null);
+  const [vendaCodigo, setVendaCodigo] = useState<string>('');
 
   const [form, setForm] = useState({
     orgao: '', empresa: '', operacao: 'REFIN', codigo_operacao: '', corretor: '', carteira: '',
@@ -111,6 +113,8 @@ export default function EditarVenda(props: { params: Promise<{ id: string }> }) 
 
         if (venda) {
           setCpf(venda.cpf);
+          setOriginalSaldoDb(venda.saldo || 0);
+          setVendaCodigo(venda.venda_id || '');
 
           let mes = '', ano = new Date().getFullYear().toString();
           if (venda.inicio) {
@@ -703,6 +707,35 @@ export default function EditarVenda(props: { params: Promise<{ id: string }> }) 
       }).eq('id', params.id);
 
       if (updateError) throw updateError;
+
+      // Gravando no histórico se o saldo digitado for diferente do original do banco
+      const typedSaldo = parseFloat(form.saldo.replace(/\./g, '').replace(',', '.')) || 0;
+      if (originalSaldoDb !== null && Math.abs(typedSaldo - originalSaldoDb) > 0.009) {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          const { data: userData } = await supabase
+            .from('usuarios')
+            .select('id, nome')
+            .eq('supabase_user_id', session.user.id)
+            .single();
+
+          if (userData) {
+            await supabase
+              .schema('pro_consig')
+              .from('historico_saldos')
+              .insert({
+                venda_id: params.id,
+                venda_codigo: vendaCodigo,
+                usuario_id: userData.id,
+                usuario_nome: userData.nome || 'Usuário',
+                valor_original: originalSaldoDb,
+                valor_novo: typedSaldo,
+                tipo_operacao: 'Editar Venda'
+              });
+          }
+        }
+      }
+
       router.push('/vendas');
       router.refresh();
     } catch (err: any) {
