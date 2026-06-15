@@ -62,6 +62,7 @@ export default function NovaVenda() {
   const [selectedOpIds, setSelectedOpIds] = useState<number[]>([]);
   const [baixasCliente, setBaixasCliente] = useState<any[]>([]);
   const [hasOperationsButAllSold, setHasOperationsButAllSold] = useState(false);
+  const [lastAutoObs, setLastAutoObs] = useState('');
 
   const [form, setForm] = useState({
     orgao: '', empresa: '', operacao: 'REFIN', codigo_operacao: '', corretor: '', carteira: '',
@@ -360,6 +361,50 @@ export default function NovaVenda() {
       }
     }
   }, [selectedOpIds, parcelasExibidas, form.operacao]);
+
+  useEffect(() => {
+    const parts = [];
+    if (form.empresa_ativacao) {
+      parts.push(`ATIVAÇÃO ${form.empresa_ativacao.trim().toUpperCase()}`);
+    }
+    const MONTH_NAMES: { [key: string]: string } = {
+      '01': 'JANEIRO', '02': 'FEVEREIRO', '03': 'MARÇO', '04': 'ABRIL',
+      '05': 'MAIO', '06': 'JUNHO', '07': 'JULHO', '08': 'AGOSTO',
+      '09': 'SETEMBRO', '10': 'OUTUBRO', '11': 'NOVEMBRO', '12': 'DEZEMBRO'
+    };
+    const mesNome = form.inicio_mes ? (MONTH_NAMES[form.inicio_mes] || '') : '';
+    if (mesNome && form.inicio_ano) {
+      parts.push(`INICIO ${mesNome}/${form.inicio_ano}`);
+    }
+    if (form.operacao === 'REFIN') {
+      const restamVal = parcelasExibidas.length;
+      const abatidasVal = selectedOpIds.length;
+      parts.push(`RESTAM ${restamVal} ABATIDAS ${abatidasVal}`);
+    }
+    if (form.dia_util) {
+      let du = form.dia_util.trim();
+      if (!du.includes('°') && !du.includes('º')) {
+        du = `${du}°`;
+      }
+      parts.push(`${du.toUpperCase()} DIA UTIL`);
+    }
+    const generated = parts.join(' - ');
+
+    if (!form.observacao || form.observacao === lastAutoObs) {
+      setForm(f => ({ ...f, observacao: generated }));
+      setLastAutoObs(generated);
+    }
+  }, [
+    form.empresa_ativacao,
+    form.inicio_mes,
+    form.inicio_ano,
+    form.operacao,
+    form.dia_util,
+    parcelasExibidas.length,
+    selectedOpIds.length,
+    lastAutoObs,
+    form.observacao
+  ]);
 
   const buscarEmpresasPorConta = async (conta: string) => {
     if (!conta) return;

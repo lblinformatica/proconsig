@@ -423,6 +423,26 @@ export default function RelatoriosPage() {
     };
 
     try {
+      // Fetch contas and operacoes to resolve Grupo
+      const { data: allContas } = await supabase.schema('pro_consig').from('contas').select('*');
+      const uniqueOpCodes = Array.from(new Set(allData.map(v => v.codigo_operacao).filter(Boolean)));
+      let opsData: any[] = [];
+      if (uniqueOpCodes.length > 0) {
+        const { data } = await supabase
+          .schema('pro_consig')
+          .from('operacoes')
+          .select('operacao, grupo')
+          .in('operacao', uniqueOpCodes);
+        opsData = data || [];
+      }
+      
+      const opGroupMap: { [opCode: string]: number } = {};
+      opsData.forEach(op => {
+        if (op.operacao) {
+          opGroupMap[op.operacao.toString()] = op.grupo;
+        }
+      });
+
       // Import exceljs dynamically to avoid SSR building issues
       const ExcelJS = (await import('exceljs')).default;
       const workbook = new ExcelJS.Workbook();
@@ -495,6 +515,8 @@ export default function RelatoriosPage() {
       const wsDetailed = workbook.addWorksheet('Detalhado');
 
       wsDetailed.columns = [
+        { header: 'Nome', key: 'nome', width: 26 },
+        { header: 'CPF', key: 'cpf', width: 15 },
         { header: 'ID Venda', key: 'venda_id', width: 15 },
         { header: 'Forma Recebimento', key: 'forma_recebimento', width: 20 },
         { header: 'Banco', key: 'banco', width: 8 },
@@ -506,10 +528,9 @@ export default function RelatoriosPage() {
         { header: 'Chave PIX', key: 'chave_pix', width: 13 },
         { header: 'Pix', key: 'pix', width: 39 },
         { header: 'Valor Crédito', key: 'valor_credito', width: 15 },
+        { header: 'Grupo', key: 'grupo', width: 8 },
         { header: 'Obs.:', key: 'obs', width: 34 },
         { header: 'Status PG', key: 'status_pg', width: 12 },
-        { header: 'Nome', key: 'nome', width: 26 },
-        { header: 'CPF', key: 'cpf', width: 15 },
         { header: 'Vendedor', key: 'vendedor', width: 17 },
         { header: 'Carteira', key: 'carteira', width: 15 },
         { header: 'Gerado', key: 'gerado', width: 21 },
@@ -519,8 +540,8 @@ export default function RelatoriosPage() {
         { header: 'Atualização Cadastral', key: 'atualizacao_cadastral', width: 20 }
       ];
 
-      // Row 1: Merged Title Block (A1:V1 since we added columns, total 22 columns)
-      wsDetailed.mergeCells('A1:V1');
+      // Row 1: Merged Title Block (A1:W1 since we added columns, total 23 columns)
+      wsDetailed.mergeCells('A1:W1');
       const titleCellDet = wsDetailed.getCell('A1');
       titleCellDet.value = titleText;
       titleCellDet.font = { name: 'Calibri', family: 2, size: 24, color: { argb: 'FF000000' } };
@@ -530,16 +551,37 @@ export default function RelatoriosPage() {
       // Row 2: Headers
       const headerRowDet = wsDetailed.getRow(2);
       headerRowDet.values = [
-        'ID Venda', 'Forma Recebimento', 'Banco', 'Agência ', 'DV', 'OP', 'Conta', 'DV', 'Chave PIX', 'Pix', 'Valor Crédito', 'Obs.:', 'Status PG', 'Nome', 'CPF', 'Vendedor', 'Carteira', 'Gerado', 'Cód. Operação', 'Empresa Credora', 'Novo Cliente', 'Atualização Cadastral'
+        'Nome', 'CPF', 'ID Venda', 'Forma Recebimento', 'Banco', 'Agência ', 'DV', 'OP', 'Conta', 'DV', 'Chave PIX', 'Pix', 'Valor Crédito', 'Grupo', 'Obs.:', 'Status PG', 'Vendedor', 'Carteira', 'Gerado', 'Cód. Operação', 'Empresa Credora', 'Novo Cliente', 'Atualização Cadastral'
       ];
       headerRowDet.height = 20;
-      styleRow(headerRowDet, true, false, false, 11, [1, 2, 3, 4, 5, 6, 7, 8, 9, 13, 18, 19, 20, 21, 22]);
+      styleRow(headerRowDet, true, false, false, 13, [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 14, 16, 19, 20, 21, 22, 23]);
 
       // Row 3+: Data Rows
       allData.forEach((v) => {
         const isPix = v.forma_credito?.toLowerCase() === 'pix';
 
+        // Get Group
+        let saleGrupo = '';
+        if (v.codigo_operacao && opGroupMap[v.codigo_operacao.toString()]) {
+          saleGrupo = opGroupMap[v.codigo_operacao.toString()].toString();
+        } else {
+          const matched = allContas?.find(c => 
+            Number(c.conta_ativacao) === Number(v.conta_ativacao) && 
+            (c.empresa_ativacao === v.empresa_ativacao || c.empresa_credora === v.empresa_credora)
+          );
+          if (matched) {
+            saleGrupo = matched.grupo.toString();
+          } else {
+            const matchedByConta = allContas?.find(c => Number(c.conta_ativacao) === Number(v.conta_ativacao));
+            if (matchedByConta) {
+              saleGrupo = matchedByConta.grupo.toString();
+            }
+          }
+        }
+
         const rowData = {
+          nome: v.clientes?.nome || '',
+          cpf: v.cpf || '',
           venda_id: v.venda_id || '',
           forma_recebimento: v.forma_credito?.toUpperCase() || '',
           banco: isPix ? '' : (v.credito_banco || ''),
@@ -551,10 +593,9 @@ export default function RelatoriosPage() {
           chave_pix: isPix ? (v.pix_tipo_chave || '') : '',
           pix: isPix ? (v.pix_chave || '') : '',
           valor_credito: parseBRLString(v.abat),
+          grupo: saleGrupo,
           obs: v.observacao || '',
           status_pg: '',
-          nome: v.clientes?.nome || '',
-          cpf: v.cpf || '',
           vendedor: getVendedorFormatted(v.corretor),
           carteira: getVendedorFormatted(v.carteira),
           gerado: timestamp,
@@ -566,15 +607,15 @@ export default function RelatoriosPage() {
 
         const addedRow = wsDetailed.addRow(rowData);
         addedRow.height = 20;
-        styleRow(addedRow, false, false, isPix, 11, [1, 2, 3, 4, 5, 6, 7, 8, 9, 13, 18, 19, 20, 21, 22]);
+        styleRow(addedRow, false, false, isPix, 13, [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 14, 16, 19, 20, 21, 22, 23]);
       });
 
-      // Total Row (Valor Crédito is now in column 11 (K))
+      // Total Row (Valor Crédito is now in column 13 (M))
       const lastRowIndexDet = wsDetailed.rowCount + 1;
       const totalRowDet = wsDetailed.getRow(lastRowIndexDet);
       totalRowDet.height = 20;
-      totalRowDet.getCell(11).value = { formula: `SUM(K3:K${lastRowIndexDet - 1})` };
-      styleRow(totalRowDet, false, true, false, 11, [1, 2, 3, 4, 5, 6, 7, 8, 9, 13, 18, 19, 20, 21, 22]);
+      totalRowDet.getCell(13).value = { formula: `SUM(M3:M${lastRowIndexDet - 1})` };
+      styleRow(totalRowDet, false, true, false, 13, [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 14, 16, 19, 20, 21, 22, 23]);
 
       // ────────────────────────────────────────────────────────────────────────
       // SHEET 2: CONSOLIDADO (Consolidado)
@@ -582,6 +623,8 @@ export default function RelatoriosPage() {
       const wsConsolidated = workbook.addWorksheet('Consolidado');
 
       wsConsolidated.columns = [
+        { header: 'Nome', key: 'nome', width: 26 },
+        { header: 'CPF', key: 'cpf', width: 15 },
         { header: 'Forma Recebimento', key: 'forma_recebimento', width: 20 },
         { header: 'Banco', key: 'banco', width: 8 },
         { header: 'Agência ', key: 'agencia', width: 10 },
@@ -592,19 +635,19 @@ export default function RelatoriosPage() {
         { header: 'Chave PIX', key: 'chave_pix', width: 13 },
         { header: 'Pix', key: 'pix', width: 39 },
         { header: 'Valor Crédito', key: 'valor_credito', width: 15 },
+        { header: 'Grupo', key: 'grupo', width: 8 },
         { header: 'Obs.:', key: 'obs', width: 34 },
         { header: 'Status PG', key: 'status_pg', width: 12 },
-        { header: 'Nome', key: 'nome', width: 26 },
-        { header: 'CPF', key: 'cpf', width: 15 },
         { header: 'Vendedor', key: 'vendedor', width: 17 },
         { header: 'Carteira', key: 'carteira', width: 15 },
         { header: 'Gerado', key: 'gerado', width: 21 },
+        { header: 'Empresa Credora', key: 'empresa_credora', width: 19 },
         { header: 'Novo Cliente', key: 'novo_cliente', width: 15 },
         { header: 'Atualização Cadastral', key: 'atualizacao_cadastral', width: 20 }
       ];
 
-      // Row 1: Merged Title Block (A1:S1 since we added columns, total 19 columns)
-      wsConsolidated.mergeCells('A1:S1');
+      // Row 1: Merged Title Block (A1:U1 since we added columns, total 21 columns)
+      wsConsolidated.mergeCells('A1:U1');
       const titleCellCons = wsConsolidated.getCell('A1');
       titleCellCons.value = titleText;
       titleCellCons.font = { name: 'Calibri', family: 2, size: 24, color: { argb: 'FF000000' } };
@@ -614,10 +657,10 @@ export default function RelatoriosPage() {
       // Row 2: Headers
       const headerRowCons = wsConsolidated.getRow(2);
       headerRowCons.values = [
-        'Forma Recebimento', 'Banco', 'Agência ', 'DV', 'OP', 'Conta', 'DV', 'Chave PIX', 'Pix', 'Valor Crédito', 'Obs.:', 'Status PG', 'Nome', 'CPF', 'Vendedor', 'Carteira', 'Gerado', 'Novo Cliente', 'Atualização Cadastral'
+        'Nome', 'CPF', 'Forma Recebimento', 'Banco', 'Agência ', 'DV', 'OP', 'Conta', 'DV', 'Chave PIX', 'Pix', 'Valor Crédito', 'Grupo', 'Obs.:', 'Status PG', 'Vendedor', 'Carteira', 'Gerado', 'Empresa Credora', 'Novo Cliente', 'Atualização Cadastral'
       ];
       headerRowCons.height = 20;
-      styleRow(headerRowCons, true, false, false, 10, [1, 2, 3, 4, 5, 6, 7, 8, 12, 17, 18, 19]);
+      styleRow(headerRowCons, true, false, false, 12, [2, 3, 4, 5, 6, 7, 8, 9, 10, 13, 15, 18, 19, 20, 21]);
 
       // Group data by CPF for consolidation
       const groupedData: { [cpf: string]: any[] } = {};
@@ -640,7 +683,28 @@ export default function RelatoriosPage() {
         // Concatenate observations and codes
         const allObs = sales.map(s => s.observacao).filter(Boolean).join('; ');
 
+        // Get Group
+        let saleGrupo = '';
+        if (primarySale.codigo_operacao && opGroupMap[primarySale.codigo_operacao.toString()]) {
+          saleGrupo = opGroupMap[primarySale.codigo_operacao.toString()].toString();
+        } else {
+          const matched = allContas?.find(c => 
+            Number(c.conta_ativacao) === Number(primarySale.conta_ativacao) && 
+            (c.empresa_ativacao === primarySale.empresa_ativacao || c.empresa_credora === primarySale.empresa_credora)
+          );
+          if (matched) {
+            saleGrupo = matched.grupo.toString();
+          } else {
+            const matchedByConta = allContas?.find(c => Number(c.conta_ativacao) === Number(primarySale.conta_ativacao));
+            if (matchedByConta) {
+              saleGrupo = matchedByConta.grupo.toString();
+            }
+          }
+        }
+
         const rowData = {
+          nome: primarySale.clientes?.nome || '',
+          cpf: cpf,
           forma_recebimento: primarySale.forma_credito?.toUpperCase() || '',
           banco: isPix ? '' : (primarySale.credito_banco || ''),
           agencia: isPix ? '' : (primarySale.credito_agencia || ''),
@@ -651,28 +715,28 @@ export default function RelatoriosPage() {
           chave_pix: isPix ? (primarySale.pix_tipo_chave || '') : '',
           pix: isPix ? (primarySale.pix_chave || '') : '',
           valor_credito: totalValue,
+          grupo: saleGrupo,
           obs: allObs,
           status_pg: '',
-          nome: primarySale.clientes?.nome || '',
-          cpf: cpf,
           vendedor: getVendedorFormatted(primarySale.corretor),
           carteira: getVendedorFormatted(primarySale.carteira),
           gerado: timestamp,
+          empresa_credora: primarySale.empresa_credora || '',
           novo_cliente: primarySale.novo_cliente || '',
           atualizacao_cadastral: primarySale.atualizacao_cadastral || ''
         };
 
         const addedRow = wsConsolidated.addRow(rowData);
         addedRow.height = 20;
-        styleRow(addedRow, false, false, isPix, 10, [1, 2, 3, 4, 5, 6, 7, 8, 12, 17, 18, 19]);
+        styleRow(addedRow, false, false, isPix, 12, [2, 3, 4, 5, 6, 7, 8, 9, 10, 13, 15, 18, 19, 20, 21]);
       });
 
       // Total Row
       const lastRowIndexCons = wsConsolidated.rowCount + 1;
       const totalRowCons = wsConsolidated.getRow(lastRowIndexCons);
       totalRowCons.height = 20;
-      totalRowCons.getCell(10).value = { formula: `SUM(J3:J${lastRowIndexCons - 1})` };
-      styleRow(totalRowCons, false, true, false, 10, [1, 2, 3, 4, 5, 6, 7, 8, 12, 17, 18, 19]);
+      totalRowCons.getCell(12).value = { formula: `SUM(L3:L${lastRowIndexCons - 1})` };
+      styleRow(totalRowCons, false, true, false, 12, [2, 3, 4, 5, 6, 7, 8, 9, 10, 13, 15, 18, 19, 20, 21]);
 
       // ────────────────────────────────────────────────────────────────────────
       // SHEET 3: CADASTRO E-MAIL (Cadastro E-mail)
