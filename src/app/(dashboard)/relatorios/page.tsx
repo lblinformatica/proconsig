@@ -41,6 +41,9 @@ export default function RelatoriosPage() {
 
   const getSaleGrupo = (v: any) => {
     if (!v) return '-';
+    if (v.grupo !== undefined && v.grupo !== null) {
+      return v.grupo.toString();
+    }
     if (v.codigo_operacao) {
       const op = operacoes.find(o => o.operacao?.toString() === v.codigo_operacao?.toString());
       if (op && op.grupo !== undefined && op.grupo !== null) {
@@ -76,7 +79,7 @@ export default function RelatoriosPage() {
   };
 
   const [nivel, setNivel] = useState('');
-  const [allowedContas, setAllowedContas] = useState<string[]>([]);
+  const [allowedGroups, setAllowedGroups] = useState<number[]>([]);
   const [userEmail, setUserEmail] = useState('');
 
   // Carregar dados e perfil do usuário ao entrar na tela
@@ -95,16 +98,7 @@ export default function RelatoriosPage() {
         setUserEmail(profile.email || session.user.email || '');
         if (profile.nivel === 'financeiro' && profile.grupos_permitidos && profile.grupos_permitidos.length > 0) {
           const groupNumbers = profile.grupos_permitidos.map(Number);
-          const { data: contasData } = await supabase
-            .schema('pro_consig')
-            .from('contas')
-            .select('conta_ativacao')
-            .in('grupo', groupNumbers);
-
-          if (contasData) {
-            const contasStringList = contasData.map(c => c.conta_ativacao.toString());
-            setAllowedContas(contasStringList);
-          }
+          setAllowedGroups(groupNumbers);
         }
       }
     };
@@ -115,7 +109,7 @@ export default function RelatoriosPage() {
     if (nivel !== '') {
       buscarDados(0);
     }
-  }, [nivel, allowedContas]);
+  }, [nivel, allowedGroups]);
 
   const handleFilterChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -178,10 +172,10 @@ export default function RelatoriosPage() {
       .range(from, to);
 
     if (nivel === 'financeiro') {
-      if (allowedContas.length > 0) {
-        query = query.in('conta_ativacao', allowedContas);
+      if (allowedGroups.length > 0) {
+        query = query.in('grupo', allowedGroups);
       } else {
-        query = query.in('conta_ativacao', ['-1']);
+        query = query.in('grupo', [-1]);
       }
     }
 
@@ -235,10 +229,10 @@ export default function RelatoriosPage() {
         .order('created_at', { ascending: false });
 
       if (nivel === 'financeiro') {
-        if (allowedContas.length > 0) {
-          query = query.in('conta_ativacao', allowedContas);
+        if (allowedGroups.length > 0) {
+          query = query.in('grupo', allowedGroups);
         } else {
-          query = query.in('conta_ativacao', ['-1']);
+          query = query.in('grupo', [-1]);
         }
       }
 
@@ -355,10 +349,10 @@ export default function RelatoriosPage() {
         .order('created_at', { ascending: false });
 
       if (nivel === 'financeiro') {
-        if (allowedContas.length > 0) {
-          query = query.in('conta_ativacao', allowedContas);
+        if (allowedGroups.length > 0) {
+          query = query.in('grupo', allowedGroups);
         } else {
-          query = query.in('conta_ativacao', ['-1']);
+          query = query.in('grupo', [-1]);
         }
       }
 
