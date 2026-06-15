@@ -72,7 +72,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         fetchNotifications(profile.id);
 
         // Redirect financeiro to reports by default
-        if (profile.nivel === 'financeiro' && (pathname === '/dashboard' || pathname === '/')) {
+        if (profile.nivel === 'financeiro' && !pathname.startsWith('/relatorios')) {
           router.push('/relatorios');
         }
       }
@@ -121,6 +121,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       });
     };
   }, [router]);
+
+  // Redireciona o usuário com nível financeiro se tentar acessar outras rotas por navegação client-side
+  useEffect(() => {
+    if (userProfile?.nivel === 'financeiro' && !pathname.startsWith('/relatorios')) {
+      router.push('/relatorios');
+    }
+  }, [pathname, userProfile, router]);
 
   const fetchNotifications = async (userId: string) => {
     const { data } = await supabase

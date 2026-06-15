@@ -16,19 +16,51 @@ export default function RelatoriosPage() {
   const [page, setPage] = useState(0);
   const PAGE_SIZE = 25;
   const [vendedores, setVendedores] = useState<any[]>([]);
+  const [contas, setContas] = useState<any[]>([]);
+  const [operacoes, setOperacoes] = useState<any[]>([]);
 
   useEffect(() => {
-    const fetchVendedores = async () => {
-      const { data } = await supabase.schema('pro_consig').from('vendedores').select('codigo, nome');
-      if (data) setVendedores(data);
+    const fetchMetadata = async () => {
+      const { data: vData } = await supabase.schema('pro_consig').from('vendedores').select('codigo, nome');
+      if (vData) setVendedores(vData);
+
+      const { data: cData } = await supabase.schema('pro_consig').from('contas').select('*');
+      if (cData) setContas(cData);
+
+      const { data: oData } = await supabase.schema('pro_consig').from('operacoes').select('operacao, grupo');
+      if (oData) setOperacoes(oData);
     };
-    fetchVendedores();
+    fetchMetadata();
   }, []);
 
   const getVendedorFormatted = (codigo: string) => {
     if (!codigo) return '-';
     const v = vendedores.find(x => x.codigo === codigo);
     return v ? `${v.codigo} - ${v.nome}` : codigo;
+  };
+
+  const getSaleGrupo = (v: any) => {
+    if (!v) return '-';
+    if (v.codigo_operacao) {
+      const op = operacoes.find(o => o.operacao?.toString() === v.codigo_operacao?.toString());
+      if (op && op.grupo !== undefined && op.grupo !== null) {
+        return op.grupo.toString();
+      }
+    }
+    if (v.conta_ativacao) {
+      const matched = contas.find(c => 
+        Number(c.conta_ativacao) === Number(v.conta_ativacao) && 
+        (c.empresa_ativacao === v.empresa_ativacao || c.empresa_credora === v.empresa_credora)
+      );
+      if (matched && matched.grupo !== undefined && matched.grupo !== null) {
+        return matched.grupo.toString();
+      }
+      const matchedByConta = contas.find(c => Number(c.conta_ativacao) === Number(v.conta_ativacao));
+      if (matchedByConta && matchedByConta.grupo !== undefined && matchedByConta.grupo !== null) {
+        return matchedByConta.grupo.toString();
+      }
+    }
+    return '-';
   };
 
   const [filters, setFilters] = useState({
@@ -1131,6 +1163,7 @@ export default function RelatoriosPage() {
                 <th>Operação</th>
                 <th>Valor</th>
                 <th>Vendedor</th>
+                <th>Grupo</th>
                 <th>Novo?</th>
                 <th>Atualiz. Cad.?</th>
                 <th>Banco</th>
@@ -1141,7 +1174,7 @@ export default function RelatoriosPage() {
             <tbody>
               {vendas.length === 0 ? (
                 <tr>
-                  <td colSpan={11} style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-muted)' }}>Nenhum dado para exibir com esses filtros.</td>
+                  <td colSpan={12} style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-muted)' }}>Nenhum dado para exibir com esses filtros.</td>
                 </tr>
               ) : (
                 vendas.map((v) => (
@@ -1179,6 +1212,7 @@ export default function RelatoriosPage() {
                     <td style={{ fontSize: '0.85rem' }}>{v.operacao}</td>
                     <td style={{ fontWeight: 600 }}>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v.valor || 0)}</td>
                     <td style={{ fontSize: '0.8rem' }}>{getVendedorFormatted(v.corretor)}</td>
+                    <td style={{ fontSize: '0.85rem', fontWeight: 600 }}>{getSaleGrupo(v)}</td>
                     <td>{v.novo_cliente || '-'}</td>
                     <td>{v.atualizacao_cadastral || '-'}</td>
                     <td>{v.banco}</td>
