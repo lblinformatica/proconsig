@@ -228,7 +228,7 @@ export default function EditarCliente() {
       val = formatMoney(value);
     } else if (id === 'email') {
       val = value.toLowerCase();
-    } else if (typeof val === 'string') {
+    } else if (typeof val === 'string' && e.target.tagName !== 'SELECT') {
       val = val.toUpperCase();
     }
     setForm(f => ({ ...f, [id]: val }));
