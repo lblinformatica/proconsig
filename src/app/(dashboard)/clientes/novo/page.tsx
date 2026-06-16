@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { createPortal } from 'react-dom';
 import { supabase } from '@/lib/supabaseClient';
 import { ArrowLeft, Building2, CreditCard, Wallet, Search, Plus, Trash2, Edit, X, Phone } from 'lucide-react';
-import { validateCPF, formatCPF } from '@/lib/cpf';
+import { validateCPF, formatCPF, formatAgencia } from '@/lib/cpf';
 import { formatCEP, formatPhone, formatMoney, parseMoneyToNumber } from '@/lib/formatters';
 import { ESPECIE_OPTIONS } from '@/lib/constants';
 import { ConfirmModal } from '@/components/ConfirmModal';
@@ -306,7 +306,7 @@ export default function NovoCliente() {
         cpf: form.cpf,
         nome: form.nome,
         banco: form.banco,
-        agencia: form.agencia,
+        agencia: formatAgencia(form.agencia),
         agencia_dv: form.agencia_dv,
         conta: form.conta,
         conta_dv: form.conta_dv,
@@ -345,7 +345,7 @@ export default function NovoCliente() {
 
       if (form.forma_credito === 'conta') {
         payload.credito_banco = form.credito_banco;
-        payload.credito_agencia = form.credito_agencia;
+        payload.credito_agencia = formatAgencia(form.credito_agencia);
         payload.credito_agencia_dv = form.credito_agencia_dv;
         payload.credito_tipo_conta = form.credito_tipo_conta;
         payload.credito_conta = form.credito_conta;

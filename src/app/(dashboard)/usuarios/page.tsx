@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
-import { ShieldCheck, XCircle, Search, UserCheck, Shield, Edit2, Trash2, UserMinus } from 'lucide-react';
+import { ShieldCheck, XCircle, Search, UserCheck, Shield, Edit2, Trash2, UserMinus, BarChart, TrendingUp } from 'lucide-react';
 import { ConfirmModal } from '@/components/ConfirmModal';
 import { EditUserModal } from '@/components/EditUserModal';
 import { adminChangeUserStatus, adminDeleteUser } from '@/app/actions/admin';
@@ -142,7 +142,10 @@ export default function UsuariosPage() {
                     <td>{usr.email}</td>
                     <td style={{ textTransform: 'capitalize' }}>
                       <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                        {usr.nivel === 'admin' ? <Shield size={14} color="var(--color-primary)" /> : <UserCheck size={14} color="var(--color-text-muted)" />}
+                        {usr.nivel === 'admin' && <Shield size={14} color="var(--color-primary)" />}
+                        {usr.nivel === 'operacional' && <UserCheck size={14} color="var(--color-text-muted)" />}
+                        {usr.nivel === 'financeiro' && <BarChart size={14} color="var(--color-warning)" />}
+                        {usr.nivel === 'vendedor' && <TrendingUp size={14} color="var(--color-success)" />}
                         {usr.nivel}
                       </span>
                     </td>

@@ -71,10 +71,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         setCurrentUserId(profile.id);
         fetchNotifications(profile.id);
 
-        // Redirect financeiro to reports by default
-        if (profile.nivel === 'financeiro' && !pathname.startsWith('/relatorios')) {
-          router.push('/relatorios');
-        }
+        // Redirecionamento inicial por nível será feito pelo outro useEffect de autorização
       }
 
       setLoading(false);
@@ -122,10 +119,33 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     };
   }, [router]);
 
-  // Redireciona o usuário com nível financeiro se tentar acessar outras rotas por navegação client-side
+  // Redirecionamento por nível de acesso (Autorização client-side)
   useEffect(() => {
-    if (userProfile?.nivel === 'financeiro' && !pathname.startsWith('/relatorios') && !pathname.startsWith('/historico')) {
-      router.push('/relatorios');
+    if (!userProfile) return;
+
+    const nivel = userProfile.nivel;
+
+    // Admin tem acesso total
+    if (nivel === 'admin') return;
+
+    if (nivel === 'operacional') {
+      const allowed = ['/clientes', '/vendas', '/relatorios', '/solicitacoes'];
+      const isAllowed = allowed.some(path => pathname.startsWith(path));
+      if (!isAllowed) {
+        router.push('/vendas');
+      }
+    } else if (nivel === 'financeiro') {
+      const allowed = ['/clientes', '/vendas', '/relatorios'];
+      const isAllowed = allowed.some(path => pathname.startsWith(path));
+      if (!isAllowed) {
+        router.push('/relatorios');
+      }
+    } else if (nivel === 'vendedor') {
+      const allowed = ['/dashboard', '/vendas'];
+      const isAllowed = allowed.some(path => pathname.startsWith(path) || pathname === '/');
+      if (!isAllowed) {
+        router.push('/vendas');
+      }
     }
   }, [pathname, userProfile, router]);
 
@@ -268,49 +288,74 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
 
         <nav style={{ flexGrow: 1, padding: isSidebarCollapsed ? '0.75rem 0.5rem' : '0.75rem 0.75rem', display: 'flex', flexDirection: 'column', gap: '0.15rem', overflowY: 'auto' }}>
-          {userProfile?.nivel !== 'financeiro' && (
-            <>
-              <Link href="/dashboard" className={`btn ${pathname === '/dashboard' ? 'btn-primary' : 'btn-secondary'}`} style={navItemStyle(pathname === '/dashboard')} title="Início">
-                <Home size={18} style={{ flexShrink: 0 }} /> {!isSidebarCollapsed && <span style={{ whiteSpace: 'nowrap' }}>Início</span>}
-              </Link>
-              <Link href="/clientes" className={`btn ${pathname.includes('/clientes') ? 'btn-primary' : 'btn-secondary'}`} style={navItemStyle(pathname.includes('/clientes'))} title="Clientes">
-                <Users size={18} style={{ flexShrink: 0 }} /> {!isSidebarCollapsed && <span style={{ whiteSpace: 'nowrap' }}>Clientes</span>}
-              </Link>
-              <Link href="/vendedores" className={`btn ${pathname.includes('/vendedores') ? 'btn-primary' : 'btn-secondary'}`} style={navItemStyle(pathname.includes('/vendedores'))} title="Vendedores">
-                <User size={18} style={{ flexShrink: 0 }} /> {!isSidebarCollapsed && <span style={{ whiteSpace: 'nowrap' }}>Vendedores</span>}
-              </Link>
-              <Link href="/vendas" className={`btn ${pathname.includes('/vendas') ? 'btn-primary' : 'btn-secondary'}`} style={navItemStyle(pathname.includes('/vendas'))} title="Vendas">
-                <FileText size={18} style={{ flexShrink: 0 }} /> {!isSidebarCollapsed && <span style={{ whiteSpace: 'nowrap' }}>Vendas</span>}
-              </Link>
-            </>
+          {/* Início (Dashboard): Visible to Admin and Vendedor */}
+          {(userProfile?.nivel === 'admin' || userProfile?.nivel === 'vendedor') && (
+            <Link href="/dashboard" className={`btn ${pathname === '/dashboard' ? 'btn-primary' : 'btn-secondary'}`} style={navItemStyle(pathname === '/dashboard')} title="Início">
+              <Home size={18} style={{ flexShrink: 0 }} /> {!isSidebarCollapsed && <span style={{ whiteSpace: 'nowrap' }}>Início</span>}
+            </Link>
           )}
+
+          {/* Clientes: Visible to Admin, Operacional, Financeiro */}
+          {(userProfile?.nivel === 'admin' || userProfile?.nivel === 'operacional' || userProfile?.nivel === 'financeiro') && (
+            <Link href="/clientes" className={`btn ${pathname.includes('/clientes') ? 'btn-primary' : 'btn-secondary'}`} style={navItemStyle(pathname.includes('/clientes'))} title="Clientes">
+              <Users size={18} style={{ flexShrink: 0 }} /> {!isSidebarCollapsed && <span style={{ whiteSpace: 'nowrap' }}>Clientes</span>}
+            </Link>
+          )}
+
+          {/* Vendedores: Visible to Admin only */}
           {userProfile?.nivel === 'admin' && (
-            <>
-              <Link href="/operacoes" className={`btn ${pathname.includes('/operacoes') ? 'btn-primary' : 'btn-secondary'}`} style={navItemStyle(pathname.includes('/operacoes'))} title="Operações">
-                <List size={18} style={{ flexShrink: 0 }} /> {!isSidebarCollapsed && <span style={{ whiteSpace: 'nowrap' }}>Operações</span>}
-              </Link>
-              <Link href="/inadimplentes" className={`btn ${pathname.includes('/inadimplentes') ? 'btn-primary' : 'btn-secondary'}`} style={navItemStyle(pathname.includes('/inadimplentes'))} title="Inadimplentes">
-                <AlertCircle size={18} style={{ flexShrink: 0 }} /> {!isSidebarCollapsed && <span style={{ whiteSpace: 'nowrap' }}>Inadimplentes</span>}
-              </Link>
-              <Link href="/baixas" className={`btn ${pathname.includes('/baixas') ? 'btn-primary' : 'btn-secondary'}`} style={navItemStyle(pathname.includes('/baixas'))} title="Baixas">
-                <CheckSquare size={18} style={{ flexShrink: 0 }} /> {!isSidebarCollapsed && <span style={{ whiteSpace: 'nowrap' }}>Baixas</span>}
-              </Link>
-            </>
+            <Link href="/vendedores" className={`btn ${pathname.includes('/vendedores') ? 'btn-primary' : 'btn-secondary'}`} style={navItemStyle(pathname.includes('/vendedores'))} title="Vendedores">
+              <User size={18} style={{ flexShrink: 0 }} /> {!isSidebarCollapsed && <span style={{ whiteSpace: 'nowrap' }}>Vendedores</span>}
+            </Link>
           )}
+
+          {/* Vendas: Visible to Admin, Operacional, Financeiro, Vendedor */}
+          {(userProfile?.nivel === 'admin' || userProfile?.nivel === 'operacional' || userProfile?.nivel === 'financeiro' || userProfile?.nivel === 'vendedor') && (
+            <Link href="/vendas" className={`btn ${pathname.includes('/vendas') ? 'btn-primary' : 'btn-secondary'}`} style={navItemStyle(pathname.includes('/vendas'))} title="Vendas">
+              <FileText size={18} style={{ flexShrink: 0 }} /> {!isSidebarCollapsed && <span style={{ whiteSpace: 'nowrap' }}>Vendas</span>}
+            </Link>
+          )}
+
+          {/* Operações: Visible to Admin only */}
+          {userProfile?.nivel === 'admin' && (
+            <Link href="/operacoes" className={`btn ${pathname.includes('/operacoes') ? 'btn-primary' : 'btn-secondary'}`} style={navItemStyle(pathname.includes('/operacoes'))} title="Operações">
+              <List size={18} style={{ flexShrink: 0 }} /> {!isSidebarCollapsed && <span style={{ whiteSpace: 'nowrap' }}>Operações</span>}
+            </Link>
+          )}
+
+          {/* Inadimplentes: Visible to Admin only */}
+          {userProfile?.nivel === 'admin' && (
+            <Link href="/inadimplentes" className={`btn ${pathname.includes('/inadimplentes') ? 'btn-primary' : 'btn-secondary'}`} style={navItemStyle(pathname.includes('/inadimplentes'))} title="Inadimplentes">
+              <AlertCircle size={18} style={{ flexShrink: 0 }} /> {!isSidebarCollapsed && <span style={{ whiteSpace: 'nowrap' }}>Inadimplentes</span>}
+            </Link>
+          )}
+
+          {/* Baixas: Visible to Admin only */}
+          {userProfile?.nivel === 'admin' && (
+            <Link href="/baixas" className={`btn ${pathname.includes('/baixas') ? 'btn-primary' : 'btn-secondary'}`} style={navItemStyle(pathname.includes('/baixas'))} title="Baixas">
+              <CheckSquare size={18} style={{ flexShrink: 0 }} /> {!isSidebarCollapsed && <span style={{ whiteSpace: 'nowrap' }}>Baixas</span>}
+            </Link>
+          )}
+
+          {/* Usuários: Visible to Admin only */}
           {userProfile?.nivel === 'admin' && (
             <Link href="/usuarios" className={`btn ${pathname.includes('/usuarios') ? 'btn-primary' : 'btn-secondary'}`} style={navItemStyle(pathname.includes('/usuarios'))} title="Usuários">
               <Users size={18} style={{ flexShrink: 0 }} /> {!isSidebarCollapsed && <span style={{ whiteSpace: 'nowrap' }}>Usuários</span>}
             </Link>
           )}
-          {(userProfile?.nivel === 'admin' || userProfile?.nivel === 'financeiro') && (
-            <>
-              <Link href="/relatorios" className={`btn ${pathname.includes('/relatorios') ? 'btn-primary' : 'btn-secondary'}`} style={navItemStyle(pathname.includes('/relatorios'))} title="Relatórios">
-                <BarChart size={18} style={{ flexShrink: 0 }} /> {!isSidebarCollapsed && <span style={{ whiteSpace: 'nowrap' }}>Relatórios</span>}
-              </Link>
-              <Link href="/historico" className={`btn ${pathname.includes('/historico') ? 'btn-primary' : 'btn-secondary'}`} style={navItemStyle(pathname.includes('/historico'))} title="Histórico">
-                <History size={18} style={{ flexShrink: 0 }} /> {!isSidebarCollapsed && <span style={{ whiteSpace: 'nowrap' }}>Histórico</span>}
-              </Link>
-            </>
+
+          {/* Relatórios: Visible to Admin, Operacional, Financeiro */}
+          {(userProfile?.nivel === 'admin' || userProfile?.nivel === 'operacional' || userProfile?.nivel === 'financeiro') && (
+            <Link href="/relatorios" className={`btn ${pathname.includes('/relatorios') ? 'btn-primary' : 'btn-secondary'}`} style={navItemStyle(pathname.includes('/relatorios'))} title="Relatórios">
+              <BarChart size={18} style={{ flexShrink: 0 }} /> {!isSidebarCollapsed && <span style={{ whiteSpace: 'nowrap' }}>Relatórios</span>}
+            </Link>
+          )}
+
+          {/* Histórico: Visible to Admin only */}
+          {userProfile?.nivel === 'admin' && (
+            <Link href="/historico" className={`btn ${pathname.includes('/historico') ? 'btn-primary' : 'btn-secondary'}`} style={navItemStyle(pathname.includes('/historico'))} title="Histórico">
+              <History size={18} style={{ flexShrink: 0 }} /> {!isSidebarCollapsed && <span style={{ whiteSpace: 'nowrap' }}>Histórico</span>}
+            </Link>
           )}
         </nav>
 

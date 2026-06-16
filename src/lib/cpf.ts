@@ -26,3 +26,13 @@ export function formatCPF(val: string): string {
     .replace(/(\d{3})(\d{1,2})/, '$1-$2')
     .replace(/(-\d{2})\d+?$/, '$1');
 }
+export function formatAgencia(val: string | number | null | undefined): string {
+  if (val === null || val === undefined) return '';
+  const str = val.toString().trim();
+  if (!str) return '';
+  // Se for composto apenas por dígitos, formata com zeros à esquerda até 4 posições
+  if (/^\d+$/.test(str)) {
+    return str.padStart(4, '0');
+  }
+  return str;
+}

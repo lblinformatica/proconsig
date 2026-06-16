@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 import { ArrowLeft, CheckCircle2, Search, AlertTriangle, UserPlus, Info, ListFilter, Calculator, User, Building, Loader2, Landmark, Wallet, LayoutGrid } from 'lucide-react';
-import { validateCPF, formatCPF } from '@/lib/cpf';
+import { validateCPF, formatCPF, formatAgencia } from '@/lib/cpf';
 import { ConfirmModal } from '@/components/ConfirmModal';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -65,6 +65,7 @@ export default function EditarVenda(props: { params: Promise<{ id: string }> }) 
   const [lastAutoObs, setLastAutoObs] = useState('');
   const [originalSaldoDb, setOriginalSaldoDb] = useState<number | null>(null);
   const [vendaCodigo, setVendaCodigo] = useState<string>('');
+  const [isVendaPaga, setIsVendaPaga] = useState(false);
 
   const [form, setForm] = useState({
     orgao: '', empresa: '', operacao: 'REFIN', codigo_operacao: '', corretor: '', carteira: '',
@@ -112,6 +113,9 @@ export default function EditarVenda(props: { params: Promise<{ id: string }> }) 
         if (vError) throw vError;
 
         if (venda) {
+          if (venda.status?.toLowerCase() === 'pago' || venda.status?.toLowerCase() === 'paga') {
+            setIsVendaPaga(true);
+          }
           setCpf(venda.cpf);
           setOriginalSaldoDb(venda.saldo || 0);
           setVendaCodigo(venda.venda_id || '');
@@ -137,7 +141,7 @@ export default function EditarVenda(props: { params: Promise<{ id: string }> }) 
             coef: venda.coef ? venda.coef.toFixed(3).replace('.', ',') : '',
             prazo: venda.prazo ? venda.prazo.toString() : '',
             banco: venda.banco || '',
-            agencia: venda.agencia || '',
+            agencia: formatAgencia(venda.agencia),
             agencia_dv: venda.agencia_dv || '',
             op: venda.op || '',
             conta: venda.conta || '',
@@ -155,7 +159,7 @@ export default function EditarVenda(props: { params: Promise<{ id: string }> }) 
             pix_tipo_chave: venda.pix_tipo_chave || '',
             pix_chave: venda.pix_chave || '',
             credito_banco: venda.credito_banco || '',
-            credito_agencia: venda.credito_agencia || '',
+            credito_agencia: formatAgencia(venda.credito_agencia),
             credito_agencia_dv: venda.credito_agencia_dv || '',
             credito_conta: venda.credito_conta || '',
             credito_conta_dv: venda.credito_conta_dv || '',
@@ -635,6 +639,9 @@ export default function EditarVenda(props: { params: Promise<{ id: string }> }) 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isVendaPaga) {
+      return showAlert('Edição Bloqueada', 'Esta venda está paga e não pode ser editada.');
+    }
     if (!clientFound) return showAlert('Atenção', 'Busque o cliente.');
 
     if (!form.corretor || !form.corretor.trim()) {
@@ -690,14 +697,14 @@ export default function EditarVenda(props: { params: Promise<{ id: string }> }) 
         coef: parseFloat(form.coef.replace(/\./g, '').replace(',', '.')) || null,
         parcela: parseFloat(form.parcela.replace(/\./g, '').replace(',', '.')) || null,
         prazo: parseInt(form.prazo) || null,
-        banco: form.banco, agencia: form.agencia, agencia_dv: form.agencia_dv,
+        banco: form.banco, agencia: formatAgencia(form.agencia), agencia_dv: form.agencia_dv,
         op: form.op, conta: form.conta, conta_dv: form.conta_dv, tipo_conta: form.tipo_conta,
         contrato: form.contrato, empresa_ativacao: form.empresa_ativacao,
         conta_ativacao: form.conta_ativacao, inicio: dataInicio,
         dia_util: form.dia_util, empresa_credora: form.empresa_credora, observacao: form.observacao,
         forma_credito: form.forma_credito, pix_tipo_chave: form.pix_tipo_chave,
         pix_chave: form.pix_chave, credito_banco: form.credito_banco,
-        credito_agencia: form.credito_agencia, credito_agencia_dv: form.credito_agencia_dv,
+        credito_agencia: formatAgencia(form.credito_agencia), credito_agencia_dv: form.credito_agencia_dv,
         credito_conta: form.credito_conta, credito_conta_dv: form.credito_conta_dv,
         credito_tipo_conta: form.credito_tipo_conta,
         novo_cliente: form.novo_cliente,
@@ -745,6 +752,25 @@ export default function EditarVenda(props: { params: Promise<{ id: string }> }) 
   };
 
   if (fetching) return <div className="card" style={{ textAlign: 'center', padding: '4rem' }}><Loader2 className="animate-spin" style={{ margin: '0 auto' }} /> Carregando...</div>;
+
+  if (isVendaPaga) {
+    return (
+      <div className="animate-fade-in" style={{ maxWidth: '600px', margin: '3rem auto' }}>
+        <div className="card" style={{ padding: '2.5rem', textAlign: 'center', border: '1px solid var(--color-warning)' }}>
+          <div style={{ width: '64px', height: '64px', borderRadius: '50%', backgroundColor: 'rgba(245, 158, 11, 0.1)', color: 'var(--color-warning)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem auto' }}>
+            <AlertTriangle size={36} />
+          </div>
+          <h2 style={{ fontSize: '1.5rem', marginBottom: '1rem', color: 'var(--color-text-main)' }}>Venda Paga (Não Editável)</h2>
+          <p style={{ color: 'var(--color-text-muted)', lineHeight: '1.6', marginBottom: '2rem' }}>
+            Esta venda (Código: <strong>{vendaCodigo}</strong>) já foi marcada como <strong>PAGA</strong>. Para garantir a integridade financeira e o controle dos borderôs gerados, vendas pagas não podem ser editadas ou excluídas.
+          </p>
+          <Link href="/vendas" className="btn btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+            <ArrowLeft size={18} /> Voltar para Vendas
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>

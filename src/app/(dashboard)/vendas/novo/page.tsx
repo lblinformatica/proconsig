@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 import { ArrowLeft, CheckCircle2, Search, AlertTriangle, UserPlus, Info, ListFilter, Calculator, User, Building, Loader2, Landmark, Wallet, LayoutGrid } from 'lucide-react';
-import { validateCPF, formatCPF } from '@/lib/cpf';
+import { validateCPF, formatCPF, formatAgencia } from '@/lib/cpf';
 import { ConfirmModal } from '@/components/ConfirmModal';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -139,14 +139,14 @@ export default function NovaVenda() {
       setForm(f => ({
         ...f,
         banco: cliente.banco || '',
-        agencia: cliente.agencia || '',
+        agencia: formatAgencia(cliente.agencia),
         agencia_dv: cliente.agencia_dv || '',
         conta: cliente.conta || '',
         conta_dv: cliente.conta_dv || '',
         tipo_conta: cliente.tipo_conta || 'corrente',
         op: cliente.op || '',
         credito_banco: cliente.credito_banco || cliente.banco || '',
-        credito_agencia: cliente.credito_agencia || cliente.agencia || '',
+        credito_agencia: formatAgencia(cliente.credito_agencia || cliente.agencia),
         credito_agencia_dv: cliente.credito_agencia_dv || cliente.agencia_dv || '',
         credito_conta: cliente.credito_conta || cliente.conta || '',
         credito_conta_dv: cliente.credito_conta_dv || cliente.conta_dv || '',
@@ -713,14 +713,14 @@ export default function NovaVenda() {
           coef: parseFloat(form.coef.replace(/\./g, '').replace(',', '.')) || null,
           parcela: parseFloat(form.parcela.replace(/\./g, '').replace(',', '.')) || null,
           prazo: parseInt(form.prazo) || null,
-          banco: form.banco, agencia: form.agencia, agencia_dv: form.agencia_dv,
+          banco: form.banco, agencia: formatAgencia(form.agencia), agencia_dv: form.agencia_dv,
           op: form.op, conta: form.conta, conta_dv: form.conta_dv, tipo_conta: form.tipo_conta,
           contrato: form.contrato, empresa_ativacao: form.empresa_ativacao,
           conta_ativacao: form.conta_ativacao, inicio: dataInicio,
           dia_util: form.dia_util, empresa_credora: form.empresa_credora, observacao: form.observacao,
           forma_credito: form.forma_credito, pix_tipo_chave: form.pix_tipo_chave,
           pix_chave: form.pix_chave, credito_banco: form.credito_banco,
-          credito_agencia: form.credito_agencia, credito_agencia_dv: form.credito_agencia_dv,
+          credito_agencia: formatAgencia(form.credito_agencia), credito_agencia_dv: form.credito_agencia_dv,
           credito_conta: form.credito_conta, credito_conta_dv: form.credito_conta_dv,
           credito_tipo_conta: form.credito_tipo_conta,
           novo_cliente: form.novo_cliente,

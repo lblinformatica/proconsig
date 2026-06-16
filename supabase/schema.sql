@@ -7,7 +7,7 @@ CREATE TABLE pro_consig.usuarios (
     nome TEXT NOT NULL,
     conta TEXT UNIQUE,
     email TEXT NOT NULL,
-    nivel TEXT NOT NULL CHECK (nivel IN ('operacional', 'admin')),
+    nivel TEXT NOT NULL CHECK (nivel IN ('operacional', 'admin', 'financeiro', 'vendedor')),
     status TEXT NOT NULL CHECK (status IN ('pendente', 'ativo', 'inativo')),
     created_at TIMESTAMPTZ DEFAULT now(),
     updated_at TIMESTAMPTZ DEFAULT now()

@@ -7,7 +7,7 @@ import * as XLSX from 'xlsx';
 import { ConfirmModal } from '@/components/ConfirmModal';
 import { useEffect } from 'react';
 import { sendRelatorioEmail } from '@/app/actions/relatorios';
-import { validateCPF, formatCPF } from '@/lib/cpf';
+import { validateCPF, formatCPF, formatAgencia } from '@/lib/cpf';
 
 export default function RelatoriosPage() {
   const [loading, setLoading] = useState(false);
@@ -479,7 +479,8 @@ export default function RelatoriosPage() {
         isTotal = false,
         highlightYellow = false,
         valorCreditoCol = 10,
-        centerCols = [1, 2, 3, 4, 5, 6, 7, 8, 12, 16, 17, 18]
+        centerCols = [1, 2, 3, 4, 5, 6, 7, 8, 12, 16, 17, 18],
+        highlightOrange = false
       ) => {
         row.eachCell({ includeEmpty: true }, (cell: any, colNumber: number) => {
           // Font
@@ -499,13 +500,21 @@ export default function RelatoriosPage() {
             right: { style: 'thin', color: { argb: 'FFC0C0C0' } }
           };
 
-          // Fill (Yellow for highlighted rows, standard for others)
-          if (highlightYellow && !isHeader && !isTotal) {
-            cell.fill = {
-              type: 'pattern',
-              pattern: 'solid',
-              fgColor: { argb: 'FFFFFF00' }
-            };
+          // Fill (Orange for savings accounts, Yellow for highlighted rows, standard for others)
+          if (!isHeader && !isTotal) {
+            if (highlightOrange) {
+              cell.fill = {
+                type: 'pattern',
+                pattern: 'solid',
+                fgColor: { argb: 'FFFFCC80' }
+              };
+            } else if (highlightYellow) {
+              cell.fill = {
+                type: 'pattern',
+                pattern: 'solid',
+                fgColor: { argb: 'FFFFFF00' }
+              };
+            }
           }
 
           // Alignment
@@ -611,7 +620,7 @@ export default function RelatoriosPage() {
           venda_id: v.venda_id || '',
           forma_recebimento: v.forma_credito?.toUpperCase() || '',
           banco: isPix ? '' : (v.credito_banco || ''),
-          agencia: isPix ? '' : (v.credito_agencia || ''),
+          agencia: isPix ? '' : formatAgencia(v.credito_agencia),
           agencia_dv: isPix ? '' : (v.credito_agencia_dv || ''),
           op: isPix ? '' : (v.op || ''),
           conta: isPix ? '' : (v.credito_conta || ''),
@@ -633,7 +642,8 @@ export default function RelatoriosPage() {
 
         const addedRow = wsDetailed.addRow(rowData);
         addedRow.height = 20;
-        styleRow(addedRow, false, false, isPix, 13, [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 14, 16, 19, 20, 21, 22, 23]);
+        const isPoupanca = v.credito_tipo_conta?.toLowerCase() === 'poupança' || v.tipo_conta?.toLowerCase() === 'poupança';
+        styleRow(addedRow, false, false, isPix, 13, [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 14, 16, 19, 20, 21, 22, 23], isPoupanca);
       });
 
       // Total Row (Valor Crédito is now in column 13 (M))
@@ -733,7 +743,7 @@ export default function RelatoriosPage() {
           cpf: cpf,
           forma_recebimento: primarySale.forma_credito?.toUpperCase() || '',
           banco: isPix ? '' : (primarySale.credito_banco || ''),
-          agencia: isPix ? '' : (primarySale.credito_agencia || ''),
+          agencia: isPix ? '' : formatAgencia(primarySale.credito_agencia),
           agencia_dv: isPix ? '' : (primarySale.credito_agencia_dv || ''),
           op: isPix ? '' : (primarySale.op || ''),
           conta: isPix ? '' : (primarySale.credito_conta || ''),
@@ -754,7 +764,8 @@ export default function RelatoriosPage() {
 
         const addedRow = wsConsolidated.addRow(rowData);
         addedRow.height = 20;
-        styleRow(addedRow, false, false, isPix, 12, [2, 3, 4, 5, 6, 7, 8, 9, 10, 13, 15, 18, 19, 20, 21]);
+        const isPoupanca = sales.some(s => s.credito_tipo_conta?.toLowerCase() === 'poupança' || s.tipo_conta?.toLowerCase() === 'poupança');
+        styleRow(addedRow, false, false, isPix, 12, [2, 3, 4, 5, 6, 7, 8, 9, 10, 13, 15, 18, 19, 20, 21], isPoupanca);
       });
 
       // Total Row
@@ -851,7 +862,7 @@ export default function RelatoriosPage() {
           vendedor: getVendedorFormatted(v.corretor),
           corretor: getVendedorFormatted(v.carteira),
           banco: v.credito_banco || '',
-          agencia: v.credito_agencia || '',
+          agencia: formatAgencia(v.credito_agencia),
           agencia_dv: v.credito_agencia_dv || '',
           op: v.op || '',
           conta: v.credito_conta || '',
@@ -870,6 +881,8 @@ export default function RelatoriosPage() {
         const addedRow = wsEmail.addRow(rowData);
         addedRow.height = 20;
 
+        const isPoupanca = v.credito_tipo_conta?.toLowerCase() === 'poupança' || v.tipo_conta?.toLowerCase() === 'poupança';
+
         addedRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
           cell.font = { name: 'Calibri', family: 2, size: 11 };
           cell.border = {
@@ -878,6 +891,14 @@ export default function RelatoriosPage() {
             bottom: { style: 'thin', color: { argb: 'FFC0C0C0' } },
             right: { style: 'thin', color: { argb: 'FFC0C0C0' } }
           };
+
+          if (isPoupanca) {
+            cell.fill = {
+              type: 'pattern',
+              pattern: 'solid',
+              fgColor: { argb: 'FFFFCC80' }
+            };
+          }
 
           // Alignment
           const centerCols = [3, 4, 5, 6, 8, 10, 11, 12, 13, 14, 15, 16, 19, 20, 21, 22, 23, 24, 27, 30, 31, 32];

@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { createPortal } from 'react-dom';
 import { supabase } from '@/lib/supabaseClient';
 import { ArrowLeft, Building2, CreditCard, Wallet, Search, Plus, Trash2, Edit, X, Phone } from 'lucide-react';
-import { validateCPF, formatCPF } from '@/lib/cpf';
+import { validateCPF, formatCPF, formatAgencia } from '@/lib/cpf';
 import { formatCEP, formatPhone, formatMoney, parseMoneyToNumber } from '@/lib/formatters';
 import { ESPECIE_OPTIONS } from '@/lib/constants';
 import { ConfirmModal } from '@/components/ConfirmModal';
@@ -134,12 +134,12 @@ export default function EditarCliente() {
         if (data) {
           setForm({
             cpf: data.cpf || '', nome: data.nome || '',
-            banco: data.banco || '', banco_nome: '', agencia: data.agencia || '',
+            banco: data.banco || '', banco_nome: '', agencia: formatAgencia(data.agencia),
             agencia_dv: data.agencia_dv || '', conta: data.conta || '',
             conta_dv: data.conta_dv || '', op: data.op || '', tipo_conta: data.tipo_conta || 'corrente',
             forma_credito: data.forma_credito || '',
             credito_banco: data.credito_banco || '', credito_banco_nome: '',
-            credito_agencia: data.credito_agencia || '', credito_agencia_dv: data.credito_agencia_dv || '',
+            credito_agencia: formatAgencia(data.credito_agencia), credito_agencia_dv: data.credito_agencia_dv || '',
             credito_tipo_conta: data.credito_tipo_conta || 'corrente',
             credito_conta: data.credito_conta || '', credito_conta_dv: data.credito_conta_dv || '',
             pix_tipo_chave: data.pix_tipo_chave || 'cpf', pix_chave: data.pix_chave || '',
@@ -343,7 +343,7 @@ export default function EditarCliente() {
         cpf: form.cpf,
         nome: form.nome,
         banco: form.banco,
-        agencia: form.agencia,
+        agencia: formatAgencia(form.agencia),
         agencia_dv: form.agencia_dv,
         conta: form.conta,
         conta_dv: form.conta_dv,
@@ -381,7 +381,7 @@ export default function EditarCliente() {
 
       if (form.forma_credito === 'conta') {
         payload.credito_banco = form.credito_banco;
-        payload.credito_agencia = form.credito_agencia;
+        payload.credito_agencia = formatAgencia(form.credito_agencia);
         payload.credito_agencia_dv = form.credito_agencia_dv;
         payload.credito_tipo_conta = form.credito_tipo_conta;
         payload.credito_conta = form.credito_conta;

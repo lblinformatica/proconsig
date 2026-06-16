@@ -105,6 +105,7 @@ export function EditUserModal({ isOpen, user, onClose, onSuccess }: EditUserModa
               <option value="operacional">Operacional</option>
               <option value="admin">Administrador</option>
               <option value="financeiro">Financeiro</option>
+              <option value="vendedor">Vendedor</option>
             </select>
           </div>
           <div style={{ marginBottom: '1.5rem' }}>

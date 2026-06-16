@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 import { ArrowLeft, Edit2, User, Landmark, Wallet, Calculator, Info, FileText, Calendar, Building } from 'lucide-react';
-import { formatCPF } from '@/lib/cpf';
+import { formatCPF, formatAgencia } from '@/lib/cpf';
 
 export default function VendaDetails(props: { params: Promise<{ id: string }> }) {
   const params = use(props.params);
@@ -131,9 +131,15 @@ export default function VendaDetails(props: { params: Promise<{ id: string }> })
           </div>
         </div>
 
-        <Link href={`/vendas/${venda.id}/editar`} className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', height: '42px', padding: '0 1.25rem' }}>
-          <Edit2 size={16} /> Editar Registro
-        </Link>
+        {venda.status?.toLowerCase() !== 'pago' && venda.status?.toLowerCase() !== 'paga' ? (
+          <Link href={`/vendas/${venda.id}/editar`} className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', height: '42px', padding: '0 1.25rem' }}>
+            <Edit2 size={16} /> Editar Registro
+          </Link>
+        ) : (
+          <span className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', height: '42px', padding: '0 1.25rem', cursor: 'not-allowed', opacity: 0.6 }} title="Venda Paga (Edição Bloqueada)">
+            <Edit2 size={16} /> Venda Paga
+          </span>
+        )}
       </div>
 
       {/* Main Grid Content */}
@@ -177,7 +183,7 @@ export default function VendaDetails(props: { params: Promise<{ id: string }> })
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span style={{ color: 'var(--color-text-muted)' }}>Agência:</span>
-                  <span>{venda.agencia || '-'}{venda.agencia_dv ? `-${venda.agencia_dv}` : ''}</span>
+                   <span>{formatAgencia(venda.agencia) || '-'}{venda.agencia_dv ? `-${venda.agencia_dv}` : ''}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span style={{ color: 'var(--color-text-muted)' }}>Conta:</span>
@@ -227,7 +233,7 @@ export default function VendaDetails(props: { params: Promise<{ id: string }> })
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <span style={{ color: 'var(--color-text-muted)' }}>Agência de Crédito:</span>
-                    <span>{venda.credito_agencia || '-'}{venda.credito_agencia_dv ? `-${venda.credito_agencia_dv}` : ''}</span>
+                    <span>{formatAgencia(venda.credito_agencia) || '-'}{venda.credito_agencia_dv ? `-${venda.credito_agencia_dv}` : ''}</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <span style={{ color: 'var(--color-text-muted)' }}>Conta de Crédito:</span>

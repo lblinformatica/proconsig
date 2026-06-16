@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabaseClient';
-import { Edit2, Trash2, Search, Plus, ChevronLeft, ChevronRight, Filter, Copy, Check, Eye } from 'lucide-react';
+import { Edit2, Trash2, Search, Plus, ChevronLeft, ChevronRight, Filter, Copy, Check, Eye, Lock } from 'lucide-react';
 import Link from 'next/link';
 import { ConfirmModal } from '@/components/ConfirmModal';
 
@@ -13,6 +13,7 @@ export default function VendasList() {
   const [loading, setLoading] = useState(true);
   const [nivel, setNivel] = useState('');
   const [userId, setUserId] = useState<string | null>(null);
+  const [allowedGroups, setAllowedGroups] = useState<number[]>([]);
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(0);
   const [total, setTotal] = useState(0);
@@ -52,8 +53,14 @@ export default function VendasList() {
     const init = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
-      const { data: profile } = await supabase.from('usuarios').select('nivel, id').eq('supabase_user_id', session.user.id).single();
-      if (profile) { setNivel(profile.nivel); setUserId(profile.id); }
+      const { data: profile } = await supabase.from('usuarios').select('nivel, id, grupos_permitidos').eq('supabase_user_id', session.user.id).single();
+      if (profile) {
+        setNivel(profile.nivel);
+        setUserId(profile.id);
+        if (profile.grupos_permitidos) {
+          setAllowedGroups(profile.grupos_permitidos.map(Number));
+        }
+      }
     };
     init();
   }, []);
@@ -81,7 +88,7 @@ export default function VendasList() {
     setLoading(true);
     const from = page * PAGE_SIZE;
     const to = from + PAGE_SIZE - 1;
-    const isOperacional = nivel === 'operacional';
+    const filterOwn = nivel === 'operacional' || nivel === 'vendedor';
 
     let query = supabase
       .from('vendas')
@@ -94,19 +101,34 @@ export default function VendasList() {
       else query = query.or(`cpf.ilike.%${search}%,operacao.ilike.%${search}%`);
     }
 
-    if (isOperacional && userId) query = query.eq('created_by', userId);
+    if (filterOwn && userId) {
+      query = query.eq('created_by', userId);
+    } else if (nivel === 'financeiro') {
+      if (allowedGroups.length > 0) {
+        query = query.in('grupo', allowedGroups);
+      } else {
+        query = query.in('grupo', [-1]); // bloqueia tudo se nenhum grupo estiver definido
+      }
+    }
 
     const { data, count } = await query;
     if (data) setVendas(data);
     if (count !== null) setTotal(count);
     setLoading(false);
-  }, [page, search, nivel, userId]);
+  }, [page, search, nivel, userId, allowedGroups]);
 
   useEffect(() => {
     if (nivel !== '') fetchVendas();
-  }, [page, search, nivel, userId]);
+  }, [page, search, nivel, userId, allowedGroups]);
 
   const handleDelete = async (id: string) => {
+    // Verifica se a venda está paga antes de permitir exclusão
+    const { data: venda } = await supabase.from('vendas').select('status').eq('id', id).single();
+    if (venda && (venda.status?.toLowerCase() === 'pago' || venda.status?.toLowerCase() === 'paga')) {
+      showAlert('Erro', 'Esta venda está paga e não pode ser excluída.', 'danger');
+      return;
+    }
+
     setDeleting(true);
     const { error } = await supabase.from('vendas').delete().eq('id', id);
     setDeleting(false);
@@ -179,6 +201,7 @@ export default function VendasList() {
                       <th>Valor</th>
                       <th>Parcela</th>
                       <th>Vendedor</th>
+                      <th>Pago</th>
                       <th style={{ textAlign: 'right' }}>Ações</th>
                     </tr>
                   </thead>
@@ -215,23 +238,38 @@ export default function VendasList() {
                         <td style={{ fontWeight: 600 }}>R$ {v.valor?.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                         <td>R$ {v.parcela?.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                         <td style={{ fontSize: '0.875rem' }}>{v.usuarios?.nome || '-'}</td>
+                        <td>
+                           {v.status?.toLowerCase() === 'pago' || v.status?.toLowerCase() === 'paga' ? (
+                             <span className="badge badge-success">Sim</span>
+                           ) : (
+                             <span className="badge badge-warning">Não</span>
+                           )}
+                        </td>
                         <td style={{ textAlign: 'right' }}>
                           <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
                             <Link href={`/vendas/${v.id}`} className="btn btn-secondary" style={{ padding: '0.4rem' }} title="Visualizar">
                               <Eye size={16} />
                             </Link>
-                            <Link href={`/vendas/${v.id}/editar`} className="btn btn-secondary" style={{ padding: '0.4rem' }} title="Editar">
-                              <Edit2 size={16} />
-                            </Link>
-                            {nivel === 'admin' && (
-                              <button
-                                className="btn btn-danger"
-                                style={{ padding: '0.4rem', background: 'transparent', color: 'var(--color-danger)', border: 'none' }}
-                                onClick={() => showConfirm('Excluir Venda', 'Tem certeza que deseja excluir esta venda permanentemente?', () => handleDelete(v.id), 'danger')}
-                                title="Excluir"
-                              >
-                                <Trash2 size={16} />
-                              </button>
+                            {v.status?.toLowerCase() === 'pago' || v.status?.toLowerCase() === 'paga' ? (
+                              <span className="btn btn-secondary" style={{ padding: '0.4rem', cursor: 'not-allowed', opacity: 0.6 }} title="Venda Paga (Edição Bloqueada)">
+                                <Lock size={16} style={{ color: 'var(--color-text-muted)' }} />
+                              </span>
+                            ) : (
+                              <>
+                                <Link href={`/vendas/${v.id}/editar`} className="btn btn-secondary" style={{ padding: '0.4rem' }} title="Editar">
+                                  <Edit2 size={16} />
+                                </Link>
+                                {(nivel === 'admin' || nivel === 'operacional' || (nivel === 'vendedor' && v.created_by === userId)) && (
+                                  <button
+                                    className="btn btn-danger"
+                                    style={{ padding: '0.4rem', background: 'transparent', color: 'var(--color-danger)', border: 'none' }}
+                                    onClick={() => showConfirm('Excluir Venda', 'Tem certeza que deseja excluir esta venda permanentemente?', () => handleDelete(v.id), 'danger')}
+                                    title="Excluir"
+                                  >
+                                    <Trash2 size={16} />
+                                  </button>
+                                )}
+                              </>
                             )}
                           </div>
                         </td>
