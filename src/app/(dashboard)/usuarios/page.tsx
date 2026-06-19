@@ -1,16 +1,20 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabaseClient';
-import { ShieldCheck, XCircle, Search, UserCheck, Shield, Edit2, Trash2, UserMinus, BarChart, TrendingUp } from 'lucide-react';
+import { ShieldCheck, XCircle, Search, UserCheck, Shield, Edit2, Trash2, UserMinus, BarChart, TrendingUp, ChevronLeft, ChevronRight } from 'lucide-react';
 import { ConfirmModal } from '@/components/ConfirmModal';
 import { EditUserModal } from '@/components/EditUserModal';
 import { adminChangeUserStatus, adminDeleteUser } from '@/app/actions/admin';
+
+const PAGE_SIZE = 50;
 
 export default function UsuariosPage() {
   const [usuarios, setUsuarios] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [busca, setBusca] = useState('');
+  const [page, setPage] = useState(0);
+  const [total, setTotal] = useState(0);
 
   // Notification Modal State
   const [notification, setNotification] = useState<{
@@ -51,22 +55,30 @@ export default function UsuariosPage() {
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [userToEdit, setUserToEdit] = useState<any>(null);
 
-  useEffect(() => {
-    fetchUsuarios();
-  }, []);
-
-  const fetchUsuarios = async () => {
+  const fetchUsuarios = useCallback(async () => {
     setLoading(true);
-    let query = supabase.from('usuarios').select('*').order('created_at', { ascending: false });
+    const from = page * PAGE_SIZE;
+    const to = from + PAGE_SIZE - 1;
+
+    let query = supabase
+      .from('usuarios')
+      .select('*', { count: 'exact' })
+      .order('created_at', { ascending: false })
+      .range(from, to);
 
     if (busca) {
       query = query.or(`nome.ilike.%${busca}%,email.ilike.%${busca}%`);
     }
 
-    const { data } = await query;
+    const { data, count } = await query;
     if (data) setUsuarios(data);
+    if (count !== null) setTotal(count);
     setLoading(false);
-  };
+  }, [page, busca]);
+
+  useEffect(() => {
+    fetchUsuarios();
+  }, [page, fetchUsuarios]);
 
   const confirmAction = (user: any, type: typeof actionType) => {
     setSelectedUser(user);
@@ -93,7 +105,7 @@ export default function UsuariosPage() {
     setModalOpen(false);
     setSelectedUser(null);
     setActionType(null);
-  };
+  };  const totalPages = Math.ceil(total / PAGE_SIZE);
 
   return (
     <div className="animate-fade-in">
@@ -108,12 +120,17 @@ export default function UsuariosPage() {
             type="text"
             placeholder="Buscar por nome ou e-mail..."
             value={busca}
-            onChange={(e) => setBusca(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && fetchUsuarios()}
+            onChange={(e) => { setBusca(e.target.value); setPage(0); }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                setPage(0);
+                fetchUsuarios();
+              }
+            }}
             style={{ paddingLeft: '2.75rem', width: '100%' }}
           />
         </div>
-        <button className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }} onClick={() => fetchUsuarios()}>
+        <button className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }} onClick={() => { setPage(0); fetchUsuarios(); }}>
           <Search size={18} /> Filtrar
         </button>
       </div>
@@ -121,116 +138,134 @@ export default function UsuariosPage() {
       <div className="card">
         {loading ? (
           <div style={{ textAlign: 'center', padding: '2rem' }}>Buscando usuários...</div>
+        ) : usuarios.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '4rem', color: 'var(--color-text-muted)' }}>Nenhum usuário encontrado.</div>
         ) : (
-          <div className="table-wrapper" style={{ overflow: 'visible' }}>
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Nome</th>
-                  <th>Conta</th>
-                  <th>E-mail</th>
-                  <th>Perfil</th>
-                  <th>Status</th>
-                  <th style={{ textAlign: 'right' }}>Ações</th>
-                </tr>
-              </thead>
-              <tbody>
-                {usuarios.map((usr) => (
-                  <tr key={usr.id}>
-                    <td><div style={{ fontWeight: 500 }}>{usr.nome}</div></td>
-                    <td>{usr.conta}</td>
-                    <td>{usr.email}</td>
-                    <td style={{ textTransform: 'capitalize' }}>
-                      <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                        {usr.nivel === 'admin' && <Shield size={14} color="var(--color-primary)" />}
-                        {usr.nivel === 'operacional' && <UserCheck size={14} color="var(--color-text-muted)" />}
-                        {usr.nivel === 'financeiro' && <BarChart size={14} color="var(--color-warning)" />}
-                        {usr.nivel === 'vendedor' && <TrendingUp size={14} color="var(--color-success)" />}
-                        {usr.nivel}
-                      </span>
-                    </td>
-                    <td>
-                      <span className={`badge ${usr.status === 'ativo' ? 'badge-success' : usr.status === 'inativo' ? 'badge-neutral' : usr.status === 'rejeitado' ? 'badge-danger' : 'badge-warning'}`}>
-                        {usr.status}
-                      </span>
-                    </td>
-                    <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                      <button
-                        className="btn btn-secondary"
-                        style={{ padding: '0.4rem', marginRight: '0.4rem', background: 'transparent', color: 'var(--color-primary)', border: 'none' }}
-                        onClick={() => { setUserToEdit(usr); setEditModalOpen(true); }}
-                        title="Editar Dados e E-mail"
-                      >
-                        <Edit2 size={16} />
-                      </button>
+          <>
+            <div className="table-wrapper" style={{ overflow: 'visible' }}>
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>Nome</th>
+                    <th>Conta</th>
+                    <th>E-mail</th>
+                    <th>Perfil</th>
+                    <th>Status</th>
+                    <th style={{ textAlign: 'right' }}>Ações</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {usuarios.map((usr) => (
+                    <tr key={usr.id}>
+                      <td><div style={{ fontWeight: 500 }}>{usr.nome}</div></td>
+                      <td>{usr.conta}</td>
+                      <td>{usr.email}</td>
+                      <td style={{ textTransform: 'capitalize' }}>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                          {usr.nivel === 'admin' && <Shield size={14} color="var(--color-primary)" />}
+                          {usr.nivel === 'operacional' && <UserCheck size={14} color="var(--color-text-muted)" />}
+                          {usr.nivel === 'financeiro' && <BarChart size={14} color="var(--color-warning)" />}
+                          {usr.nivel === 'vendedor' && <TrendingUp size={14} color="var(--color-success)" />}
+                          {usr.nivel}
+                        </span>
+                      </td>
+                      <td>
+                        <span className={`badge ${usr.status === 'ativo' ? 'badge-success' : usr.status === 'inativo' ? 'badge-neutral' : usr.status === 'rejeitado' ? 'badge-danger' : 'badge-warning'}`}>
+                          {usr.status}
+                        </span>
+                      </td>
+                      <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                        <button
+                          className="btn btn-secondary"
+                          style={{ padding: '0.4rem', marginRight: '0.4rem', background: 'transparent', color: 'var(--color-primary)', border: 'none' }}
+                          onClick={() => { setUserToEdit(usr); setEditModalOpen(true); }}
+                          title="Editar Dados e E-mail"
+                        >
+                          <Edit2 size={16} />
+                        </button>
 
-                      {usr.status === 'pendente' && (
-                        <>
+                        {usr.status === 'pendente' && (
+                          <>
+                            <button
+                              className="btn btn-success"
+                              style={{ padding: '0.4rem', marginRight: '0.4rem' }}
+                              onClick={() => confirmAction(usr, 'approve_op')}
+                              title="Aprovar como Operacional"
+                            >
+                              <UserCheck size={16} />
+                            </button>
+                            <button
+                              className="btn btn-primary"
+                              style={{ padding: '0.4rem', marginRight: '0.4rem' }}
+                              onClick={() => confirmAction(usr, 'approve_admin')}
+                              title="Aprovar como Administrador"
+                            >
+                              <ShieldCheck size={16} />
+                            </button>
+                            <button
+                              className="btn btn-danger"
+                              style={{ padding: '0.4rem', marginRight: '0.4rem', background: 'transparent', color: 'var(--color-danger)', border: '1px solid var(--color-danger)' }}
+                              onClick={() => confirmAction(usr, 'reject')}
+                              title="Rejeitar Cadastro"
+                            >
+                              <XCircle size={16} />
+                            </button>
+                          </>
+                        )}
+
+                        {usr.status === 'ativo' && (
+                          <>
+                            <button
+                              className="btn btn-danger"
+                              style={{ padding: '0.4rem', marginRight: '0.4rem', color: 'var(--color-warning)', background: 'transparent', border: '1px solid var(--color-warning)' }}
+                              onClick={() => confirmAction(usr, 'deactivate')}
+                              title="Desativar Acesso"
+                            >
+                              <UserMinus size={16} />
+                            </button>
+                          </>
+                        )}
+
+                        {usr.status === 'inativo' && (
                           <button
-                            className="btn btn-success"
+                            className="btn btn-secondary"
                             style={{ padding: '0.4rem', marginRight: '0.4rem' }}
-                            onClick={() => confirmAction(usr, 'approve_op')}
-                            title="Aprovar como Operacional"
-                          >
-                            <UserCheck size={16} />
-                          </button>
-                          <button
-                            className="btn btn-primary"
-                            style={{ padding: '0.4rem', marginRight: '0.4rem' }}
-                            onClick={() => confirmAction(usr, 'approve_admin')}
-                            title="Aprovar como Administrador"
+                            onClick={() => confirmAction(usr, 'reactivate')}
+                            title="Reativar Acesso"
                           >
                             <ShieldCheck size={16} />
                           </button>
-                          <button
-                            className="btn btn-danger"
-                            style={{ padding: '0.4rem', marginRight: '0.4rem', background: 'transparent', color: 'var(--color-danger)', border: '1px solid var(--color-danger)' }}
-                            onClick={() => confirmAction(usr, 'reject')}
-                            title="Rejeitar Cadastro"
-                          >
-                            <XCircle size={16} />
-                          </button>
-                        </>
-                      )}
+                        )}
 
-                      {usr.status === 'ativo' && (
-                        <>
-                          <button
-                            className="btn btn-danger"
-                            style={{ padding: '0.4rem', marginRight: '0.4rem', color: 'var(--color-warning)', background: 'transparent', border: '1px solid var(--color-warning)' }}
-                            onClick={() => confirmAction(usr, 'deactivate')}
-                            title="Desativar Acesso"
-                          >
-                            <UserMinus size={16} />
-                          </button>
-                        </>
-                      )}
-
-                      {usr.status === 'inativo' && (
                         <button
-                          className="btn btn-secondary"
-                          style={{ padding: '0.4rem', marginRight: '0.4rem' }}
-                          onClick={() => confirmAction(usr, 'reactivate')}
-                          title="Reativar Acesso"
+                          className="btn btn-danger"
+                          style={{ padding: '0.4rem', border: 'none', background: 'transparent', color: 'var(--color-danger)' }}
+                          onClick={() => confirmAction(usr, 'delete')}
+                          title="Excluir Permanentemente"
                         >
-                          <ShieldCheck size={16} />
+                          <Trash2 size={16} />
                         </button>
-                      )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
 
-                      <button
-                        className="btn btn-danger"
-                        style={{ padding: '0.4rem', border: 'none', background: 'transparent', color: 'var(--color-danger)' }}
-                        onClick={() => confirmAction(usr, 'delete')}
-                        title="Excluir Permanentemente"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+            {total > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid var(--color-border)' }}>
+                <span style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>
+                  Total: {total} usuários{totalPages > 1 ? ` — Página ${page + 1} de ${totalPages}` : ''}
+                </span>
+                {totalPages > 1 && (
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <button className="btn btn-secondary" style={{ padding: '0.5rem' }} disabled={page === 0} onClick={() => setPage(p => p - 1)}><ChevronLeft size={18} /></button>
+                    <button className="btn btn-secondary" style={{ padding: '0.5rem' }} disabled={page >= totalPages - 1} onClick={() => setPage(p => p + 1)}><ChevronRight size={18} /></button>
+                  </div>
+                )}
+              </div>
+            )}
+          </>
         )}
       </div>
 

@@ -288,15 +288,17 @@ export default function VendedoresList() {
                 </table>
               </div>
 
-              {totalPages > 1 && (
+              {total > 0 && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid var(--color-border)' }}>
                   <span style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>
-                    Total: {total} vendedores — Página {page + 1} de {totalPages}
+                    Total: {total} vendedores{totalPages > 1 ? ` — Página ${page + 1} de ${totalPages}` : ''}
                   </span>
-                  <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <button className="btn btn-secondary" style={{ padding: '0.5rem' }} disabled={page === 0} onClick={() => setPage(p => p - 1)}><ChevronLeft size={18} /></button>
-                    <button className="btn btn-secondary" style={{ padding: '0.5rem' }} disabled={page >= totalPages - 1} onClick={() => setPage(p => p + 1)}><ChevronRight size={18} /></button>
-                  </div>
+                  {totalPages > 1 && (
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <button className="btn btn-secondary" style={{ padding: '0.5rem' }} disabled={page === 0} onClick={() => setPage(p => p - 1)}><ChevronLeft size={18} /></button>
+                      <button className="btn btn-secondary" style={{ padding: '0.5rem' }} disabled={page >= totalPages - 1} onClick={() => setPage(p => p + 1)}><ChevronRight size={18} /></button>
+                    </div>
+                  )}
                 </div>
               )}
             </>

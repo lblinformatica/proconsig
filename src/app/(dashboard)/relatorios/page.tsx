@@ -1161,17 +1161,13 @@ export default function RelatoriosPage() {
           <table className="table">
             <thead>
               <tr>
-                <th style={{ paddingLeft: '1.5rem', width: '100px', textAlign: 'left' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <input
-                      type="checkbox"
-                      checked={vendas.length > 0 && vendas.every(v => v.status === 'Pago')}
-                      onChange={handleToggleSelectAll}
-                      style={{ cursor: 'pointer', transform: 'scale(1.2)' }}
-                      title="Selecionar todas como pagas"
-                    />
-                    <span>Paga?</span>
-                  </div>
+                <th style={{ paddingLeft: '0.8rem', width: '50px', textAlign: 'left' }}>
+                  <input
+                    type="checkbox"
+                    checked={vendas.length > 0 && vendas.every(v => v.status === 'Pago')}
+                    onChange={handleToggleSelectAll}
+                    style={{ cursor: 'pointer', transform: 'scale(1.2)' }}
+                  />
                 </th>
                 <th>ID Venda</th>
                 <th>Cliente / CPF</th>
@@ -1194,7 +1190,7 @@ export default function RelatoriosPage() {
               ) : (
                 vendas.map((v) => (
                   <tr key={v.id}>
-                    <td style={{ paddingLeft: '1.5rem', textAlign: 'center' }}>
+                    <td style={{ paddingLeft: '0.8rem' }}>
                       <input
                         type="checkbox"
                         checked={v.status === 'Pago'}
@@ -1202,7 +1198,7 @@ export default function RelatoriosPage() {
                         style={{ cursor: 'pointer', transform: 'scale(1.2)' }}
                       />
                     </td>
-                    <td style={{ fontWeight: 600, color: 'var(--color-primary)' }}>{v.venda_id || '-'}</td>
+                    <td style={{ fontWeight: 600, color: 'var(--color-primary)', fontSize: '0.95rem', whiteSpace: 'nowrap' }}>{v.venda_id || '-'}</td>
                     <td>
                       <div style={{ fontWeight: 600, fontSize: '0.8rem' }}>{v.clientes?.nome || '-'}</div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: '0.15rem' }}>
@@ -1245,15 +1241,17 @@ export default function RelatoriosPage() {
           </table>
         </div>
 
-        {total > PAGE_SIZE && (
+        {total > 0 && (
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.5rem', borderTop: '1px solid var(--color-border)' }}>
             <span style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>
-              Página {page + 1} de {Math.ceil(total / PAGE_SIZE)}
+              Total: {total} registros{total > PAGE_SIZE ? ` — Página ${page + 1} de ${Math.ceil(total / PAGE_SIZE)}` : ''}
             </span>
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <button className="btn btn-secondary" style={{ padding: '0.5rem' }} disabled={page === 0} onClick={() => { setPage(p => p - 1); buscarDados(page - 1); }}><ChevronLeft size={18} /></button>
-              <button className="btn btn-secondary" style={{ padding: '0.5rem' }} disabled={page >= Math.ceil(total / PAGE_SIZE) - 1} onClick={() => { setPage(p => p + 1); buscarDados(page + 1); }}><ChevronRight size={18} /></button>
-            </div>
+            {total > PAGE_SIZE && (
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button className="btn btn-secondary" style={{ padding: '0.5rem' }} disabled={page === 0} onClick={() => { setPage(p => p - 1); buscarDados(page - 1); }}><ChevronLeft size={18} /></button>
+                <button className="btn btn-secondary" style={{ padding: '0.5rem' }} disabled={page >= Math.ceil(total / PAGE_SIZE) - 1} onClick={() => { setPage(p => p + 1); buscarDados(page + 1); }}><ChevronRight size={18} /></button>
+              </div>
+            )}
           </div>
         )}
       </div>

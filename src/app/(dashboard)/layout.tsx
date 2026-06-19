@@ -141,7 +141,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         router.push('/relatorios');
       }
     } else if (nivel === 'vendedor') {
-      const allowed = ['/dashboard', '/vendas'];
+      const allowed = ['/dashboard', '/vendas', '/clientes'];
       const isAllowed = allowed.some(path => pathname.startsWith(path) || pathname === '/');
       if (!isAllowed) {
         router.push('/vendas');
@@ -295,8 +295,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </Link>
           )}
 
-          {/* Clientes: Visible to Admin, Operacional, Financeiro */}
-          {(userProfile?.nivel === 'admin' || userProfile?.nivel === 'operacional' || userProfile?.nivel === 'financeiro') && (
+          {/* Clientes: Visible to Admin, Operacional, Financeiro, Vendedor */}
+          {(userProfile?.nivel === 'admin' || userProfile?.nivel === 'operacional' || userProfile?.nivel === 'financeiro' || userProfile?.nivel === 'vendedor') && (
             <Link href="/clientes" className={`btn ${pathname.includes('/clientes') ? 'btn-primary' : 'btn-secondary'}`} style={navItemStyle(pathname.includes('/clientes'))} title="Clientes">
               <Users size={18} style={{ flexShrink: 0 }} /> {!isSidebarCollapsed && <span style={{ whiteSpace: 'nowrap' }}>Clientes</span>}
             </Link>
