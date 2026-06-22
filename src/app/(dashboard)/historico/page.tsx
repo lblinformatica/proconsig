@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
-import { History, Search, User, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
+import { History, Search, User, ChevronLeft, ChevronRight, Loader2, Eye } from 'lucide-react';
+import Link from 'next/link';
 
 const PAGE_SIZE = 20;
 
@@ -51,7 +52,7 @@ export default function HistoricoSaldosPage() {
     let query = supabase
       .schema('pro_consig')
       .from('historico_saldos')
-      .select('*, vendas!inner(venda_id, grupo)', { count: 'exact' })
+      .select('*, vendas!inner(id, venda_id, grupo)', { count: 'exact' })
       .order('created_at', { ascending: false })
       .range(from, to);
 
@@ -206,9 +207,25 @@ export default function HistoricoSaldosPage() {
                 history.map((h) => {
                   const diff = h.valor_novo - h.valor_original;
                   const diffColor = diff > 0 ? 'var(--color-success)' : diff < 0 ? 'var(--color-danger)' : 'var(--color-text)';
+                  const parentVenda = Array.isArray(h.vendas) ? h.vendas[0] : h.vendas;
+                  const vendaId = parentVenda?.id;
+
                   return (
                     <tr key={h.id}>
-                      <td style={{ paddingLeft: '1.5rem', fontWeight: 600 }}>{h.venda_codigo || '-'}</td>
+                      <td style={{ paddingLeft: '1.5rem', fontWeight: 600 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          {h.venda_codigo || '-'}
+                          {vendaId && (
+                            <Link 
+                              href={`/vendas/${vendaId}`}
+                              style={{ color: 'var(--color-primary)', display: 'inline-flex', alignItems: 'center' }}
+                              title="Ver Venda"
+                            >
+                              <Eye size={15} />
+                            </Link>
+                          )}
+                        </div>
+                      </td>
                       <td>
                         <span className="badge" style={{ 
                           backgroundColor: h.tipo_operacao === 'Nova Venda' ? 'rgba(59, 130, 246, 0.1)' : 'rgba(16, 185, 129, 0.1)',

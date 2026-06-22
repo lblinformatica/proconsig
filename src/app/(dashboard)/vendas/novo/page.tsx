@@ -256,11 +256,17 @@ export default function NovaVenda() {
   }, [parcelasExibidas, selectedOpIds]);
 
   const handleSelectAll = () => {
-    if (isAllSelected) {
-      setSelectedOpIds([]);
-    } else {
-      setSelectedOpIds(parcelasExibidas.filter(p => !p.isBaixada).map(p => p.id));
-    }
+    const newSelected = isAllSelected 
+      ? [] 
+      : parcelasExibidas.filter(p => !p.isBaixada).map(p => p.id);
+    setSelectedOpIds(newSelected);
+
+    const selecionadas = parcelasExibidas.filter(p => newSelected.includes(p.id));
+    const newLiquido = selecionadas.reduce((acc, curr) => acc + curr.valorComDesconto, 0);
+    setForm(f => ({
+      ...f,
+      saldo: newLiquido > 0 ? newLiquido.toFixed(2).replace('.', ',') : '0,00'
+    }));
   };
 
   useEffect(() => {
@@ -279,18 +285,7 @@ export default function NovaVenda() {
     }));
   }, [cpf]);
 
-  useEffect(() => {
-    if (form.operacao === 'REFIN') {
-      // Se tiver parcelas exibidas mas nenhuma selecionada, traz a soma de todas como sugestão considerando o líquido (valorComDesconto)
-      const valorParaSaldo = selectedOpIds.length > 0 ? totaisRefin.liquido : parcelasExibidas.filter(p => !p.isBaixada).reduce((acc, curr) => acc + curr.valorComDesconto, 0);
-      
-      if (valorParaSaldo > 0) {
-        setForm(f => ({ ...f, saldo: valorParaSaldo.toFixed(2).replace('.', ',') }));
-      } else {
-        setForm(f => ({ ...f, saldo: '' }));
-      }
-    }
-  }, [totaisRefin.liquido, form.operacao, parcelasExibidas, selectedOpIds.length]);
+  // Saldo auto-calculation on load removed to only set saldo when clicking on installments
 
   useEffect(() => {
     if (form.operacao === 'REFIN' && form.codigo_operacao) {
@@ -383,7 +378,7 @@ export default function NovaVenda() {
     }
     if (form.dia_util) {
       let du = form.dia_util.trim();
-      if (!du.includes('°') && !du.includes('º')) {
+      if (/^\d+$/.test(du) && !du.includes('°') && !du.includes('º')) {
         du = `${du}°`;
       }
       parts.push(`${du.toUpperCase()} DIA UTIL`);
@@ -577,7 +572,7 @@ export default function NovaVenda() {
 
     // Campos numéricos puros (apenas dígitos)
     const numericFields = [
-      'conta_ativacao', 'dia_util', 'inicio_ano', 'prazo', 
+      'conta_ativacao', 'inicio_ano', 'prazo', 
       'agencia', 'agencia_dv', 'conta', 'conta_dv', 'op',
       'credito_agencia', 'credito_agencia_dv', 'credito_conta', 'credito_conta_dv'
     ];
@@ -623,7 +618,16 @@ export default function NovaVenda() {
   };
 
   const toggleOpSelection = (id: number) => {
-    setSelectedOpIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+    setSelectedOpIds(prev => {
+      const newSelected = prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id];
+      const selecionadas = parcelasExibidas.filter(p => newSelected.includes(p.id));
+      const newLiquido = selecionadas.reduce((acc, curr) => acc + curr.valorComDesconto, 0);
+      setForm(f => ({
+        ...f,
+        saldo: newLiquido > 0 ? newLiquido.toFixed(2).replace('.', ',') : '0,00'
+      }));
+      return newSelected;
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {

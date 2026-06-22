@@ -272,8 +272,15 @@ export default function EditarVenda(props: { params: Promise<{ id: string }> }) 
   const isAllSelected = useMemo(() => parcelasExibidas.length > 0 && selectedOpIds.length === parcelasExibidas.length, [parcelasExibidas, selectedOpIds]);
 
   const handleSelectAll = () => {
-    if (isAllSelected) setSelectedOpIds([]);
-    else setSelectedOpIds(parcelasExibidas.map(p => p.id));
+    const newSelected = isAllSelected ? [] : parcelasExibidas.map(p => p.id);
+    setSelectedOpIds(newSelected);
+
+    const selecionadas = parcelasExibidas.filter(p => newSelected.includes(p.id));
+    const newLiquido = selecionadas.reduce((acc, curr) => acc + curr.valorComDesconto, 0);
+    setForm(f => ({
+      ...f,
+      saldo: newLiquido > 0 ? newLiquido.toFixed(2).replace('.', ',') : '0,00'
+    }));
   };
 
   useEffect(() => {
@@ -292,15 +299,7 @@ export default function EditarVenda(props: { params: Promise<{ id: string }> }) 
     }));
   }, [cpf]);
 
-  useEffect(() => {
-    if (form.operacao === 'REFIN') {
-      const valorParaSaldo = selectedOpIds.length > 0 ? totaisRefin.liquido : parcelasExibidas.reduce((acc, curr) => acc + curr.valorComDesconto, 0);
-
-      if (valorParaSaldo > 0) {
-        setForm(f => ({ ...f, saldo: valorParaSaldo.toFixed(2).replace('.', ',') }));
-      }
-    }
-  }, [totaisRefin.liquido, form.operacao, parcelasExibidas, selectedOpIds.length]);
+  // Saldo auto-calculation on load removed to only set saldo when clicking on installments
 
   useEffect(() => {
     if (form.operacao === 'REFIN' && form.codigo_operacao) {
@@ -403,7 +402,7 @@ export default function EditarVenda(props: { params: Promise<{ id: string }> }) 
     }
     if (form.dia_util) {
       let du = form.dia_util.trim();
-      if (!du.includes('°') && !du.includes('º')) {
+      if (/^\d+$/.test(du) && !du.includes('°') && !du.includes('º')) {
         du = `${du}°`;
       }
       parts.push(`${du.toUpperCase()} DIA UTIL`);
@@ -596,7 +595,7 @@ export default function EditarVenda(props: { params: Promise<{ id: string }> }) 
 
     // Campos numéricos puros (apenas dígitos)
     const numericFields = [
-      'conta_ativacao', 'dia_util', 'inicio_ano', 'prazo',
+      'conta_ativacao', 'inicio_ano', 'prazo',
       'agencia', 'agencia_dv', 'conta', 'conta_dv', 'op',
       'credito_agencia', 'credito_agencia_dv', 'credito_conta', 'credito_conta_dv'
     ];
@@ -635,7 +634,18 @@ export default function EditarVenda(props: { params: Promise<{ id: string }> }) 
     if (!isNaN(num)) setForm(f => ({ ...f, [name]: num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }));
   };
 
-  const toggleOpSelection = (id: number) => setSelectedOpIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+  const toggleOpSelection = (id: number) => {
+    setSelectedOpIds(prev => {
+      const newSelected = prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id];
+      const selecionadas = parcelasExibidas.filter(p => newSelected.includes(p.id));
+      const newLiquido = selecionadas.reduce((acc, curr) => acc + curr.valorComDesconto, 0);
+      setForm(f => ({
+        ...f,
+        saldo: newLiquido > 0 ? newLiquido.toFixed(2).replace('.', ',') : '0,00'
+      }));
+      return newSelected;
+    });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -220,11 +220,9 @@ export default function RelatoriosPage() {
     let hasMore = true;
 
     while (hasMore) {
-      const twentyMinutesAgo = new Date(Date.now() - 20 * 60 * 1000).toISOString();
       let query = supabase
         .from('vendas')
         .select('*, usuarios!created_by(nome), clientes(nome)')
-        .lte('created_at', twentyMinutesAgo)
         .range(page * pageSize, (page + 1) * pageSize - 1)
         .order('created_at', { ascending: false });
 
@@ -279,6 +277,7 @@ export default function RelatoriosPage() {
         'Data Cadastro': new Date(v.created_at).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }),
         'Hora': new Date(v.created_at).toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo' }),
         'Operador': v.usuarios?.nome || '-',
+        'Cliente': v.clientes?.nome || '-',
         'CPF Cliente': v.cpf,
         'Órgão': v.orgao || '-',
         'Empresa': v.empresa || '-',
@@ -311,17 +310,59 @@ export default function RelatoriosPage() {
         'Log de Exportação': `Gerado em ${timestamp}`
       }));
 
-      // Salvar o arquivo
-      const worksheet = XLSX.utils.json_to_sheet(rows);
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, "Relatório de Vendas");
-      XLSX.writeFile(workbook, `Relatorio_Vendas_${new Date().toISOString().split('T')[0]}.xlsx`);
+      try {
+        const ExcelJS = (await import('exceljs')).default;
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet("Relatório de Vendas");
 
-      // Atualizar as datas no banco de dados
-      const ids = allData.map(v => v.id);
-      await supabase.rpc('update_vendas_export_dates', { venda_ids: ids });
+        const headers = Object.keys(rows[0]);
+        worksheet.columns = headers.map(header => ({
+          header: header,
+          key: header,
+          width: Math.max(header.length + 4, 15)
+        }));
 
-      setModalError('Exportação concluída! Os registros foram marcados com a data de hoje.');
+        rows.forEach(rowData => {
+          worksheet.addRow(rowData);
+        });
+
+        // Format first row (header) in bold
+        const headerRow = worksheet.getRow(1);
+        headerRow.font = { name: 'Calibri', family: 2, size: 11, bold: true };
+        headerRow.height = 20;
+
+        headerRow.eachCell((cell) => {
+          cell.alignment = { vertical: 'middle', horizontal: 'center' };
+          cell.border = {
+            top: { style: 'thin', color: { argb: 'FFC0C0C0' } },
+            left: { style: 'thin', color: { argb: 'FFC0C0C0' } },
+            bottom: { style: 'thin', color: { argb: 'FFC0C0C0' } },
+            right: { style: 'thin', color: { argb: 'FFC0C0C0' } }
+          };
+        });
+
+        const buffer = await workbook.xlsx.writeBuffer();
+        const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        const filename = `Relatorio_Vendas_${new Date().toISOString().split('T')[0]}.xlsx`;
+
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        // Atualizar as datas no banco de dados
+        const ids = allData.map(v => v.id);
+        await supabase.rpc('update_vendas_export_dates', { venda_ids: ids });
+
+        setModalError('Exportação concluída! Os registros foram marcados com a data de hoje.');
+      } catch (err) {
+        console.error(err);
+        setModalError('Erro ao gerar arquivo Excel.');
+      }
+    } else {
+      setModalError('Nenhum dado encontrado para exportar.');
     }
     setLoading(false);
   };
