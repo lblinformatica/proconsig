@@ -67,7 +67,7 @@ export default function RelatoriosPage() {
   };
 
   const [filters, setFilters] = useState({
-    cpf: '', status: 'Aprovado', dataInicio: '', dataFim: '', corretor: ''
+    cpf: '', clienteNome: '', status: 'Aprovado', dataInicio: '', dataFim: '', corretor: ''
   });
   const [modalError, setModalError] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -164,9 +164,14 @@ export default function RelatoriosPage() {
 
     const twentyMinutesAgo = new Date(Date.now() - 20 * 60 * 1000).toISOString();
 
+    let selectFields = '*, usuarios!created_by(nome), clientes(nome)';
+    if (filters.clienteNome) {
+      selectFields = '*, usuarios!created_by(nome), clientes!inner(nome)';
+    }
+
     let query = supabase
       .from('vendas')
-      .select('*, usuarios!created_by(nome), clientes(nome)', { count: 'exact' })
+      .select(selectFields, { count: 'exact' })
       .lte('created_at', twentyMinutesAgo)
       .order('created_at', { ascending: false })
       .range(from, to);
@@ -180,6 +185,7 @@ export default function RelatoriosPage() {
     }
 
     if (filters.cpf) query = query.eq('cpf', formatCPF(filters.cpf));
+    if (filters.clienteNome) query = query.ilike('clientes.nome', `%${filters.clienteNome}%`);
     if (filters.corretor) {
       const matchedCodes = vendedores
         .filter(x => x.nome.toUpperCase().includes(filters.corretor.toUpperCase()) || x.codigo.includes(filters.corretor))
@@ -220,9 +226,14 @@ export default function RelatoriosPage() {
     let hasMore = true;
 
     while (hasMore) {
+      let selectFields = '*, usuarios!created_by(nome), clientes(nome)';
+      if (filters.clienteNome) {
+        selectFields = '*, usuarios!created_by(nome), clientes!inner(nome)';
+      }
+
       let query = supabase
         .from('vendas')
-        .select('*, usuarios!created_by(nome), clientes(nome)')
+        .select(selectFields)
         .range(page * pageSize, (page + 1) * pageSize - 1)
         .order('created_at', { ascending: false });
 
@@ -235,6 +246,7 @@ export default function RelatoriosPage() {
       }
 
       if (filters.cpf) query = query.eq('cpf', formatCPF(filters.cpf));
+      if (filters.clienteNome) query = query.ilike('clientes.nome', `%${filters.clienteNome}%`);
       if (filters.corretor) {
         const matchedCodes = vendedores
           .filter(x => x.nome.toUpperCase().includes(filters.corretor.toUpperCase()) || x.codigo.includes(filters.corretor))
@@ -380,10 +392,15 @@ export default function RelatoriosPage() {
 
     // Fetch all sales matching filters with 20 minutes delay
     while (hasMore) {
+      let selectFields = '*, usuarios!created_by(nome), clientes(nome)';
+      if (filters.clienteNome) {
+        selectFields = '*, usuarios!created_by(nome), clientes!inner(nome)';
+      }
+
       const twentyMinutesAgo = new Date(Date.now() - 20 * 60 * 1000).toISOString();
       let query = supabase
         .from('vendas')
-        .select('*, usuarios!created_by(nome), clientes(nome)')
+        .select(selectFields)
         .lte('created_at', twentyMinutesAgo)
         .neq('status', 'Pago') // Exclui vendas pagas da exportação do borderô
         .range(pageNum * pageSize, (pageNum + 1) * pageSize - 1)
@@ -398,6 +415,7 @@ export default function RelatoriosPage() {
       }
 
       if (filters.cpf) query = query.eq('cpf', formatCPF(filters.cpf));
+      if (filters.clienteNome) query = query.ilike('clientes.nome', `%${filters.clienteNome}%`);
       if (filters.corretor) {
         const matchedCodes = vendedores
           .filter(x => x.nome.toUpperCase().includes(filters.corretor.toUpperCase()) || x.codigo.includes(filters.corretor))
@@ -1112,66 +1130,74 @@ export default function RelatoriosPage() {
         <p style={{ color: 'var(--color-text-muted)', marginTop: '0.5rem' }}>Filtre e exporte dados detalhados para Excel.</p>
       </div>
 
-      <div className="card" style={{ marginBottom: '2rem', padding: '1.25rem' }}>
-        <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
-          <div style={{ flex: 1, minWidth: '180px' }}>
-            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'capitalize' }}>CPF</label>
+      <div className="card" style={{ marginBottom: '2rem', padding: '1rem' }}>
+        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+          <div style={{ flex: '1 1 130px', minWidth: '130px' }}>
+            <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.7rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'capitalize' }}>CPF</label>
             <div style={{ position: 'relative' }}>
-              <Search size={16} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
-              <input name="cpf" type="text" value={filters.cpf} onChange={handleFilterChange} placeholder="000.000.000-00" maxLength={14} style={{ width: '100%', paddingLeft: '2.5rem', height: '42px' }} />
+              <Search size={14} style={{ position: 'absolute', left: '0.6rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
+              <input name="cpf" type="text" value={filters.cpf} onChange={handleFilterChange} placeholder="000.000.000-00" maxLength={14} style={{ width: '100%', paddingLeft: '2.1rem', height: '38px', fontSize: '0.8125rem' }} />
             </div>
           </div>
-          <div style={{ flex: 1, minWidth: '180px' }}>
-            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'capitalize' }}>Vendedor</label>
+          <div style={{ flex: '2 1 180px', minWidth: '180px' }}>
+            <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.7rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'capitalize' }}>Cliente</label>
             <div style={{ position: 'relative' }}>
-              <User size={16} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
-              <input name="corretor" type="text" value={filters.corretor} onChange={handleFilterChange} placeholder="Nome do vendedor..." style={{ width: '100%', paddingLeft: '2.5rem', height: '42px' }} />
+              <User size={14} style={{ position: 'absolute', left: '0.6rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
+              <input name="clienteNome" type="text" value={filters.clienteNome} onChange={handleFilterChange} placeholder="Nome do cliente..." style={{ width: '100%', paddingLeft: '2.1rem', height: '38px', fontSize: '0.8125rem' }} />
             </div>
           </div>
-          <div style={{ flex: 1, minWidth: '150px' }}>
-            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'capitalize' }}>Status Venda</label>
+          <div style={{ flex: '1.5 1 150px', minWidth: '150px' }}>
+            <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.7rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'capitalize' }}>Vendedor</label>
+            <div style={{ position: 'relative' }}>
+              <User size={14} style={{ position: 'absolute', left: '0.6rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
+              <input name="corretor" type="text" value={filters.corretor} onChange={handleFilterChange} placeholder="Nome do vendedor..." style={{ width: '100%', paddingLeft: '2.1rem', height: '38px', fontSize: '0.8125rem' }} />
+            </div>
+          </div>
+          <div style={{ flex: '1 1 110px', minWidth: '110px' }}>
+            <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.7rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'capitalize' }}>Status Venda</label>
             <select
               name="status"
               value={filters.status}
               onChange={handleFilterChange}
               style={{
                 width: '100%',
-                height: '42px',
-                padding: '0 1rem',
+                height: '38px',
+                padding: '0 0.5rem 0 0.75rem',
                 borderRadius: '8px',
                 border: '1px solid var(--color-border)',
                 backgroundColor: 'var(--color-bg-surface)',
                 color: 'var(--color-text)',
                 cursor: 'pointer',
-                outline: 'none'
+                outline: 'none',
+                fontSize: '0.8125rem'
               }}
             >
               <option value="">Todos</option>
-              <option value="Aprovado">Aberta (Não Paga)</option>
+              <option value="Aprovado">Aberta</option>
               <option value="Pago">Paga</option>
             </select>
           </div>
-          <div style={{ width: '180px' }}>
-            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'capitalize' }}>Data Inicial</label>
+          <div style={{ flex: '1 1 130px', minWidth: '130px' }}>
+            <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.7rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'capitalize' }}>Data Inicial</label>
             <div style={{ position: 'relative' }}>
-              <Calendar size={16} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
-              <input name="dataInicio" type="date" value={filters.dataInicio} onChange={handleFilterChange} style={{ width: '100%', paddingLeft: '2.5rem', height: '42px' }} />
+              <Calendar size={14} style={{ position: 'absolute', left: '0.6rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
+              <input name="dataInicio" type="date" value={filters.dataInicio} onChange={handleFilterChange} style={{ width: '100%', paddingLeft: '2.1rem', height: '38px', fontSize: '0.8125rem' }} />
             </div>
           </div>
-          <div style={{ width: '180px' }}>
-            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'capitalize' }}>Data Final</label>
+          <div style={{ flex: '1 1 130px', minWidth: '130px' }}>
+            <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.7rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'capitalize' }}>Data Final</label>
             <div style={{ position: 'relative' }}>
-              <Calendar size={16} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
-              <input name="dataFim" type="date" value={filters.dataFim} onChange={handleFilterChange} style={{ width: '100%', paddingLeft: '2.5rem', height: '42px' }} />
+              <Calendar size={14} style={{ position: 'absolute', left: '0.6rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
+              <input name="dataFim" type="date" value={filters.dataFim} onChange={handleFilterChange} style={{ width: '100%', paddingLeft: '2.1rem', height: '38px', fontSize: '0.8125rem' }} />
             </div>
           </div>
           <button
             className="btn btn-secondary"
             onClick={() => { setPage(0); buscarDados(0); }}
             disabled={loading}
-            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', height: '42px', padding: '0 1.5rem' }}
+            style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', height: '38px', padding: '0 1.25rem', fontSize: '0.8125rem' }}
           >
-            <Filter size={18} /> {loading ? '...' : 'Filtrar'}
+            <Filter size={16} /> {loading ? '...' : 'Filtrar'}
           </button>
         </div>
       </div>
@@ -1210,7 +1236,7 @@ export default function RelatoriosPage() {
                     style={{ cursor: 'pointer', transform: 'scale(1.2)' }}
                   />
                 </th>
-                <th>ID Venda</th>
+                <th style={{ width: '100px' }}>ID Venda</th>
                 <th>Cliente / CPF</th>
                 <th>Operação</th>
                 <th>Valor</th>
@@ -1239,7 +1265,7 @@ export default function RelatoriosPage() {
                         style={{ cursor: 'pointer', transform: 'scale(1.2)' }}
                       />
                     </td>
-                    <td style={{ fontWeight: 600, color: 'var(--color-primary)', fontSize: '0.95rem', whiteSpace: 'nowrap' }}>{v.venda_id || '-'}</td>
+                    <td style={{ fontWeight: 600, color: 'var(--color-primary)', fontSize: '0.8rem', whiteSpace: 'nowrap' }}>{v.venda_id || '-'}</td>
                     <td>
                       <div style={{ fontWeight: 600, fontSize: '0.8rem' }}>{v.clientes?.nome || '-'}</div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: '0.15rem' }}>
