@@ -261,8 +261,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <div className="dashboard-layout">
       {/* Sidebar */}
-      <aside className="dashboard-sidebar" style={{ width: isSidebarCollapsed ? '80px' : '230px' }}>
-        <div style={{ padding: isSidebarCollapsed ? '0.75rem 0.5rem' : '0.75rem 0.75rem', borderBottom: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexDirection: isSidebarCollapsed ? 'column' : 'row', gap: '0.4rem' }}>
+      <aside className="dashboard-sidebar" style={{ width: isSidebarCollapsed ? '70px' : '210px' }}>
+        <div style={{ padding: isSidebarCollapsed ? '0.75rem 0.5rem' : '0.75rem 0.5rem', borderBottom: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexDirection: isSidebarCollapsed ? 'column' : 'row', gap: '0.4rem' }}>
           <div style={{ overflow: 'hidden', display: 'flex', flexDirection: isSidebarCollapsed ? 'column' : 'row', alignItems: 'center', gap: '0.5rem' }}>
             <Image
               src="/branding.png"
@@ -273,7 +273,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             />
             {!isSidebarCollapsed && (
               <div style={{ display: 'flex', flexDirection: 'column' }}>
-                <h1 style={{ color: 'var(--color-primary)', margin: 0, fontSize: '0.85rem', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
+                <h1 style={{ color: 'var(--color-primary)', margin: 0, fontSize: '0.78rem', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
                   Central Pagamentos
                 </h1>
                 <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: '0.05rem', whiteSpace: 'nowrap' }}>
@@ -287,7 +287,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </button>
         </div>
 
-        <nav style={{ flexGrow: 1, padding: isSidebarCollapsed ? '0.75rem 0.5rem' : '0.75rem 0.75rem', display: 'flex', flexDirection: 'column', gap: '0.15rem', overflowY: 'auto' }}>
+        <nav style={{ flexGrow: 1, padding: isSidebarCollapsed ? '0.75rem 0.5rem' : '0.75rem 0.5rem', display: 'flex', flexDirection: 'column', gap: '0.15rem', overflowY: 'auto' }}>
           {/* Início (Dashboard): Visible to Admin and Vendedor */}
           {(userProfile?.nivel === 'admin' || userProfile?.nivel === 'vendedor') && (
             <Link href="/dashboard" className={`btn ${pathname === '/dashboard' ? 'btn-primary' : 'btn-secondary'}`} style={navItemStyle(pathname === '/dashboard')} title="Início">

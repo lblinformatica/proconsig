@@ -90,15 +90,24 @@ export default function VendasList() {
     const to = from + PAGE_SIZE - 1;
     const filterOwn = nivel === 'operacional' || nivel === 'vendedor';
 
+    const isCPFSearch = search ? /^[0-9.-]+$/.test(search) : false;
+    let selectFields = '*, usuarios!created_by(nome), clientes(nome)';
+    if (search && !isCPFSearch) {
+      selectFields = '*, usuarios!created_by(nome), clientes!inner(nome)';
+    }
+
     let query = supabase
       .from('vendas')
-      .select('*, usuarios!created_by(nome), clientes(nome)', { count: 'exact' })
+      .select(selectFields, { count: 'exact' })
       .order('created_at', { ascending: false })
       .range(from, to);
 
     if (search) {
-      if (search.includes('.') || search.includes('-')) query = query.ilike('cpf', `%${search}%`);
-      else query = query.or(`cpf.ilike.%${search}%,operacao.ilike.%${search}%`);
+      if (isCPFSearch) {
+        query = query.ilike('cpf', `%${search}%`);
+      } else {
+        query = query.ilike('clientes.nome', `%${search}%`);
+      }
     }
 
     if (filterOwn && userId) {
@@ -176,7 +185,7 @@ export default function VendasList() {
         <div className="card" style={{ marginBottom: '2rem', display: 'flex', gap: '1rem', alignItems: 'center' }}>
           <div style={{ position: 'relative', flex: 1 }}>
             <Search size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
-            <input type="text" placeholder="Buscar por CPF ou Operação..." value={search} onChange={handleSearchChange} style={{ paddingLeft: '2.75rem', width: '100%' }} />
+            <input type="text" placeholder="Buscar por Nome ou CPF..." value={search} onChange={handleSearchChange} style={{ paddingLeft: '2.75rem', width: '100%' }} />
           </div>
           <button className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }} onClick={() => fetchVendas()}>
             <Filter size={18} /> Filtrar
