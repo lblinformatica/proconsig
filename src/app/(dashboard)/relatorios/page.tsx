@@ -498,11 +498,19 @@ export default function RelatoriosPage() {
 
 
 
-    // Helper to parse BRL comma-separated number strings safely
     const parseBRLString = (val: any) => {
       if (val === undefined || val === null) return 0;
       if (typeof val === 'number') return val;
-      const cleaned = String(val).replace(/\s/g, '').replace(',', '.');
+      let cleaned = String(val).replace(/\s/g, '');
+      
+      if (cleaned.includes(',')) {
+        cleaned = cleaned.replace(/\./g, '').replace(',', '.');
+      } else {
+        const parts = cleaned.split('.');
+        if (parts.length > 2 || (parts.length === 2 && parts[1].length === 3)) {
+          cleaned = cleaned.replace(/\./g, '');
+        }
+      }
       const num = Number(cleaned);
       return isNaN(num) ? 0 : num;
     };
