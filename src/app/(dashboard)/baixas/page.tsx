@@ -117,6 +117,16 @@ export default function BaixasPage() {
   function parseExcelDate(val: any): string | null {
     if (!val) return null;
     if (val instanceof Date) return val.toISOString().split('T')[0];
+    
+    // Suporte a número serial de data do Excel
+    const num = Number(val);
+    if (!isNaN(num) && num > 20000 && num < 60000) {
+      const date = new Date((num - 25568) * 86400 * 1000);
+      if (!isNaN(date.getTime())) {
+        return date.toISOString().split('T')[0];
+      }
+    }
+
     const str = String(val).trim();
     const dmyMatch = str.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
     if (dmyMatch) {
@@ -124,7 +134,7 @@ export default function BaixasPage() {
       return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
     }
     if (/^\d{4}-\d{2}-\d{2}/.test(str)) return str.split(' ')[0];
-    return str;
+    return null;
   }
 
   const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {

@@ -49,6 +49,15 @@ function parseExcelDate(val: any): string | null {
   if (!val) return null;
   if (val instanceof Date) return val.toISOString().split('T')[0];
 
+  // Suporte a número serial de data do Excel
+  const num = Number(val);
+  if (!isNaN(num) && num > 20000 && num < 60000) {
+    const date = new Date((num - 25568) * 86400 * 1000);
+    if (!isNaN(date.getTime())) {
+      return date.toISOString().split('T')[0];
+    }
+  }
+
   const str = String(val).trim();
 
   // Tenta formato DD/MM/YYYY ou DD-MM-YYYY ou DD.MM.YYYY
@@ -63,7 +72,7 @@ function parseExcelDate(val: any): string | null {
     return str.split(' ')[0];
   }
 
-  return str; // Retorna original e deixa o banco validar se falhar
+  return null;
 }
 
 
