@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import Link from 'next/link';
@@ -12,6 +12,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const pathname = usePathname();
   const [loading, setLoading] = useState(true);
   const [userProfile, setUserProfile] = useState<any>(null);
+
+  const userProfileIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    userProfileIdRef.current = userProfile?.id || null;
+  }, [userProfile?.id]);
 
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -91,6 +96,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
     const logoutUser = async () => {
       console.log('Inatividade detectada. Deslogando...');
+      const userId = userProfileIdRef.current;
+      if (userId) {
+        await supabase
+          .from('usuarios')
+          .update({ ultima_atividade: null })
+          .eq('id', userId);
+      }
       await supabase.auth.signOut();
       router.push('/login');
     };
@@ -145,7 +157,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           .update({ ultima_atividade: now })
           .eq('id', userProfile.id);
       }
-    }, 45000);
+    }, 30000);
 
     return () => clearInterval(interval);
   }, [userProfile?.id]);
@@ -279,6 +291,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }
 
   const handleLogout = async () => {
+    if (userProfile?.id) {
+      await supabase
+        .from('usuarios')
+        .update({ ultima_atividade: null })
+        .eq('id', userProfile.id);
+    }
     await supabase.auth.signOut();
     router.push('/login');
   };

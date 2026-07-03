@@ -96,7 +96,7 @@ export default function UsuariosPage() {
   const isOnline = (ultimaAtividadeStr: string | null) => {
     if (!ultimaAtividadeStr) return false;
     const lastActive = new Date(ultimaAtividadeStr).getTime();
-    return (currentTime - lastActive) < 180000;
+    return (currentTime - lastActive) < 90000;
   };
 
   const formatLastLogin = (ultimoLoginStr: string | null) => {
