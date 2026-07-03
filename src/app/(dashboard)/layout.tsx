@@ -119,6 +119,51 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     };
   }, [router]);
 
+  // Activity and Online status tracking
+  useEffect(() => {
+    if (!userProfile?.id) return;
+
+    // 1. Initial update of last login and last activity
+    const updateInitialActivity = async () => {
+      const now = new Date().toISOString();
+      await supabase
+        .from('usuarios')
+        .update({
+          ultimo_login: now,
+          ultima_atividade: now
+        })
+        .eq('id', userProfile.id);
+    };
+    updateInitialActivity();
+
+    // 2. Periodic update of last activity if the tab is visible
+    const interval = setInterval(async () => {
+      if (document.visibilityState === 'visible') {
+        const now = new Date().toISOString();
+        await supabase
+          .from('usuarios')
+          .update({ ultima_atividade: now })
+          .eq('id', userProfile.id);
+      }
+    }, 45000);
+
+    return () => clearInterval(interval);
+  }, [userProfile?.id]);
+
+  // Update activity immediately on route change
+  useEffect(() => {
+    if (!userProfile?.id) return;
+    const updateNavActivity = async () => {
+      const now = new Date().toISOString();
+      await supabase
+        .from('usuarios')
+        .update({ ultima_atividade: now })
+        .eq('id', userProfile.id);
+    };
+    updateNavActivity();
+  }, [pathname, userProfile?.id]);
+
+
   // Redirecionamento por nível de acesso (Autorização client-side)
   useEffect(() => {
     if (!userProfile) return;

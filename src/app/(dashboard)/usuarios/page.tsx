@@ -76,9 +76,40 @@ export default function UsuariosPage() {
     setLoading(false);
   }, [page, busca]);
 
+  const [currentTime, setCurrentTime] = useState(Date.now());
+
   useEffect(() => {
     fetchUsuarios();
+    const interval = setInterval(() => {
+      fetchUsuarios();
+    }, 30000);
+    return () => clearInterval(interval);
   }, [page, fetchUsuarios]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(Date.now());
+    }, 15000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const isOnline = (ultimaAtividadeStr: string | null) => {
+    if (!ultimaAtividadeStr) return false;
+    const lastActive = new Date(ultimaAtividadeStr).getTime();
+    return (currentTime - lastActive) < 180000;
+  };
+
+  const formatLastLogin = (ultimoLoginStr: string | null) => {
+    if (!ultimoLoginStr) return '-';
+    const date = new Date(ultimoLoginStr);
+    return date.toLocaleString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
 
   const confirmAction = (user: any, type: typeof actionType) => {
     setSelectedUser(user);
@@ -150,6 +181,8 @@ export default function UsuariosPage() {
                     <th>Conta</th>
                     <th>E-mail</th>
                     <th>Perfil</th>
+                    <th>Logado</th>
+                    <th>Último Login</th>
                     <th>Status</th>
                     <th style={{ textAlign: 'right' }}>Ações</th>
                   </tr>
@@ -168,6 +201,23 @@ export default function UsuariosPage() {
                           {usr.nivel === 'vendedor' && <TrendingUp size={14} color="var(--color-success)" />}
                           {usr.nivel}
                         </span>
+                      </td>
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                          <span style={{
+                            width: '8px',
+                            height: '8px',
+                            borderRadius: '50%',
+                            backgroundColor: isOnline(usr.ultima_atividade) ? 'var(--color-success)' : 'var(--color-text-muted)',
+                            display: 'inline-block'
+                          }} />
+                          <span style={{ fontSize: '0.85rem', color: isOnline(usr.ultima_atividade) ? 'var(--color-success)' : 'var(--color-text-muted)' }}>
+                            {isOnline(usr.ultima_atividade) ? 'Sim' : 'Não'}
+                          </span>
+                        </div>
+                      </td>
+                      <td style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>
+                        {formatLastLogin(usr.ultimo_login)}
                       </td>
                       <td>
                         <span className={`badge ${usr.status === 'ativo' ? 'badge-success' : usr.status === 'inativo' ? 'badge-neutral' : usr.status === 'rejeitado' ? 'badge-danger' : 'badge-warning'}`}>
