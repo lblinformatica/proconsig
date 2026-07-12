@@ -52,7 +52,7 @@ export default function HistoricoSaldosPage() {
     let query = supabase
       .schema('pro_consig')
       .from('historico_saldos')
-      .select('*, vendas!inner(id, venda_id, grupo)', { count: 'exact' })
+      .select('*, vendas!inner(id, venda_id, grupo, operacao, codigo_operacao, contrato)', { count: 'exact' })
       .order('created_at', { ascending: false })
       .range(from, to);
 
@@ -118,6 +118,13 @@ export default function HistoricoSaldosPage() {
     });
   };
 
+  const getContratoDisplay = (v: any) => {
+    if (!v) return '-';
+    if (v.operacao === 'REFIN') return v.codigo_operacao || '-';
+    if (v.operacao === 'NOVO') return 'Nova Venda';
+    return v.contrato || v.codigo_operacao || '-';
+  };
+
   const totalPages = Math.ceil(totalCount / PAGE_SIZE);
 
   return (
@@ -136,7 +143,7 @@ export default function HistoricoSaldosPage() {
       <div className="card" style={{ marginBottom: '2rem', padding: '1.25rem' }}>
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
           <div style={{ flex: 1, minWidth: '220px' }}>
-            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>ID Venda</label>
+            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>Contrato</label>
             <div style={{ position: 'relative' }}>
               <Search size={16} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
               <input
@@ -144,7 +151,7 @@ export default function HistoricoSaldosPage() {
                 type="text"
                 value={filters.vendaCodigo}
                 onChange={handleFilterChange}
-                placeholder="Ex: 202606-058"
+                placeholder="Ex: 12698 ou Nova Venda"
                 style={{ width: '100%', paddingLeft: '2.5rem', height: '42px' }}
               />
             </div>
@@ -181,7 +188,7 @@ export default function HistoricoSaldosPage() {
           <table className="table" style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr>
-                <th style={{ paddingLeft: '1.5rem' }}>ID Venda</th>
+                <th style={{ paddingLeft: '1.5rem' }}>Contrato</th>
                 <th>Operação</th>
                 <th>Usuário</th>
                 <th style={{ textAlign: 'right' }}>Valor Original</th>
@@ -214,7 +221,7 @@ export default function HistoricoSaldosPage() {
                     <tr key={h.id}>
                       <td style={{ paddingLeft: '1.5rem', fontWeight: 600 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                          {h.venda_codigo || '-'}
+                          {getContratoDisplay(parentVenda)}
                           {vendaId && (
                             <Link 
                               href={`/vendas/${vendaId}`}
