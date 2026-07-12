@@ -496,6 +496,35 @@ export default function EditarVenda(props: { params: Promise<{ id: string }> }) 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
 
+    if (name === 'forma_credito') {
+      setForm(f => ({
+        ...f,
+        forma_credito: value,
+        pix_tipo_chave: '',
+        pix_chave: '',
+        credito_banco: '',
+        credito_agencia: '',
+        credito_agencia_dv: '',
+        credito_conta: '',
+        credito_conta_dv: '',
+        credito_tipo_conta: 'corrente'
+      }));
+      return;
+    }
+
+    if (name === 'credito_tipo_conta') {
+      setForm(f => ({
+        ...f,
+        credito_tipo_conta: value,
+        credito_banco: '',
+        credito_agencia: '',
+        credito_agencia_dv: '',
+        credito_conta: '',
+        credito_conta_dv: ''
+      }));
+      return;
+    }
+
     if (name === 'codigo_operacao') {
       if (!value) {
         setForm(f => ({
@@ -514,9 +543,9 @@ export default function EditarVenda(props: { params: Promise<{ id: string }> }) 
         if (rawVendedorName) {
           const foundVendedor = vendedores.find(v => {
             const formatted = `${v.codigo} - ${v.nome}`.toUpperCase();
-            return v.nome.toUpperCase() === rawVendedorName || 
-                   formatted === rawVendedorName || 
-                   rawVendedorName.includes(v.nome.toUpperCase());
+            return v.nome.toUpperCase() === rawVendedorName ||
+              formatted === rawVendedorName ||
+              rawVendedorName.includes(v.nome.toUpperCase());
           });
           if (foundVendedor) {
             matchingVendedor = foundVendedor.codigo;
@@ -1019,7 +1048,6 @@ export default function EditarVenda(props: { params: Promise<{ id: string }> }) 
                   <select name="forma_credito" value={form.forma_credito} onChange={handleChange} style={{ width: '300px' }}>
                     <option value="conta">Crédito em Conta</option>
                     <option value="pix">PIX</option>
-                    <option value="ordem">Ordem de Pagamento</option>
                   </select>
                 </div>
                 {form.forma_credito === 'conta' && (

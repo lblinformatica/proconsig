@@ -109,7 +109,7 @@ export default function DetalhesOperacao(props: { params: Promise<{ id: string }
           alignItems: 'center'
         }}>
           <div>
-            <span style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>Contrato</span>
+            <span style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>Valor Contrato</span>
             <div style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--color-primary)' }}>
               {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(operation.contrato) || 0)}
             </div>
@@ -133,7 +133,7 @@ export default function DetalhesOperacao(props: { params: Promise<{ id: string }
             <div style={valueStyle}>{operation.cpf}</div>
           </div>
           <div>
-            <label style={labelStyle}>Operação</label>
+            <label style={labelStyle}>Contrato</label>
             <div style={valueStyle}>{operation.operacao}</div>
           </div>
 

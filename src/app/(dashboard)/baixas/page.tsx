@@ -35,6 +35,7 @@ export default function BaixasPage() {
   const [importing, setImporting] = useState(false);
   const [history, setHistory] = useState<any[]>([]);
   const [showConfirmDelete, setShowConfirmDelete] = useState<{ nome_arquivo: string; data_importacao: string } | null>(null);
+  const [singleDeleteId, setSingleDeleteId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -117,7 +118,7 @@ export default function BaixasPage() {
   function parseExcelDate(val: any): string | null {
     if (!val) return null;
     if (val instanceof Date) return val.toISOString().split('T')[0];
-    
+
     // Suporte a número serial de data do Excel
     const num = Number(val);
     if (!isNaN(num) && num > 20000 && num < 60000) {
@@ -300,18 +301,19 @@ export default function BaixasPage() {
                 <tr style={{ background: 'var(--color-bg-body)', borderBottom: '1px solid var(--color-border)' }}>
                   <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', color: 'var(--color-text-muted)', width: '150px' }}>CPF</th>
                   <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Nome</th>
-                  <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', color: 'var(--color-text-muted)', width: '100px' }}>Operação</th>
+                  <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', color: 'var(--color-text-muted)', width: '100px' }}>Contrato</th>
                   <th style={{ padding: '1rem', textAlign: 'right', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Parcela</th>
                   <th style={{ padding: '1rem', textAlign: 'center', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Vencimento</th>
                   <th style={{ padding: '1rem', textAlign: 'center', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Data Baixa</th>
                   <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Arquivo</th>
+                  <th style={{ padding: '1rem', textAlign: 'center', fontSize: '0.75rem', color: 'var(--color-text-muted)', width: '80px' }}>Ações</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan={7} style={{ padding: '3rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>Carregando...</td></tr>
+                  <tr><td colSpan={8} style={{ padding: '3rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>Carregando...</td></tr>
                 ) : data.length === 0 ? (
-                  <tr><td colSpan={7} style={{ padding: '4rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>Nenhuma baixa encontrada.</td></tr>
+                  <tr><td colSpan={8} style={{ padding: '4rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>Nenhuma baixa encontrada.</td></tr>
                 ) : (
                   data.map((item) => (
                     <tr key={item.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
@@ -336,6 +338,16 @@ export default function BaixasPage() {
                       <td style={{ padding: '1rem', fontSize: '0.875rem', textAlign: 'center' }}>{item.vencimento ? new Date(item.vencimento + 'T12:00:00').toLocaleDateString('pt-BR') : '-'}</td>
                       <td style={{ padding: '1rem', fontSize: '0.875rem', textAlign: 'center', color: 'var(--color-success)', fontWeight: 600 }}>{item.data_baixa ? new Date(item.data_baixa + 'T12:00:00').toLocaleDateString('pt-BR') : '-'}</td>
                       <td style={{ padding: '1rem', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{item.nome_arquivo}</td>
+                      <td style={{ padding: '1rem', textAlign: 'center' }}>
+                        <button
+                          onClick={() => setSingleDeleteId(item.id)}
+                          className="btn btn-secondary"
+                          style={{ padding: '0.4rem', color: 'var(--color-danger)', border: 'none', background: 'transparent' }}
+                          title="Excluir Baixa"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </td>
                     </tr>
                   ))
                 )}
@@ -436,6 +448,26 @@ export default function BaixasPage() {
         confirmText={isDeleting ? "Excluindo..." : "Sim, Excluir"}
         onConfirm={handleDeleteImport}
         onCancel={() => !isDeleting && setShowConfirmDelete(null)}
+      />
+
+      <ConfirmModal
+        isOpen={!!singleDeleteId}
+        title="Excluir Baixa?"
+        message="Tem certeza que deseja excluir esta baixa permanentemente?"
+        confirmType="danger"
+        confirmText="Sim, Excluir"
+        onConfirm={async () => {
+          if (!singleDeleteId) return;
+          const { error } = await supabase.schema('pro_consig').from('baixas').delete().eq('id', singleDeleteId);
+          if (error) {
+            showAlert('Erro', 'Falha ao excluir baixa: ' + error.message, 'danger');
+          } else {
+            showAlert('Sucesso', 'Baixa excluída com sucesso!', 'success');
+            fetchBaixas();
+          }
+          setSingleDeleteId(null);
+        }}
+        onCancel={() => setSingleDeleteId(null)}
       />
 
       <ConfirmModal

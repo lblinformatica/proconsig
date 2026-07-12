@@ -492,7 +492,7 @@ export default function OperacoesPage() {
           const vencimentoRaw = findVal(row, ['Vencimento', 'venc', 'data vencimento']);
           const cpfRaw = String(findVal(row, ['CPF', 'cpf cliente']) || '');
           const cpf = cpfRaw ? formatCPF(cpfRaw) : null;
-          
+
           // Agora só ignora se realmente não tiver o CPF, que é a chave principal
           if (!cpf) {
             results.ignored++;
@@ -521,7 +521,7 @@ export default function OperacoesPage() {
 
           const valor = findVal(row, ['Valor', 'Valor Bruto', 'Vlr']);
           const valorNum = typeof valor === 'number' ? valor : parseFloat(String(valor || 0).replace(',', '.'));
-          
+
           const isValidCpf = validateCPF(cpf);
 
           toStaging.push({
@@ -777,7 +777,7 @@ export default function OperacoesPage() {
                           {selectedIds.size === operacoes.length && operacoes.length > 0 ? <CheckSquare size={16} /> : <Square size={16} />}
                         </button>
                       </th>
-                      <th style={{ paddingLeft: '0.5rem', width: '80px' }}>Operação</th>
+                      <th style={{ paddingLeft: '0.5rem', width: '80px' }}>Contrato</th>
                       <th style={{ width: '100px' }}>Vencimento</th>
                       <th style={{ width: '140px' }}>CPF</th>
                       <th style={{ width: '120px', textAlign: 'center' }}>Cliente</th>
@@ -804,8 +804,8 @@ export default function OperacoesPage() {
                         </td>
                         <td style={{ fontWeight: 600, color: 'var(--color-primary)', fontSize: '0.8rem', paddingLeft: '0.5rem' }}>{op.operacao}</td>
                         <td style={{ fontSize: '0.8rem', whiteSpace: 'nowrap' }}>
-                          {op.vencimento 
-                            ? new Date(op.vencimento + 'T12:00:00').toLocaleDateString('pt-BR') 
+                          {op.vencimento
+                            ? new Date(op.vencimento + 'T12:00:00').toLocaleDateString('pt-BR')
                             : 'Sem Data'}
                         </td>
 
@@ -854,14 +854,14 @@ export default function OperacoesPage() {
                           </div>
                         </td>
                         <td style={{ textAlign: 'center' }}>
-                           <Link 
-                             href={`/operacoes/${op.id}`}
-                             className="btn btn-secondary" 
-                             style={{ padding: '0.3rem', background: 'transparent', border: 'none', color: 'var(--color-primary)', display: 'inline-flex' }}
-                             title="Visualizar Detalhes"
-                           >
-                             <Eye size={18} />
-                           </Link>
+                          <Link
+                            href={`/operacoes/${op.id}`}
+                            className="btn btn-secondary"
+                            style={{ padding: '0.3rem', background: 'transparent', border: 'none', color: 'var(--color-primary)', display: 'inline-flex' }}
+                            title="Visualizar Detalhes"
+                          >
+                            <Eye size={18} />
+                          </Link>
                         </td>
 
 

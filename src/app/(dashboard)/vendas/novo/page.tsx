@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
-import { ArrowLeft, CheckCircle2, Search, AlertTriangle, UserPlus, Info, ListFilter, Calculator, User, Building, Loader2, Landmark, Wallet, LayoutGrid } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Search, AlertTriangle, UserPlus, Info, ListFilter, Calculator, User, Building, Loader2, Landmark, Wallet, LayoutGrid, X } from 'lucide-react';
 import { validateCPF, formatCPF, formatAgencia } from '@/lib/cpf';
 import { ConfirmModal } from '@/components/ConfirmModal';
 
@@ -79,8 +79,53 @@ export default function NovaVenda() {
   });
 
 
+  const [sumModalData, setSumModalData] = useState<{ cpf: string; name: string; vendas: any[]; total: number } | null>(null);
+  const [loadingSumModal, setLoadingSumModal] = useState(false);
+
   const showAlert = (title: string, message: string) => {
     setAlertModal({ show: true, title, message });
+  };
+
+  const handleOpenSumModal = async () => {
+    if (!cpf) return;
+    const formattedCpf = formatCPF(cpf);
+    const clientName = clientFound?.nome || '-';
+    setLoadingSumModal(true);
+    try {
+      const { data, error } = await supabase
+        .schema('pro_consig')
+        .from('vendas')
+        .select('id, operacao, codigo_operacao, abat, status')
+        .eq('cpf', formattedCpf);
+
+      if (error) throw error;
+
+      const openSales = (data || []).filter(s => {
+        const sLower = s.status?.toLowerCase();
+        return sLower !== 'pago' && sLower !== 'paga';
+      });
+
+      const totalAbat = openSales.reduce((acc, curr) => {
+        const valStr = String(curr.abat || '0').replace(/\s/g, '');
+        let cleanVal = valStr;
+        if (valStr.includes(',')) {
+          cleanVal = valStr.replace(/\./g, '').replace(',', '.');
+        }
+        const val = parseFloat(cleanVal) || 0;
+        return acc + val;
+      }, 0);
+
+      setSumModalData({
+        cpf: formattedCpf,
+        name: clientName,
+        vendas: openSales,
+        total: totalAbat
+      });
+    } catch (e: any) {
+      showAlert('Erro', 'Falha ao buscar vendas do cliente: ' + e.message);
+    } finally {
+      setLoadingSumModal(false);
+    }
   };
 
   const resetScreen = () => {
@@ -121,7 +166,7 @@ export default function NovaVenda() {
 
     // Verificar Inadimplência
     const { data: inadimplente } = await supabase.schema('pro_consig').from('inadimplentes').select('id').eq('cpf', rawCpf).limit(1).maybeSingle();
-    
+
     if (inadimplente) {
       setSearchLoading(false);
       setSearchInitiated(false);
@@ -226,8 +271,8 @@ export default function NovaVenda() {
           const bMesAno = b.vencimento ? b.vencimento.substring(0, 7) : '';
           const oMesAno = o.vencimento ? o.vencimento.substring(0, 7) : '';
           return (
-            b.cpf === rawOCpf && 
-            b.operacao === o.operacao.toString() && 
+            b.cpf === rawOCpf &&
+            b.operacao === o.operacao.toString() &&
             bMesAno && oMesAno && bMesAno === oMesAno
           );
         });
@@ -248,7 +293,7 @@ export default function NovaVenda() {
     const selecionadas = parcelasExibidas.filter(p => selectedOpIds.includes(p.id));
     const bruto = selecionadas.reduce((acc, curr) => acc + curr.valor, 0);
     const liquido = selecionadas.reduce((acc, curr) => acc + curr.valorComDesconto, 0);
-    return { bruto, liquido, qtd: selecionadas.length, total: parcelasExibidas.length };
+    return { bruto, liquido, qtd: selecionadas.length, total: parcelasExibidas.filter(p => !p.isBaixada).length };
   }, [parcelasExibidas, selectedOpIds]);
 
   const isAllSelected = useMemo(() => {
@@ -256,8 +301,8 @@ export default function NovaVenda() {
   }, [parcelasExibidas, selectedOpIds]);
 
   const handleSelectAll = () => {
-    const newSelected = isAllSelected 
-      ? [] 
+    const newSelected = isAllSelected
+      ? []
       : parcelasExibidas.filter(p => !p.isBaixada).map(p => p.id);
     setSelectedOpIds(newSelected);
 
@@ -290,12 +335,12 @@ export default function NovaVenda() {
   useEffect(() => {
     if (form.operacao === 'REFIN' && form.codigo_operacao) {
       setForm(f => ({ ...f, contrato: f.codigo_operacao }));
-      
+
       const opSelecionada = operacoesDisponiveis.find(o => o.operacao.toString() === form.codigo_operacao);
       if (opSelecionada) {
         const valorContratoRaw = String(opSelecionada.contrato || '0').replace(/[^\d.,]/g, '').replace(',', '.');
         const valorContratoNum = parseFloat(valorContratoRaw) || 0;
-        
+
         setForm(f => ({
           ...f,
           valor: valorContratoNum.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
@@ -306,8 +351,8 @@ export default function NovaVenda() {
         const fetchContas = async () => {
           try {
             const { data: allContas } = await supabase.schema('pro_consig').from('contas').select('*');
-            const contaData = allContas?.find(c => 
-              Number(c.grupo) === Number(opSelecionada.grupo) && 
+            const contaData = allContas?.find(c =>
+              Number(c.grupo) === Number(opSelecionada.grupo) &&
               Number(c.conta_ativacao) === Number(opSelecionada.contacobranca)
             );
 
@@ -339,7 +384,7 @@ export default function NovaVenda() {
           const dataVenc = new Date(maisAntiga.vencimento + 'T12:00:00');
           const mes = (dataVenc.getMonth() + 1).toString().padStart(2, '0');
           const ano = dataVenc.getFullYear().toString();
-          
+
           setForm(f => ({
             ...f,
             inicio_mes: mes,
@@ -372,7 +417,7 @@ export default function NovaVenda() {
       parts.push(`INICIO ${mesNome}/${form.inicio_ano}`);
     }
     if (form.operacao === 'REFIN') {
-      const restamVal = parcelasExibidas.length;
+      const restamVal = parcelasExibidas.filter(p => !p.isBaixada).length;
       const abatidasVal = selectedOpIds.length;
       parts.push(`RESTAM ${restamVal} ABATIDAS ${abatidasVal}`);
     }
@@ -409,13 +454,13 @@ export default function NovaVenda() {
       const grupo = opSelecionada?.grupo;
 
       let query = supabase.schema('pro_consig').from('contas').select('*').eq('conta_ativacao', conta);
-      
+
       if (grupo) {
         query = query.eq('grupo', grupo);
       }
 
       const { data, error } = await query;
-      
+
       if (error) throw error;
 
       if (data && data.length > 0) {
@@ -436,7 +481,7 @@ export default function NovaVenda() {
   const opSemParcelas = useMemo(() => {
     if (form.operacao !== 'REFIN' || !form.codigo_operacao) return false;
     const op = operacoesDisponiveis.find(o => String(o.operacao) === form.codigo_operacao);
-    
+
     return op && (op.num_parcela === 0 || op.num_parcela === '0');
   }, [form.operacao, form.codigo_operacao, operacoesDisponiveis]);
 
@@ -449,7 +494,7 @@ export default function NovaVenda() {
   useEffect(() => {
     const v = parseFloat(form.valor.replace(/\./g, '').replace(',', '.')) || 0;
     const s = parseFloat(form.saldo.replace(/\./g, '').replace(',', '.')) || 0;
-    
+
     if (v > 0 || s > 0) {
       setForm(f => ({ ...f, valor_liquido: (v - s).toFixed(2).replace('.', ',') }));
     }
@@ -473,6 +518,35 @@ export default function NovaVenda() {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
 
+    if (name === 'forma_credito') {
+      setForm(f => ({
+        ...f,
+        forma_credito: value,
+        pix_tipo_chave: '',
+        pix_chave: '',
+        credito_banco: '',
+        credito_agencia: '',
+        credito_agencia_dv: '',
+        credito_conta: '',
+        credito_conta_dv: '',
+        credito_tipo_conta: 'corrente'
+      }));
+      return;
+    }
+
+    if (name === 'credito_tipo_conta') {
+      setForm(f => ({
+        ...f,
+        credito_tipo_conta: value,
+        credito_banco: '',
+        credito_agencia: '',
+        credito_agencia_dv: '',
+        credito_conta: '',
+        credito_conta_dv: ''
+      }));
+      return;
+    }
+
     if (name === 'codigo_operacao') {
       if (!value) {
         setForm(f => ({
@@ -491,9 +565,9 @@ export default function NovaVenda() {
         if (rawVendedorName) {
           const foundVendedor = vendedores.find(v => {
             const formatted = `${v.codigo} - ${v.nome}`.toUpperCase();
-            return v.nome.toUpperCase() === rawVendedorName || 
-                   formatted === rawVendedorName || 
-                   rawVendedorName.includes(v.nome.toUpperCase());
+            return v.nome.toUpperCase() === rawVendedorName ||
+              formatted === rawVendedorName ||
+              rawVendedorName.includes(v.nome.toUpperCase());
           });
           if (foundVendedor) {
             matchingVendedor = foundVendedor.codigo;
@@ -572,7 +646,7 @@ export default function NovaVenda() {
 
     // Campos numéricos puros (apenas dígitos)
     const numericFields = [
-      'conta_ativacao', 'inicio_ano', 'prazo', 
+      'conta_ativacao', 'inicio_ano', 'prazo',
       'agencia', 'agencia_dv', 'conta', 'conta_dv', 'op',
       'credito_agencia', 'credito_agencia_dv', 'credito_conta', 'credito_conta_dv'
     ];
@@ -729,7 +803,7 @@ export default function NovaVenda() {
           credito_tipo_conta: form.credito_tipo_conta,
           novo_cliente: form.novo_cliente,
           atualizacao_cadastral: form.atualizacao_cadastral,
-          restam: form.operacao === 'REFIN' ? parcelasExibidas.length : null,
+          restam: form.operacao === 'REFIN' ? parcelasExibidas.filter(p => !p.isBaixada).length : null,
           abatidas: form.operacao === 'REFIN' ? selectedOpIds.length : null
         })
         .select('id, venda_id')
@@ -807,13 +881,13 @@ export default function NovaVenda() {
             <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
               <div style={{ maxWidth: '280px', flex: 1 }}>
                 <label style={fs}>CPF do Cliente</label>
-                <input 
-                  type="text" 
-                  value={cpf} 
-                  onChange={e => setCpf(formatCPF(e.target.value))} 
+                <input
+                  type="text"
+                  value={cpf}
+                  onChange={e => setCpf(formatCPF(e.target.value))}
                   onFocus={resetScreen}
-                  placeholder="000.000.000-00" 
-                  style={{ width: '100%' }} 
+                  placeholder="000.000.000-00"
+                  style={{ width: '100%' }}
                 />
               </div>
               <button type="button" className="btn btn-secondary" style={{ marginTop: '1.5rem', padding: '0.65rem' }} onClick={buscarCliente} disabled={searchLoading}><Search size={20} /></button>
@@ -866,14 +940,14 @@ export default function NovaVenda() {
                         {codigosUnicos.map(c => <option key={c} value={c}>{c}</option>)}
                       </select>
                     ) : (
-                      <input 
-                        name="codigo_operacao" 
-                        type="text" 
-                        value={form.codigo_operacao} 
-                        onChange={handleChange} 
-                        required={form.operacao !== 'NOVO'} 
+                      <input
+                        name="codigo_operacao"
+                        type="text"
+                        value={form.codigo_operacao}
+                        onChange={handleChange}
+                        required={form.operacao !== 'NOVO'}
                         disabled={form.operacao === 'NOVO'}
-                        style={{ width: '100%', padding: '0.5rem', ...(form.operacao === 'NOVO' ? readonlyStyle : {}) }} 
+                        style={{ width: '100%', padding: '0.5rem', ...(form.operacao === 'NOVO' ? readonlyStyle : {}) }}
                       />
                     )}
                   </div>
@@ -919,8 +993,23 @@ export default function NovaVenda() {
               {/* GRID REFIN */}
               {form.operacao === 'REFIN' && form.codigo_operacao ? (
                 <div className="card animate-fade-in" style={{ marginBottom: '1rem', border: '1px solid var(--color-primary-light)', backgroundColor: 'rgba(79, 70, 229, 0.01)' }}>
-                  <legend style={ls}><div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><ListFilter size={18} /> Detalhes da Operação {form.codigo_operacao}</div></legend>
-                  
+                  <legend style={{ ...ls, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <ListFilter size={18} /> Detalhes da Operação {form.codigo_operacao}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleOpenSumModal}
+                      className="btn btn-secondary"
+                      style={{ padding: '0.3rem 0.6rem', display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.75rem', height: 'auto', border: '1px solid var(--color-primary-light)', background: 'transparent', color: 'var(--color-primary)' }}
+                      title="Somatória de Líquidos"
+                      disabled={loadingSumModal}
+                    >
+                      <Calculator size={14} />
+                      {loadingSumModal ? 'Calculando...' : 'Valores Líquidos a Receber'}
+                    </button>
+                  </legend>
+
                   {opSemParcelas ? (
                     <div style={{ textAlign: 'center', padding: '2rem', color: '#ef4444', fontWeight: 600 }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
@@ -932,81 +1021,81 @@ export default function NovaVenda() {
                       <div className="table-wrapper" style={{ border: '1px solid var(--color-border)' }}>
                         <table className="table table-sm" style={{ borderCollapse: 'separate', borderSpacing: 0 }}>
                           <thead>
-                        <tr>
-                          <th style={{ width: '44px', position: 'sticky', top: 0, zIndex: 10, backgroundColor: 'var(--color-bg-surface-hover)', borderBottom: '2px solid var(--color-border)', textAlign: 'center', padding: '0.5rem' }}>
-                            <input type="checkbox" checked={isAllSelected} onChange={handleSelectAll} style={{ cursor: 'pointer', verticalAlign: 'middle' }} disabled={opSemParcelas} />
-                          </th>
-                          <th style={{ width: '60px', position: 'sticky', top: 0, zIndex: 10, backgroundColor: 'var(--color-bg-surface-hover)', borderBottom: '2px solid var(--color-border)', textAlign: 'right' }}>Parcela</th>
-                          <th style={{ position: 'sticky', top: 0, zIndex: 10, backgroundColor: 'var(--color-bg-surface-hover)', borderBottom: '2px solid var(--color-border)', textAlign: 'center' }}>Vencimento</th>
-                          <th style={{ position: 'sticky', top: 0, zIndex: 10, backgroundColor: 'var(--color-bg-surface-hover)', borderBottom: '2px solid var(--color-border)', textAlign: 'right' }}>Valor (R$)</th>
-                          <th style={{ position: 'sticky', top: 0, zIndex: 10, backgroundColor: 'var(--color-bg-surface-hover)', borderBottom: '2px solid var(--color-border)', textAlign: 'center' }}>Dias</th>
-                          <th style={{ position: 'sticky', top: 0, zIndex: 10, backgroundColor: 'var(--color-bg-surface-hover)', borderBottom: '2px solid var(--color-border)', textAlign: 'center' }}>Status</th>
-                          <th style={{ position: 'sticky', top: 0, zIndex: 10, backgroundColor: 'var(--color-bg-surface-hover)', borderBottom: '2px solid var(--color-border)', textAlign: 'center' }}>% Desconto</th>
-                          <th style={{ position: 'sticky', top: 0, zIndex: 10, backgroundColor: 'var(--color-bg-surface-hover)', borderBottom: '2px solid var(--color-border)', textAlign: 'right' }}>Desconto (R$)</th>
-                          <th style={{ position: 'sticky', top: 0, zIndex: 10, backgroundColor: 'var(--color-bg-surface-hover)', borderBottom: '2px solid var(--color-border)', textAlign: 'right' }}>Líquido (R$)</th>
-                          <th style={{ position: 'sticky', top: 0, zIndex: 10, backgroundColor: 'var(--color-bg-surface-hover)', borderBottom: '2px solid var(--color-border)', textAlign: 'center' }}>Grupo</th>
-                        </tr>
-                      </thead>
-                      <tbody style={{ fontSize: '0.8125rem' }}>
-                        {parcelasExibidas.length > 0 ? (
-                          parcelasExibidas.map(p => (
-                            <tr 
-                              key={p.id} 
-                              onClick={() => !p.isBaixada && toggleOpSelection(p.id)} 
-                              style={{ 
-                                cursor: p.isBaixada ? 'not-allowed' : 'pointer', 
-                                backgroundColor: selectedOpIds.includes(p.id) ? 'rgba(79, 70, 229, 0.06)' : 'transparent',
-                                opacity: p.isBaixada ? 0.6 : 1
-                              }}
-                            >
-                              <td style={{ padding: '0.4rem 0.5rem', width: '44px', textAlign: 'center' }}>
-                                <input 
-                                  type="checkbox" 
-                                  checked={selectedOpIds.includes(p.id)} 
-                                  disabled={p.isBaixada}
-                                  readOnly 
-                                  style={{ verticalAlign: 'middle' }} 
-                                />
-                              </td>
-                              <td style={{ padding: '0.4rem 0.5rem', textAlign: 'right', fontWeight: 600, color: 'var(--color-text-muted)' }}>{p.numParcela}</td>
-                              <td style={{ padding: '0.4rem 0.5rem', textAlign: 'center' }}>{new Date(p.vencimento + 'T12:00:00').toLocaleDateString('pt-BR')}</td>
-                              <td style={{ padding: '0.4rem 0.5rem', textAlign: 'right', fontWeight: 500 }}>{p.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                              <td style={{ padding: '0.4rem 0.5rem', textAlign: 'center' }}>{p.dias}</td>
-                              <td style={{ padding: '0.4rem 0.5rem', textAlign: 'center' }}>
-                                {p.isBaixada ? (
-                                  <span style={{ color: 'var(--color-warning)', fontWeight: 700, fontSize: '0.75rem' }}>Baixada</span>
-                                ) : (
-                                  <span style={{ color: 'var(--color-primary)', fontWeight: 700, fontSize: '0.75rem' }}>Aberta</span>
-                                )}
-                              </td>
-                              <td style={{ padding: '0.4rem 0.5rem', textAlign: 'center', color: 'var(--color-danger)' }}>{p.percDesconto}%</td>
-                              <td style={{ padding: '0.4rem 0.5rem', textAlign: 'right', color: 'var(--color-danger)' }}>- {p.valorDesconto.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                              <td style={{ padding: '0.4rem 0.5rem', textAlign: 'right', fontWeight: 600, color: 'var(--color-success)' }}>{p.valorComDesconto.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                              <td style={{ padding: '0.4rem 0.5rem', textAlign: 'center', fontWeight: 600 }}>{p.grupo}</td>
+                            <tr>
+                              <th style={{ width: '44px', position: 'sticky', top: 0, zIndex: 10, backgroundColor: 'var(--color-bg-surface-hover)', borderBottom: '2px solid var(--color-border)', textAlign: 'center', padding: '0.5rem' }}>
+                                <input type="checkbox" checked={isAllSelected} onChange={handleSelectAll} style={{ cursor: 'pointer', verticalAlign: 'middle' }} disabled={opSemParcelas} />
+                              </th>
+                              <th style={{ width: '60px', position: 'sticky', top: 0, zIndex: 10, backgroundColor: 'var(--color-bg-surface-hover)', borderBottom: '2px solid var(--color-border)', textAlign: 'right' }}>Parcela</th>
+                              <th style={{ position: 'sticky', top: 0, zIndex: 10, backgroundColor: 'var(--color-bg-surface-hover)', borderBottom: '2px solid var(--color-border)', textAlign: 'center' }}>Vencimento</th>
+                              <th style={{ position: 'sticky', top: 0, zIndex: 10, backgroundColor: 'var(--color-bg-surface-hover)', borderBottom: '2px solid var(--color-border)', textAlign: 'right' }}>Valor (R$)</th>
+                              <th style={{ position: 'sticky', top: 0, zIndex: 10, backgroundColor: 'var(--color-bg-surface-hover)', borderBottom: '2px solid var(--color-border)', textAlign: 'center' }}>Dias</th>
+                              <th style={{ position: 'sticky', top: 0, zIndex: 10, backgroundColor: 'var(--color-bg-surface-hover)', borderBottom: '2px solid var(--color-border)', textAlign: 'center' }}>Status</th>
+                              <th style={{ position: 'sticky', top: 0, zIndex: 10, backgroundColor: 'var(--color-bg-surface-hover)', borderBottom: '2px solid var(--color-border)', textAlign: 'center' }}>% Desconto</th>
+                              <th style={{ position: 'sticky', top: 0, zIndex: 10, backgroundColor: 'var(--color-bg-surface-hover)', borderBottom: '2px solid var(--color-border)', textAlign: 'right' }}>Desconto (R$)</th>
+                              <th style={{ position: 'sticky', top: 0, zIndex: 10, backgroundColor: 'var(--color-bg-surface-hover)', borderBottom: '2px solid var(--color-border)', textAlign: 'right' }}>Líquido (R$)</th>
+                              <th style={{ position: 'sticky', top: 0, zIndex: 10, backgroundColor: 'var(--color-bg-surface-hover)', borderBottom: '2px solid var(--color-border)', textAlign: 'center' }}>Grupo</th>
                             </tr>
-                          ))
-                        ) : (
-                          <tr>
-                            <td colSpan={10} style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-danger)', fontWeight: 600 }}>
-                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
-                                <AlertTriangle size={18} /> Não constam parcelas para esta operação no banco de dados.
-                              </div>
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                  <div style={{ marginTop: '0.75rem', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.75rem' }}>
-                    <div className="card" style={{ padding: '0.5rem', textAlign: 'center', border: '1px solid var(--color-border)' }}><span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>Total Parcelas</span><div style={{ fontSize: '1rem', fontWeight: 700 }}>{totaisRefin.total}</div></div>
-                    <div className="card" style={{ padding: '0.5rem', textAlign: 'center', border: '1px solid var(--color-border)' }}><span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>Selecionadas</span><div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-primary)' }}>{totaisRefin.qtd}</div></div>
-                    <div className="card" style={{ padding: '0.5rem', textAlign: 'center', border: '1px solid var(--color-border)' }}><span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>Saldo Bruto</span><div style={{ fontSize: '1rem', fontWeight: 700 }}>R$ {totaisRefin.bruto.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div></div>
-                    <div className="card" style={{ padding: '0.5rem', textAlign: 'center', border: '1px solid var(--color-border)' }}><span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>Saldo Líquido</span><div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-success)' }}>R$ {totaisRefin.liquido.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div></div>
-                  </div>
-                </>
-              )}
-            </div>
-          ) : null}
+                          </thead>
+                          <tbody style={{ fontSize: '0.8125rem' }}>
+                            {parcelasExibidas.length > 0 ? (
+                              parcelasExibidas.map(p => (
+                                <tr
+                                  key={p.id}
+                                  onClick={() => !p.isBaixada && toggleOpSelection(p.id)}
+                                  style={{
+                                    cursor: p.isBaixada ? 'not-allowed' : 'pointer',
+                                    backgroundColor: selectedOpIds.includes(p.id) ? 'rgba(79, 70, 229, 0.06)' : 'transparent',
+                                    opacity: p.isBaixada ? 0.6 : 1
+                                  }}
+                                >
+                                  <td style={{ padding: '0.4rem 0.5rem', width: '44px', textAlign: 'center' }}>
+                                    <input
+                                      type="checkbox"
+                                      checked={selectedOpIds.includes(p.id)}
+                                      disabled={p.isBaixada}
+                                      readOnly
+                                      style={{ verticalAlign: 'middle' }}
+                                    />
+                                  </td>
+                                  <td style={{ padding: '0.4rem 0.5rem', textAlign: 'right', fontWeight: 600, color: 'var(--color-text-muted)' }}>{p.numParcela}</td>
+                                  <td style={{ padding: '0.4rem 0.5rem', textAlign: 'center' }}>{new Date(p.vencimento + 'T12:00:00').toLocaleDateString('pt-BR')}</td>
+                                  <td style={{ padding: '0.4rem 0.5rem', textAlign: 'right', fontWeight: 500 }}>{p.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                  <td style={{ padding: '0.4rem 0.5rem', textAlign: 'center' }}>{p.dias}</td>
+                                  <td style={{ padding: '0.4rem 0.5rem', textAlign: 'center' }}>
+                                    {p.isBaixada ? (
+                                      <span style={{ color: 'var(--color-warning)', fontWeight: 700, fontSize: '0.75rem' }}>Baixada</span>
+                                    ) : (
+                                      <span style={{ color: 'var(--color-primary)', fontWeight: 700, fontSize: '0.75rem' }}>Aberta</span>
+                                    )}
+                                  </td>
+                                  <td style={{ padding: '0.4rem 0.5rem', textAlign: 'center', color: 'var(--color-danger)' }}>{p.percDesconto}%</td>
+                                  <td style={{ padding: '0.4rem 0.5rem', textAlign: 'right', color: 'var(--color-danger)' }}>- {p.valorDesconto.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                  <td style={{ padding: '0.4rem 0.5rem', textAlign: 'right', fontWeight: 600, color: 'var(--color-success)' }}>{p.valorComDesconto.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                  <td style={{ padding: '0.4rem 0.5rem', textAlign: 'center', fontWeight: 600 }}>{p.grupo}</td>
+                                </tr>
+                              ))
+                            ) : (
+                              <tr>
+                                <td colSpan={10} style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-danger)', fontWeight: 600 }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+                                    <AlertTriangle size={18} /> Não constam parcelas para esta operação no banco de dados.
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                      <div style={{ marginTop: '0.75rem', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.75rem' }}>
+                        <div className="card" style={{ padding: '0.5rem', textAlign: 'center', border: '1px solid var(--color-border)' }}><span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>Total Parcelas</span><div style={{ fontSize: '1rem', fontWeight: 700 }}>{totaisRefin.total}</div></div>
+                        <div className="card" style={{ padding: '0.5rem', textAlign: 'center', border: '1px solid var(--color-border)' }}><span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>Selecionadas</span><div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-primary)' }}>{totaisRefin.qtd}</div></div>
+                        <div className="card" style={{ padding: '0.5rem', textAlign: 'center', border: '1px solid var(--color-border)' }}><span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>Saldo Bruto</span><div style={{ fontSize: '1rem', fontWeight: 700 }}>R$ {totaisRefin.bruto.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div></div>
+                        <div className="card" style={{ padding: '0.5rem', textAlign: 'center', border: '1px solid var(--color-border)' }}><span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>Saldo Líquido</span><div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-success)' }}>R$ {totaisRefin.liquido.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div></div>
+                      </div>
+                    </>
+                  )}
+                </div>
+              ) : null}
 
               {/* VALORES E CONDIÇÕES EM LINHA ÚNICA */}
               <div className="card" style={{ marginBottom: '1rem' }}>
@@ -1015,16 +1104,16 @@ export default function NovaVenda() {
                   <div><label style={fs}>Contrato (R$)</label><input name="valor" type="text" value={form.valor} onChange={handleChange} onBlur={handleBlur} required placeholder="0,00" style={{ width: '100%', fontWeight: 600, color: 'var(--color-primary)' }} /></div>
                   <div>
                     <label style={fs}>Saldo (R$)</label>
-                    <input 
-                      name="saldo" 
-                      type="text" 
-                      value={form.saldo} 
-                      onChange={handleChange} 
-                      onBlur={handleBlur} 
-                      required 
-                      placeholder="0,00" 
+                    <input
+                      name="saldo"
+                      type="text"
+                      value={form.saldo}
+                      onChange={handleChange}
+                      onBlur={handleBlur}
+                      required
+                      placeholder="0,00"
                       disabled={form.operacao === 'NOVO'}
-                      style={{ width: '100%', ...(form.operacao === 'NOVO' ? readonlyStyle : {}) }} 
+                      style={{ width: '100%', ...(form.operacao === 'NOVO' ? readonlyStyle : {}) }}
                     />
                   </div>
                   <div><label style={fs}>Líquido (R$)</label><input name="valor_liquido" type="text" value={form.valor_liquido} onChange={handleChange} onBlur={handleBlur} style={{ width: '100%' }} /></div>
@@ -1056,7 +1145,6 @@ export default function NovaVenda() {
                   <select name="forma_credito" value={form.forma_credito} onChange={handleChange} style={{ width: '300px' }}>
                     <option value="conta">Crédito em Conta</option>
                     <option value="pix">PIX</option>
-                    <option value="ordem">Ordem de Pagamento</option>
                   </select>
                 </div>
                 {form.forma_credito === 'conta' && (
@@ -1121,6 +1209,84 @@ export default function NovaVenda() {
           )}
         </form>
       </div>
+
+      {/* Sum Modal */}
+      {sumModalData && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
+          backgroundColor: 'rgba(0, 0, 0, 0.6)', backdropFilter: 'blur(10px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 9999, padding: '1.5rem'
+        }}>
+          <div className="card animate-scale-up" style={{ width: '100%', maxWidth: '600px', padding: '0', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)' }}>
+            <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <Calculator className="text-primary" /> Valores Líquidos a Receber
+              </h3>
+              <button onClick={() => setSumModalData(null)} style={{ background: 'transparent', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer' }}>
+                <X size={20} />
+              </button>
+            </div>
+            <div style={{ padding: '1.5rem' }}>
+              <div style={{ marginBottom: '1.5rem' }}>
+                <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>Cliente</div>
+                <div style={{ fontWeight: 600, fontSize: '1.1rem', textTransform: 'uppercase' }}>{sumModalData.name}</div>
+                <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', marginTop: '0.25rem' }}>CPF: {sumModalData.cpf}</div>
+              </div>
+
+              <div style={{ maxHeight: '300px', overflowY: 'auto', border: '1px solid var(--color-border)', borderRadius: '8px', marginBottom: '1.5rem' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                  <thead>
+                    <tr style={{ background: 'var(--color-bg-body)', borderBottom: '1px solid var(--color-border)' }}>
+                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', color: 'var(--color-text-muted)' }}>Operação</th>
+                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', color: 'var(--color-text-muted)' }}>Contrato</th>
+                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', color: 'var(--color-text-muted)' }}>Valor Líquido</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sumModalData.vendas.length === 0 ? (
+                      <tr>
+                        <td colSpan={3} style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
+                          Nenhuma venda em aberto encontrada para este cliente.
+                        </td>
+                      </tr>
+                    ) : (
+                      sumModalData.vendas.map((s, idx) => {
+                        const valStr = String(s.abat || '0').replace(/\s/g, '');
+                        let cleanVal = valStr;
+                        if (valStr.includes(',')) {
+                          cleanVal = valStr.replace(/\./g, '').replace(',', '.');
+                        }
+                        const val = parseFloat(cleanVal) || 0;
+
+                        return (
+                          <tr key={s.id || idx} style={{ borderBottom: '1px solid var(--color-border)' }}>
+                            <td style={{ padding: '0.5rem 0.75rem' }}><span className="badge badge-info">{s.operacao}</span></td>
+                            <td style={{ padding: '0.5rem 0.75rem', fontWeight: 500 }}>{s.codigo_operacao || '-'}</td>
+                            <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: 600 }}>
+                              R$ {val.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(79, 70, 229, 0.05)', padding: '0.75rem 1rem', borderRadius: '8px', border: '1px solid var(--color-primary-light)' }}>
+                <span style={{ fontWeight: 600, color: 'var(--color-primary)', fontSize: '0.9rem' }}>Total Líquido Aberto:</span>
+                <span style={{ fontWeight: 700, fontSize: '1.1rem', color: 'var(--color-primary)' }}>
+                  R$ {sumModalData.total.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
+              </div>
+            </div>
+            <div style={{ padding: '1rem 1.5rem', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'flex-end', background: 'var(--color-bg-body)' }}>
+              <button onClick={() => setSumModalData(null)} className="btn btn-secondary">Fechar</button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

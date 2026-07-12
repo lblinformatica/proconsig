@@ -66,6 +66,21 @@ export default function RelatoriosPage() {
     return '-';
   };
 
+  const getContratoDisplay = (v: any) => {
+    if (v.operacao === 'REFIN') return v.codigo_operacao || '-';
+    if (v.operacao === 'NOVO') return 'Nova Venda';
+    return v.contrato || v.codigo_operacao || '-';
+  };
+
+  const getFormaRecebimentoFormatted = (v: any) => {
+    const forma = v.forma_credito ? String(v.forma_credito).trim().toUpperCase() : '';
+    if (forma === 'CONTA') {
+      const tipo = (v.credito_tipo_conta || v.tipo_conta || '').trim().toUpperCase();
+      return tipo ? `CONTA ${tipo}` : 'CONTA';
+    }
+    return forma || '-';
+  };
+
   const [filters, setFilters] = useState({
     cpf: '', clienteNome: '', status: 'Aprovado', dataInicio: '', dataFim: '', corretor: ''
   });
@@ -281,7 +296,7 @@ export default function RelatoriosPage() {
     if (allData.length > 0) {
       const timestamp = new Date().toLocaleString('pt-BR');
       const rows = allData.map(v => ({
-        'ID Venda': v.venda_id || '-',
+        'Contrato': getContratoDisplay(v),
         'Status Venda': v.status === 'Pago' ? 'PAGA' : 'ABERTA',
         'Status Exportação': v.data_exportacao_atual ? 'RE-EXPORTADO' : 'NOVO (Primeira Vez)',
         'Penúltima Exportação': v.data_exportacao_anterior ? new Date(v.data_exportacao_anterior).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : '-',
@@ -307,13 +322,13 @@ export default function RelatoriosPage() {
         'Prazo': v.prazo || 0,
         'Banco (Débito)': v.banco || '-',
         'Agência (Débito)': `${v.agencia || ''}-${v.agencia_dv || ''}`,
-        'Conta (Débito)': `${v.conta || ''}-${v.conta_dv || ''}`,
-        'Forma Recebimento': v.forma_credito?.toUpperCase() || '-',
+        'Conta (Débito)': `${v.conta || ''}-${v.conta_dv || ''}${v.tipo_conta ? ` (${v.tipo_conta})` : ''}`,
+        'Forma Recebimento': getFormaRecebimentoFormatted(v),
         'PIX (Chave)': v.pix_chave || '-',
         'PIX (Tipo)': v.pix_tipo_chave || '-',
         'Banco (Crédito)': v.credito_banco || '-',
         'Agência (Crédito)': `${v.credito_agencia || ''}-${v.credito_agencia_dv || ''}`,
-        'Conta (Crédito)': `${v.credito_conta || ''}-${v.credito_conta_dv || ''}`,
+        'Conta (Crédito)': `${v.credito_conta || ''}-${v.credito_conta_dv || ''}${v.credito_tipo_conta ? ` (${v.credito_tipo_conta})` : ''}`,
         'Contrato nº': v.contrato || '-',
         'Ativação': v.empresa_ativacao || '-',
         'Início (Mês/Ano)': v.inicio ? new Date(v.inicio).toLocaleDateString('pt-BR', { month: '2-digit', year: 'numeric' }) : '-',
@@ -335,7 +350,20 @@ export default function RelatoriosPage() {
         }));
 
         rows.forEach(rowData => {
-          worksheet.addRow(rowData);
+          const addedRow = worksheet.addRow(rowData);
+          const isPix = String(rowData['Forma Recebimento'])?.toLowerCase().includes('pix');
+          const isPoupanca = String(rowData['Conta (Crédito)'])?.toLowerCase().includes('poupan') || 
+                             String(rowData['Conta (Débito)'])?.toLowerCase().includes('poupan') || 
+                             String(rowData['Forma Recebimento'])?.toLowerCase().includes('poupan');
+          if (isPix || isPoupanca) {
+            addedRow.eachCell((cell) => {
+              cell.fill = {
+                type: 'pattern',
+                pattern: 'solid',
+                fgColor: { argb: 'FFFFFF00' }
+              };
+            });
+          }
         });
 
         // Format first row (header) in bold
@@ -567,15 +595,9 @@ export default function RelatoriosPage() {
             right: { style: 'thin', color: { argb: 'FFC0C0C0' } }
           };
 
-          // Fill (Orange for savings accounts, Yellow for highlighted rows, standard for others)
+          // Fill (Yellow for PIX or Poupança rows, standard for others)
           if (!isHeader && !isTotal) {
-            if (highlightOrange) {
-              cell.fill = {
-                type: 'pattern',
-                pattern: 'solid',
-                fgColor: { argb: 'FFFFCC80' }
-              };
-            } else if (highlightYellow) {
+            if (highlightOrange || highlightYellow) {
               cell.fill = {
                 type: 'pattern',
                 pattern: 'solid',
@@ -660,7 +682,7 @@ export default function RelatoriosPage() {
 
       // Row 3+: Data Rows
       allData.forEach((v) => {
-        const isPix = v.forma_credito?.toLowerCase() === 'pix';
+        const isPix = v.forma_credito?.toLowerCase().includes('pix') || getFormaRecebimentoFormatted(v).toLowerCase().includes('pix');
 
         // Get Group
         let saleGrupo = '';
@@ -685,7 +707,7 @@ export default function RelatoriosPage() {
           nome: v.clientes?.nome || '',
           cpf: v.cpf || '',
           venda_id: v.venda_id || '',
-          forma_recebimento: v.forma_credito?.toUpperCase() || '',
+          forma_recebimento: getFormaRecebimentoFormatted(v),
           banco: isPix ? '' : (v.credito_banco || ''),
           agencia: isPix ? '' : formatAgencia(v.credito_agencia),
           agencia_dv: isPix ? '' : (v.credito_agencia_dv || ''),
@@ -709,7 +731,7 @@ export default function RelatoriosPage() {
 
         const addedRow = wsDetailed.addRow(rowData);
         addedRow.height = 20;
-        const isPoupanca = v.credito_tipo_conta?.toLowerCase() === 'poupança' || v.tipo_conta?.toLowerCase() === 'poupança';
+        const isPoupanca = v.credito_tipo_conta?.toLowerCase().includes('poupan') || v.tipo_conta?.toLowerCase().includes('poupan') || rowData.forma_recebimento.toLowerCase().includes('poupan');
         styleRow(addedRow, false, false, isPix, 13, [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 14, 16, 19, 20, 21, 22, 23], isPoupanca);
       });
 
@@ -778,7 +800,7 @@ export default function RelatoriosPage() {
       Object.keys(groupedData).forEach(cpf => {
         const sales = groupedData[cpf];
         const primarySale = sales[0];
-        const isPix = primarySale.forma_credito?.toLowerCase() === 'pix';
+        const isPix = primarySale.forma_credito?.toLowerCase().includes('pix') || getFormaRecebimentoFormatted(primarySale).toLowerCase().includes('pix');
 
         // Sum net values
         const totalValue = sales.reduce((sum, s) => sum + parseBRLString(s.abat), 0);
@@ -808,7 +830,7 @@ export default function RelatoriosPage() {
         const rowData = {
           nome: primarySale.clientes?.nome || '',
           cpf: cpf,
-          forma_recebimento: primarySale.forma_credito?.toUpperCase() || '',
+          forma_recebimento: getFormaRecebimentoFormatted(primarySale),
           banco: isPix ? '' : (primarySale.credito_banco || ''),
           agencia: isPix ? '' : formatAgencia(primarySale.credito_agencia),
           agencia_dv: isPix ? '' : (primarySale.credito_agencia_dv || ''),
@@ -831,7 +853,7 @@ export default function RelatoriosPage() {
 
         const addedRow = wsConsolidated.addRow(rowData);
         addedRow.height = 20;
-        const isPoupanca = sales.some(s => s.credito_tipo_conta?.toLowerCase() === 'poupança' || s.tipo_conta?.toLowerCase() === 'poupança');
+        const isPoupanca = sales.some(s => s.credito_tipo_conta?.toLowerCase().includes('poupan') || s.tipo_conta?.toLowerCase().includes('poupan')) || rowData.forma_recebimento.toLowerCase().includes('poupan');
         styleRow(addedRow, false, false, isPix, 12, [2, 3, 4, 5, 6, 7, 8, 9, 10, 13, 15, 18, 19, 20, 21], isPoupanca);
       });
 
@@ -1244,7 +1266,7 @@ export default function RelatoriosPage() {
                     style={{ cursor: 'pointer', transform: 'scale(1.2)' }}
                   />
                 </th>
-                <th style={{ width: '100px' }}>ID Venda</th>
+                <th style={{ width: '100px' }}>Contrato</th>
                 <th>Cliente / CPF</th>
                 <th>Operação</th>
                 <th>Valor</th>
@@ -1273,7 +1295,7 @@ export default function RelatoriosPage() {
                         style={{ cursor: 'pointer', transform: 'scale(1.2)' }}
                       />
                     </td>
-                    <td style={{ fontWeight: 600, color: 'var(--color-primary)', fontSize: '0.8rem', whiteSpace: 'nowrap' }}>{v.venda_id || '-'}</td>
+                    <td style={{ fontWeight: 600, color: 'var(--color-primary)', fontSize: '0.8rem', whiteSpace: 'nowrap' }}>{getContratoDisplay(v)}</td>
                     <td>
                       <div style={{ fontWeight: 600, fontSize: '0.8rem' }}>{v.clientes?.nome || '-'}</div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: '0.15rem' }}>
