@@ -76,27 +76,14 @@ export default function UsuariosPage() {
     setLoading(false);
   }, [page, busca]);
 
-  const [currentTime, setCurrentTime] = useState(Date.now());
-
   useEffect(() => {
     fetchUsuarios();
-    const interval = setInterval(() => {
-      fetchUsuarios();
-    }, 30000);
-    return () => clearInterval(interval);
-  }, [page, fetchUsuarios]);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentTime(Date.now());
-    }, 15000);
-    return () => clearInterval(interval);
-  }, []);
+  }, [fetchUsuarios]);
 
   const isOnline = (ultimaAtividadeStr: string | null) => {
     if (!ultimaAtividadeStr) return false;
     const lastActive = new Date(ultimaAtividadeStr).getTime();
-    return (currentTime - lastActive) < 90000;
+    return (Date.now() - lastActive) < 90000;
   };
 
   const formatLastLogin = (ultimoLoginStr: string | null) => {

@@ -41,6 +41,7 @@ export default function NovaVenda() {
   const [duplicateModal, setDuplicateModal] = useState(false);
   const [alertModal, setAlertModal] = useState<{ show: boolean, title: string, message: string }>({ show: false, title: '', message: '' });
   const [vendedores, setVendedores] = useState<any[]>([]);
+  const [gruposDisponiveis, setGruposDisponiveis] = useState<(number | string)[]>([]);
 
   useEffect(() => {
     const fetchVendedores = async () => {
@@ -52,7 +53,20 @@ export default function NovaVenda() {
         .order('codigo', { ascending: true });
       if (data) setVendedores(data);
     };
+    const fetchGrupos = async () => {
+      const { data } = await supabase
+        .schema('pro_consig')
+        .from('contas')
+        .select('grupo')
+        .not('grupo', 'is', null)
+        .order('grupo', { ascending: true });
+      if (data) {
+        const unique = Array.from(new Set(data.map(d => d.grupo).filter(Boolean)));
+        setGruposDisponiveis(unique);
+      }
+    };
     fetchVendedores();
+    fetchGrupos();
   }, []);
 
   const [cpf, setCpf] = useState('');
@@ -68,7 +82,7 @@ export default function NovaVenda() {
     orgao: '', empresa: '', operacao: 'REFIN', codigo_operacao: '', corretor: '', carteira: '',
     valor: '', saldo: '', valor_liquido: '', coef: '', parcela: '', prazo: '',
     banco: '', agencia: '', agencia_dv: '', op: '', conta: '', conta_dv: '', tipo_conta: 'corrente',
-    contrato: '', empresa_ativacao: '', conta_ativacao: '',
+    contrato: '', grupo: '', empresa_ativacao: '', conta_ativacao: '',
     inicio_mes: '', inicio_ano: new Date().getFullYear().toString(),
     dia_util: '', empresa_credora: '', observacao: '',
     forma_credito: 'conta', pix_tipo_chave: '', pix_chave: '',
@@ -139,7 +153,7 @@ export default function NovaVenda() {
       orgao: '', empresa: '', codigo_operacao: '', carteira: '',
       valor: '', saldo: '', valor_liquido: '', coef: '', parcela: '', prazo: '',
       banco: '', agencia: '', agencia_dv: '', op: '', conta: '', conta_dv: '',
-      contrato: '', empresa_ativacao: '', conta_ativacao: '',
+      contrato: '', grupo: '', empresa_ativacao: '', conta_ativacao: '',
       inicio_mes: '', dia_util: '', empresa_credora: '', observacao: '',
       forma_credito: 'conta', pix_tipo_chave: '', pix_chave: '',
       credito_banco: '', credito_agencia: '', credito_agencia_dv: '',
@@ -147,6 +161,45 @@ export default function NovaVenda() {
       novo_cliente: '',
       atualizacao_cadastral: ''
     }));
+  };
+
+  const buscarEmpresasPorGrupoEConta = async (grupoVal: string, contaVal: string) => {
+    if (!grupoVal || !contaVal) {
+      setForm(f => ({ ...f, empresa_ativacao: '', empresa_credora: '' }));
+      return;
+    }
+    const numGrupo = parseInt(grupoVal, 10);
+    const numConta = parseInt(contaVal, 10);
+    if (isNaN(numGrupo) || isNaN(numConta)) {
+      setForm(f => ({ ...f, empresa_ativacao: '', empresa_credora: '' }));
+      return;
+    }
+
+    const { data } = await supabase
+      .schema('pro_consig')
+      .from('contas')
+      .select('empresa_ativacao, empresa_credora')
+      .eq('grupo', numGrupo)
+      .eq('conta_ativacao', numConta)
+      .maybeSingle();
+
+    if (data) {
+      setForm(f => ({
+        ...f,
+        empresa_ativacao: data.empresa_ativacao || '',
+        empresa_credora: data.empresa_credora || ''
+      }));
+    } else {
+      setForm(f => ({
+        ...f,
+        empresa_ativacao: '',
+        empresa_credora: ''
+      }));
+      showAlert(
+        'Conta Ativação não localizada',
+        `A Conta Ativação ${contaVal} não foi encontrada para o Grupo ${grupoVal} na tabela de contas.`
+      );
+    }
   };
 
   const buscarCliente = async () => {
@@ -547,6 +600,16 @@ export default function NovaVenda() {
       return;
     }
 
+    if (name === 'grupo') {
+      setForm(f => ({ ...f, grupo: value }));
+      if (value && form.conta_ativacao) {
+        buscarEmpresasPorGrupoEConta(value, form.conta_ativacao);
+      } else if (!value) {
+        setForm(f => ({ ...f, empresa_ativacao: '', empresa_credora: '' }));
+      }
+      return;
+    }
+
     if (name === 'codigo_operacao') {
       if (!value) {
         setForm(f => ({
@@ -554,7 +617,11 @@ export default function NovaVenda() {
           codigo_operacao: '',
           contrato: '',
           corretor: '',
-          carteira: ''
+          carteira: '',
+          grupo: '',
+          empresa_ativacao: '',
+          conta_ativacao: '',
+          empresa_credora: ''
         }));
         return;
       }
@@ -573,20 +640,26 @@ export default function NovaVenda() {
             matchingVendedor = foundVendedor.codigo;
           }
         }
+        const grupoOp = opObj.grupo ? String(opObj.grupo) : '';
         setForm(f => ({
           ...f,
           codigo_operacao: value,
           contrato: opObj.contrato || value,
           corretor: matchingVendedor,
-          carteira: matchingVendedor
+          carteira: matchingVendedor,
+          grupo: grupoOp
         }));
+        if (grupoOp && form.conta_ativacao) {
+          buscarEmpresasPorGrupoEConta(grupoOp, form.conta_ativacao);
+        }
         return;
       } else {
         setForm(f => ({
           ...f,
           codigo_operacao: value,
           corretor: '',
-          carteira: ''
+          carteira: '',
+          grupo: ''
         }));
         return;
       }
@@ -599,6 +672,7 @@ export default function NovaVenda() {
           operacao: 'NOVO',
           codigo_operacao: '',
           contrato: '',
+          grupo: '',
           valor: '',
           saldo: '0,00',
           valor_liquido: '',
@@ -619,6 +693,7 @@ export default function NovaVenda() {
           operacao: value,
           codigo_operacao: '',
           contrato: '',
+          grupo: '',
           valor: '',
           saldo: '',
           valor_liquido: '',
@@ -664,7 +739,8 @@ export default function NovaVenda() {
       'credito_tipo_conta',
       'forma_credito',
       'pix_tipo_chave',
-      'inicio_mes'
+      'inicio_mes',
+      'grupo'
     ];
 
     let finalValue = value;
@@ -793,7 +869,7 @@ export default function NovaVenda() {
           prazo: parseInt(form.prazo) || null,
           banco: form.banco, agencia: formatAgencia(form.agencia), agencia_dv: form.agencia_dv,
           op: form.op, conta: form.conta, conta_dv: form.conta_dv, tipo_conta: form.tipo_conta,
-          contrato: form.contrato, empresa_ativacao: form.empresa_ativacao,
+          contrato: form.contrato, grupo: form.grupo ? parseInt(form.grupo, 10) : null, empresa_ativacao: form.empresa_ativacao,
           conta_ativacao: form.conta_ativacao, inicio: dataInicio,
           dia_util: form.dia_util, empresa_credora: form.empresa_credora, observacao: form.observacao,
           forma_credito: form.forma_credito, pix_tipo_chave: form.pix_tipo_chave,
@@ -1168,15 +1244,118 @@ export default function NovaVenda() {
               {/* ATIVAÇÃO E CONTRATO */}
               <div className="card" style={{ marginBottom: '1rem' }}>
                 <legend style={ls}>Ativação, Contrato e Lote</legend>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
-                  <div><label style={fs}>Nº do Contrato</label><input name="contrato" type="text" value={form.contrato} onChange={handleChange} disabled={form.operacao === 'REFIN' || form.operacao === 'NOVO'} required={form.operacao !== 'NOVO'} style={form.operacao === 'REFIN' || form.operacao === 'NOVO' ? readonlyStyle : { width: '100%' }} /></div>
-                  <div><label style={fs}>Conta Ativação</label><input name="conta_ativacao" type="text" value={form.conta_ativacao} onChange={handleChange} onBlur={(e) => buscarEmpresasPorConta(e.target.value)} required style={{ width: '100%' }} /></div>
-                  <div><label style={fs}>Empresa Ativação</label><input name="empresa_ativacao" type="text" value={form.empresa_ativacao} onChange={handleChange} required style={{ width: '100%' }} /></div>
-                  <div><label style={fs}>Dia Útil Adicional</label><input name="dia_util" type="text" value={form.dia_util} onChange={handleChange} required style={{ width: '100%' }} /></div>
-                  <div><label style={fs}>Empresa Credora</label><input name="empresa_credora" type="text" value={form.empresa_credora} onChange={handleChange} required style={{ width: '100%' }} /></div>
-                  <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <div style={{ flex: 1 }}><label style={fs}>Mês</label><select name="inicio_mes" value={form.inicio_mes} onChange={handleChange} required style={{ width: '100%' }}><option value="">--</option>{['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'].map(m => <option key={m} value={m}>{m}</option>)}</select></div>
-                    <div style={{ flex: 1.5 }}><label style={fs}>Ano</label><input name="inicio_ano" type="number" value={form.inicio_ano} onChange={handleChange} required style={{ width: '100%' }} /></div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem' }}>
+                  <div>
+                    <label style={fs}>Nº do Contrato</label>
+                    <input
+                      name="contrato"
+                      type="text"
+                      value={form.contrato}
+                      onChange={handleChange}
+                      disabled={form.operacao === 'REFIN' || form.operacao === 'NOVO'}
+                      required={form.operacao !== 'NOVO'}
+                      style={form.operacao === 'REFIN' || form.operacao === 'NOVO' ? readonlyStyle : { width: '100%' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={fs}>Grupo</label>
+                    <select
+                      name="grupo"
+                      value={form.grupo}
+                      onChange={handleChange}
+                      required
+                      disabled={form.operacao === 'REFIN'}
+                      style={form.operacao === 'REFIN' ? readonlyStyle : { width: '100%' }}
+                    >
+                      {form.operacao === 'REFIN' ? (
+                        form.grupo ? (
+                          <option value={form.grupo}>Grupo {form.grupo}</option>
+                        ) : (
+                          <option value="">Selecione a operação...</option>
+                        )
+                      ) : (
+                        <>
+                          <option value="">Selecione...</option>
+                          {gruposDisponiveis.map(g => (
+                            <option key={g} value={g}>Grupo {g}</option>
+                          ))}
+                        </>
+                      )}
+                    </select>
+                  </div>
+                  <div>
+                    <label style={fs}>Conta Ativação</label>
+                    <input
+                      name="conta_ativacao"
+                      type="text"
+                      value={form.conta_ativacao}
+                      onChange={handleChange}
+                      onBlur={(e) => buscarEmpresasPorGrupoEConta(form.grupo, e.target.value)}
+                      required
+                      style={{ width: '100%' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={fs}>Empresa Ativação</label>
+                    <input
+                      name="empresa_ativacao"
+                      type="text"
+                      value={form.empresa_ativacao}
+                      readOnly
+                      placeholder="Automático..."
+                      style={readonlyStyle}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={fs}>Dia Útil Adicional</label>
+                    <input
+                      name="dia_util"
+                      type="text"
+                      value={form.dia_util}
+                      onChange={handleChange}
+                      required
+                      style={{ width: '100%' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={fs}>Empresa Credora</label>
+                    <input
+                      name="empresa_credora"
+                      type="text"
+                      value={form.empresa_credora}
+                      readOnly
+                      placeholder="Automático..."
+                      style={readonlyStyle}
+                    />
+                  </div>
+                  <div style={{ gridColumn: 'span 2', display: 'flex', gap: '0.5rem' }}>
+                    <div style={{ flex: 1 }}>
+                      <label style={fs}>Mês</label>
+                      <select
+                        name="inicio_mes"
+                        value={form.inicio_mes}
+                        onChange={handleChange}
+                        required
+                        style={{ width: '100%' }}
+                      >
+                        <option value="">--</option>
+                        {['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'].map(m => (
+                          <option key={m} value={m}>{m}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div style={{ flex: 1.5 }}>
+                      <label style={fs}>Ano</label>
+                      <input
+                        name="inicio_ano"
+                        type="number"
+                        value={form.inicio_ano}
+                        onChange={handleChange}
+                        required
+                        style={{ width: '100%' }}
+                      />
+                    </div>
                   </div>
                 </div>
               </div>

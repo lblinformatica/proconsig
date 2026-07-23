@@ -223,7 +223,7 @@ export default function HistoricoSaldosPage() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                           {getContratoDisplay(parentVenda)}
                           {vendaId && (
-                            <Link 
+                            <Link
                               href={`/vendas/${vendaId}`}
                               style={{ color: 'var(--color-primary)', display: 'inline-flex', alignItems: 'center' }}
                               title="Ver Venda"
@@ -234,7 +234,7 @@ export default function HistoricoSaldosPage() {
                         </div>
                       </td>
                       <td>
-                        <span className="badge" style={{ 
+                        <span className="badge" style={{
                           backgroundColor: h.tipo_operacao === 'Nova Venda' ? 'rgba(59, 130, 246, 0.1)' : 'rgba(16, 185, 129, 0.1)',
                           color: h.tipo_operacao === 'Nova Venda' ? '#3b82f6' : '#10b981'
                         }}>
@@ -265,18 +265,18 @@ export default function HistoricoSaldosPage() {
               Página {page + 1} de {totalPages}
             </span>
             <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <button 
-                className="btn btn-secondary" 
-                style={{ padding: '0.5rem' }} 
-                disabled={page === 0} 
+              <button
+                className="btn btn-secondary"
+                style={{ padding: '0.5rem' }}
+                disabled={page === 0}
                 onClick={() => handlePageChange(page - 1)}
               >
                 <ChevronLeft size={18} />
               </button>
-              <button 
-                className="btn btn-secondary" 
-                style={{ padding: '0.5rem' }} 
-                disabled={page >= totalPages - 1} 
+              <button
+                className="btn btn-secondary"
+                style={{ padding: '0.5rem' }}
+                disabled={page >= totalPages - 1}
                 onClick={() => handlePageChange(page + 1)}
               >
                 <ChevronRight size={18} />
