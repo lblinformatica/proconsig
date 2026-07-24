@@ -243,12 +243,14 @@ export default function NovaVenda() {
         conta_dv: cliente.conta_dv || '',
         tipo_conta: cliente.tipo_conta || 'corrente',
         op: cliente.op || '',
-        credito_banco: cliente.credito_banco || cliente.banco || '',
-        credito_agencia: formatAgencia(cliente.credito_agencia || cliente.agencia),
-        credito_agencia_dv: cliente.credito_agencia_dv || cliente.agencia_dv || '',
-        credito_conta: cliente.credito_conta || cliente.conta || '',
-        credito_conta_dv: cliente.credito_conta_dv || cliente.conta_dv || '',
-        credito_tipo_conta: cliente.credito_tipo_conta || cliente.tipo_conta || 'corrente'
+        credito_banco: '',
+        credito_agencia: '',
+        credito_agencia_dv: '',
+        credito_conta: '',
+        credito_conta_dv: '',
+        credito_tipo_conta: 'corrente',
+        pix_tipo_chave: '',
+        pix_chave: ''
       }));
 
       // Busca operações disponíveis que NÃO têm venda registrada
