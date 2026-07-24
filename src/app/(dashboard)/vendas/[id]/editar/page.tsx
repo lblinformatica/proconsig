@@ -23,7 +23,7 @@ const readonlyStyle = {
 } as const;
 
 const getPrazoByCoef = (coef: number): number | string => {
-  if (coef >= 1.170 && coef <= 1.190) return 1;
+  if (coef >= 1.170 && coef <= 1.400) return 1;
   if (coef >= 0.531 && coef <= 0.635) return 3;
   if (coef >= 0.366 && coef <= 0.399) return 4;
   if (coef >= 0.320 && coef <= 0.341) return 6;
