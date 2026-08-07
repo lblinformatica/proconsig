@@ -459,8 +459,14 @@ export default function NovaVenda() {
 
   useEffect(() => {
     const parts = [];
-    if (form.empresa_ativacao) {
-      parts.push(`ATIVAÇÃO ${form.empresa_ativacao.trim().toUpperCase()}`);
+    if (form.conta_ativacao || form.empresa_ativacao) {
+      if (form.conta_ativacao && form.empresa_ativacao) {
+        parts.push(`ATIVAÇÃO ${form.conta_ativacao.trim()} - ${form.empresa_ativacao.trim().toUpperCase()}`);
+      } else if (form.conta_ativacao) {
+        parts.push(`ATIVAÇÃO ${form.conta_ativacao.trim()}`);
+      } else if (form.empresa_ativacao) {
+        parts.push(`ATIVAÇÃO ${form.empresa_ativacao.trim().toUpperCase()}`);
+      }
     }
     const MONTH_NAMES: { [key: string]: string } = {
       '01': 'JANEIRO', '02': 'FEVEREIRO', '03': 'MARÇO', '04': 'ABRIL',
@@ -490,6 +496,7 @@ export default function NovaVenda() {
       setLastAutoObs(generated);
     }
   }, [
+    form.conta_ativacao,
     form.empresa_ativacao,
     form.inicio_mes,
     form.inicio_ano,
@@ -1266,23 +1273,13 @@ export default function NovaVenda() {
                       value={form.grupo}
                       onChange={handleChange}
                       required
-                      disabled={form.operacao === 'REFIN'}
-                      style={form.operacao === 'REFIN' ? readonlyStyle : { width: '100%' }}
+                      disabled={form.operacao === 'REFIN' && !!form.codigo_operacao && !!form.grupo}
+                      style={form.operacao === 'REFIN' && !!form.codigo_operacao && !!form.grupo ? readonlyStyle : { width: '100%' }}
                     >
-                      {form.operacao === 'REFIN' ? (
-                        form.grupo ? (
-                          <option value={form.grupo}>Grupo {form.grupo}</option>
-                        ) : (
-                          <option value="">Selecione a operação...</option>
-                        )
-                      ) : (
-                        <>
-                          <option value="">Selecione...</option>
-                          {gruposDisponiveis.map(g => (
-                            <option key={g} value={g}>Grupo {g}</option>
-                          ))}
-                        </>
-                      )}
+                      <option value="">Selecione...</option>
+                      {gruposDisponiveis.map(g => (
+                        <option key={g} value={g}>Grupo {g}</option>
+                      ))}
                     </select>
                   </div>
                   <div>

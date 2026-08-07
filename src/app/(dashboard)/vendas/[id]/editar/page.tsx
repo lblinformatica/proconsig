@@ -383,8 +383,14 @@ export default function EditarVenda(props: { params: Promise<{ id: string }> }) 
 
   useEffect(() => {
     const parts = [];
-    if (form.empresa_ativacao) {
-      parts.push(`ATIVAÇÃO ${form.empresa_ativacao.trim().toUpperCase()}`);
+    if (form.conta_ativacao || form.empresa_ativacao) {
+      if (form.conta_ativacao && form.empresa_ativacao) {
+        parts.push(`ATIVAÇÃO ${form.conta_ativacao.trim()} - ${form.empresa_ativacao.trim().toUpperCase()}`);
+      } else if (form.conta_ativacao) {
+        parts.push(`ATIVAÇÃO ${form.conta_ativacao.trim()}`);
+      } else if (form.empresa_ativacao) {
+        parts.push(`ATIVAÇÃO ${form.empresa_ativacao.trim().toUpperCase()}`);
+      }
     }
     const MONTH_NAMES: { [key: string]: string } = {
       '01': 'JANEIRO', '02': 'FEVEREIRO', '03': 'MARÇO', '04': 'ABRIL',
@@ -414,6 +420,7 @@ export default function EditarVenda(props: { params: Promise<{ id: string }> }) 
       setLastAutoObs(generated);
     }
   }, [
+    form.conta_ativacao,
     form.empresa_ativacao,
     form.inicio_mes,
     form.inicio_ano,

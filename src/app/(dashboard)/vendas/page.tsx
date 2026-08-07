@@ -479,7 +479,7 @@ export default function VendasList() {
                         <td style={{ fontWeight: 600 }}>R$ {v.valor?.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                         <td>R$ {v.parcela?.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                         <td>{formatLiquido(v.abat)}</td>
-                        <td style={{ fontSize: '0.875rem' }}>{v.usuarios?.nome || '-'}</td>
+                        <td style={{ fontSize: '0.875rem' }}>{getVendedorFormatted(v.corretor)}</td>
                         <td>
                           {v.status?.toLowerCase() === 'pago' || v.status?.toLowerCase() === 'paga' ? (
                             <span className="badge badge-success">Sim</span>
