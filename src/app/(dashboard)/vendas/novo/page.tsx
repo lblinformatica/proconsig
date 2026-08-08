@@ -22,16 +22,7 @@ const readonlyStyle = {
   width: '100%'
 } as const;
 
-const getPrazoByCoef = (coef: number): number | string => {
-  if (coef >= 1.170 && coef <= 1.400) return 1;
-  if (coef >= 0.531 && coef <= 0.635) return 3;
-  if (coef >= 0.366 && coef <= 0.399) return 4;
-  if (coef >= 0.320 && coef <= 0.341) return 6;
-  if (coef >= 0.260 && coef <= 0.295) return 8;
-  if (coef >= 0.189 && coef <= 0.205) return 12;
-  if (coef >= 0.149 && coef <= 0.165) return 15;
-  return '';
-};
+import { getPrazoByCoef, Coeficiente } from '@/lib/coeficientes';
 
 export default function NovaVenda() {
   const router = useRouter();
@@ -42,6 +33,7 @@ export default function NovaVenda() {
   const [alertModal, setAlertModal] = useState<{ show: boolean, title: string, message: string }>({ show: false, title: '', message: '' });
   const [vendedores, setVendedores] = useState<any[]>([]);
   const [gruposDisponiveis, setGruposDisponiveis] = useState<(number | string)[]>([]);
+  const [coeficientesList, setCoeficientesList] = useState<Coeficiente[]>([]);
 
   useEffect(() => {
     const fetchVendedores = async () => {
@@ -65,8 +57,18 @@ export default function NovaVenda() {
         setGruposDisponiveis(unique);
       }
     };
+    const fetchCoeficientes = async () => {
+      const { data } = await supabase
+        .schema('pro_consig')
+        .from('coeficientes')
+        .select('*')
+        .eq('ativo', true)
+        .order('prazo', { ascending: true });
+      if (data) setCoeficientesList(data);
+    };
     fetchVendedores();
     fetchGrupos();
+    fetchCoeficientes();
   }, []);
 
   const [cpf, setCpf] = useState('');
@@ -568,14 +570,14 @@ export default function NovaVenda() {
     if (v > 0 && p > 0) {
       const rawCoef = p / v;
       const roundedCoef = Math.round(rawCoef * 1000) / 1000;
-      const calculatedPrazo = getPrazoByCoef(roundedCoef);
+      const calculatedPrazo = getPrazoByCoef(roundedCoef, coeficientesList);
       setForm(f => ({
         ...f,
         coef: roundedCoef.toFixed(3).replace('.', ','),
         prazo: calculatedPrazo.toString()
       }));
     }
-  }, [form.valor, form.parcela]);
+  }, [form.valor, form.parcela, coeficientesList]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;

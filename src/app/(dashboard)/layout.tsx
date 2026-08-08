@@ -5,7 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import Link from 'next/link';
 import Image from 'next/image';
-import { LogOut, Home, Users, FileText, CheckSquare, BarChart, Menu, Moon, Sun, Bell, CheckCheck, List, AlertCircle, User, History } from 'lucide-react';
+import { LogOut, Home, Users, FileText, CheckSquare, BarChart, Menu, Moon, Sun, Bell, CheckCheck, List, AlertCircle, User, History, Percent } from 'lucide-react';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -411,6 +411,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           {(userProfile?.nivel === 'admin' || userProfile?.nivel === 'operacional' || userProfile?.nivel === 'financeiro') && (
             <Link href="/relatorios" className={`btn ${pathname.includes('/relatorios') ? 'btn-primary' : 'btn-secondary'}`} style={navItemStyle(pathname.includes('/relatorios'))} title="Relatórios">
               <BarChart size={18} style={{ flexShrink: 0 }} /> {!isSidebarCollapsed && <span style={{ whiteSpace: 'nowrap' }}>Relatórios</span>}
+            </Link>
+          )}
+
+          {/* Coeficientes: Visible to Admin only */}
+          {userProfile?.nivel === 'admin' && (
+            <Link href="/coeficientes" className={`btn ${pathname.includes('/coeficientes') ? 'btn-primary' : 'btn-secondary'}`} style={navItemStyle(pathname.includes('/coeficientes'))} title="Coeficientes">
+              <Percent size={18} style={{ flexShrink: 0 }} /> {!isSidebarCollapsed && <span style={{ whiteSpace: 'nowrap' }}>Coeficientes</span>}
             </Link>
           )}
 
