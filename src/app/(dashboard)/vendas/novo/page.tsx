@@ -165,7 +165,7 @@ export default function NovaVenda() {
     }));
   };
 
-  const buscarEmpresasPorGrupoEConta = async (grupoVal: string, contaVal: string) => {
+  const buscarEmpresasPorGrupoEConta = async (grupoVal: string, contaVal: string, silent: boolean = false) => {
     if (!grupoVal || !contaVal) {
       setForm(f => ({ ...f, empresa_ativacao: '', empresa_credora: '' }));
       return;
@@ -197,10 +197,12 @@ export default function NovaVenda() {
         empresa_ativacao: '',
         empresa_credora: ''
       }));
-      showAlert(
-        'Conta Ativação não localizada',
-        `A Conta Ativação ${contaVal} não foi encontrada para o Grupo ${grupoVal} na tabela de contas.`
-      );
+      if (!silent) {
+        showAlert(
+          'Conta Ativação não localizada',
+          `A Conta Ativação ${contaVal} não foi encontrada para o Grupo ${grupoVal} na tabela de contas.`
+        );
+      }
     }
   };
 
@@ -398,36 +400,23 @@ export default function NovaVenda() {
         const valorContratoRaw = String(opSelecionada.contrato || '0').replace(/[^\d.,]/g, '').replace(',', '.');
         const valorContratoNum = parseFloat(valorContratoRaw) || 0;
 
+        const grupoOp = opSelecionada.grupo ? String(opSelecionada.grupo) : '';
+        const contaOp = opSelecionada.contacobranca ? String(opSelecionada.contacobranca) : '';
+
         setForm(f => ({
           ...f,
           valor: valorContratoNum.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
           parcela: opSelecionada.parcela_valor.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
-          coef: (opSelecionada.coef || 0).toFixed(3).replace('.', ',')
+          coef: (opSelecionada.coef || 0).toFixed(3).replace('.', ','),
+          grupo: grupoOp,
+          conta_ativacao: contaOp
         }));
 
-        const fetchContas = async () => {
-          try {
-            const { data: allContas } = await supabase.schema('pro_consig').from('contas').select('*');
-            const contaData = allContas?.find(c =>
-              Number(c.grupo) === Number(opSelecionada.grupo) &&
-              Number(c.conta_ativacao) === Number(opSelecionada.contacobranca)
-            );
-
-            if (contaData) {
-              setForm(f => ({
-                ...f,
-                empresa_ativacao: contaData.empresa_ativacao || '',
-                conta_ativacao: String(contaData.conta_ativacao),
-                empresa_credora: contaData.empresa_credora || ''
-              }));
-            } else {
-              setForm(f => ({ ...f, conta_ativacao: opSelecionada.contacobranca || '' }));
-            }
-          } catch (e) {
-            console.error('Erro ao buscar contas:', e);
-          }
-        };
-        fetchContas();
+        if (grupoOp && contaOp) {
+          buscarEmpresasPorGrupoEConta(grupoOp, contaOp, true);
+        } else {
+          setForm(f => ({ ...f, empresa_ativacao: '', empresa_credora: '' }));
+        }
       }
     }
   }, [form.operacao, form.codigo_operacao, operacoesDisponiveis]);
@@ -652,16 +641,20 @@ export default function NovaVenda() {
           }
         }
         const grupoOp = opObj.grupo ? String(opObj.grupo) : '';
+        const contaOp = opObj.contacobranca ? String(opObj.contacobranca) : '';
         setForm(f => ({
           ...f,
           codigo_operacao: value,
           contrato: opObj.contrato || value,
           corretor: matchingVendedor,
           carteira: matchingVendedor,
-          grupo: grupoOp
+          grupo: grupoOp,
+          conta_ativacao: contaOp,
+          empresa_ativacao: '',
+          empresa_credora: ''
         }));
-        if (grupoOp && form.conta_ativacao) {
-          buscarEmpresasPorGrupoEConta(grupoOp, form.conta_ativacao);
+        if (grupoOp && contaOp) {
+          buscarEmpresasPorGrupoEConta(grupoOp, contaOp, true);
         }
         return;
       } else {
@@ -670,7 +663,10 @@ export default function NovaVenda() {
           codigo_operacao: value,
           corretor: '',
           carteira: '',
-          grupo: ''
+          grupo: '',
+          conta_ativacao: '',
+          empresa_ativacao: '',
+          empresa_credora: ''
         }));
         return;
       }
@@ -738,7 +734,11 @@ export default function NovaVenda() {
     ];
     if (numericFields.includes(name)) {
       const cleanValue = value.replace(/\D/g, '');
-      setForm(f => ({ ...f, [name]: cleanValue }));
+      setForm(f => ({
+        ...f,
+        [name]: cleanValue,
+        ...(name === 'conta_ativacao' ? { empresa_ativacao: '', empresa_credora: '' } : {})
+      }));
       return;
     }
 
