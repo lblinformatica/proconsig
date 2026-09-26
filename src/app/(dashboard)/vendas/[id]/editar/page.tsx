@@ -405,8 +405,9 @@ export default function EditarVenda(props: { params: Promise<{ id: string }> }) 
       parts.push(`INICIO ${mesNome}/${form.inicio_ano}`);
     }
     if (form.operacao === 'REFIN') {
+      const validSelected = selectedOpIds.filter(id => parcelasExibidas.some(p => p.id === id));
       const restamVal = parcelasExibidas.length;
-      const abatidasVal = selectedOpIds.length;
+      const abatidasVal = Math.min(validSelected.length, restamVal);
       parts.push(`RESTAM ${restamVal} ABATIDAS ${abatidasVal}`);
     }
     if (form.dia_util) {
@@ -536,6 +537,7 @@ export default function EditarVenda(props: { params: Promise<{ id: string }> }) 
     }
 
     if (name === 'codigo_operacao') {
+      setSelectedOpIds([]);
       if (!value) {
         setForm(f => ({
           ...f,
@@ -735,6 +737,10 @@ export default function EditarVenda(props: { params: Promise<{ id: string }> }) 
 
       const dataInicio = (form.inicio_mes && form.inicio_ano) ? `${form.inicio_ano}-${form.inicio_mes}-01` : null;
 
+      const validSelected = selectedOpIds.filter(id => parcelasExibidas.some(p => p.id === id));
+      const restamCount = parcelasExibidas.length;
+      const abatidasCount = Math.min(validSelected.length, restamCount);
+
       const { error: updateError } = await supabase.schema('pro_consig').from('vendas').update({
         cpf: formatCPF(cpf),
         orgao: form.orgao, empresa: form.empresa, operacao: form.operacao,
@@ -758,8 +764,8 @@ export default function EditarVenda(props: { params: Promise<{ id: string }> }) 
         credito_tipo_conta: form.credito_tipo_conta,
         novo_cliente: form.novo_cliente,
         atualizacao_cadastral: form.atualizacao_cadastral,
-        restam: form.operacao === 'REFIN' ? parcelasExibidas.length : null,
-        abatidas: form.operacao === 'REFIN' ? selectedOpIds.length : null
+        restam: form.operacao === 'REFIN' ? restamCount : null,
+        abatidas: form.operacao === 'REFIN' ? abatidasCount : null
       }).eq('id', params.id);
 
       if (updateError) throw updateError;

@@ -469,8 +469,9 @@ export default function NovaVenda() {
       parts.push(`INICIO ${mesNome}/${form.inicio_ano}`);
     }
     if (form.operacao === 'REFIN') {
+      const validSelected = selectedOpIds.filter(id => parcelasExibidas.some(p => p.id === id && !p.isBaixada));
       const restamVal = parcelasExibidas.filter(p => !p.isBaixada).length;
-      const abatidasVal = selectedOpIds.length;
+      const abatidasVal = Math.min(validSelected.length, restamVal);
       parts.push(`RESTAM ${restamVal} ABATIDAS ${abatidasVal}`);
     }
     if (form.dia_util) {
@@ -611,6 +612,7 @@ export default function NovaVenda() {
     }
 
     if (name === 'codigo_operacao') {
+      setSelectedOpIds([]);
       if (!value) {
         setForm(f => ({
           ...f,
@@ -863,6 +865,10 @@ export default function NovaVenda() {
 
       const dataInicio = (form.inicio_mes && form.inicio_ano) ? `${form.inicio_ano}-${form.inicio_mes}-01` : null;
 
+      const validSelected = selectedOpIds.filter(id => parcelasExibidas.some(p => p.id === id && !p.isBaixada));
+      const restamCount = parcelasExibidas.filter(p => !p.isBaixada).length;
+      const abatidasCount = Math.min(validSelected.length, restamCount);
+
       const { data: newVenda, error: insertError } = await supabase
         .schema('pro_consig')
         .from('vendas')
@@ -890,8 +896,8 @@ export default function NovaVenda() {
           credito_tipo_conta: form.credito_tipo_conta,
           novo_cliente: form.novo_cliente,
           atualizacao_cadastral: form.atualizacao_cadastral,
-          restam: form.operacao === 'REFIN' ? parcelasExibidas.filter(p => !p.isBaixada).length : null,
-          abatidas: form.operacao === 'REFIN' ? selectedOpIds.length : null
+          restam: form.operacao === 'REFIN' ? restamCount : null,
+          abatidas: form.operacao === 'REFIN' ? abatidasCount : null
         })
         .select('id, venda_id')
         .single();
