@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import { Edit2, Trash2, Search, Plus, ChevronLeft, ChevronRight, Filter, Copy, Check, Eye, Lock, Calculator, Download, X } from 'lucide-react';
 import Link from 'next/link';
@@ -8,7 +9,9 @@ import { ConfirmModal } from '@/components/ConfirmModal';
 
 const PAGE_SIZE = 50;
 
-export default function VendasList() {
+function VendasListContent() {
+  const searchParams = useSearchParams();
+  const isLoteMode = searchParams.get('tipo') === 'lote';
   const [vendas, setVendas] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [nivel, setNivel] = useState('');
@@ -340,9 +343,9 @@ export default function VendasList() {
       rows.forEach(rowData => {
         const addedRow = worksheet.addRow(rowData);
         const isPix = String(rowData['Forma Recebimento'])?.toLowerCase().includes('pix');
-        const isPoupanca = String(rowData['Conta (Crédito)'])?.toLowerCase().includes('poupan') || 
-                           String(rowData['Conta (Débito)'])?.toLowerCase().includes('poupan') || 
-                           String(rowData['Forma Recebimento'])?.toLowerCase().includes('poupan');
+        const isPoupanca = String(rowData['Conta (Crédito)'])?.toLowerCase().includes('poupan') ||
+          String(rowData['Conta (Débito)'])?.toLowerCase().includes('poupan') ||
+          String(rowData['Forma Recebimento'])?.toLowerCase().includes('poupan');
         if (isPix || isPoupanca) {
           addedRow.eachCell((cell) => {
             cell.fill = {
@@ -400,14 +403,14 @@ export default function VendasList() {
       <div className="animate-fade-in">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
           <div>
-            <h1 style={{ margin: 0 }}>Vendas</h1>
+            <h1 style={{ margin: 0 }}>{isLoteMode ? 'Vendas (Lote)' : 'Vendas (Avulsa)'}</h1>
             <p style={{ color: 'var(--color-text-muted)', marginTop: '0.5rem' }}>Gerencie as operações e acompanhe o status.</p>
           </div>
           <div style={{ display: 'flex', gap: '0.75rem' }}>
             <button className="btn btn-secondary" onClick={exportExcel} disabled={exporting} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <Download size={18} /> {exporting ? 'Exportando...' : 'Exportar'}
             </button>
-            <Link href="/vendas/novo" className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <Link href={isLoteMode ? '/vendas/lote' : '/vendas/novo'} className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <Plus size={18} /> Nova Venda
             </Link>
           </div>
@@ -624,5 +627,13 @@ export default function VendasList() {
         </div>
       )}
     </>
+  );
+}
+
+export default function VendasList() {
+  return (
+    <Suspense fallback={<div style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>Carregando vendas...</div>}>
+      <VendasListContent />
+    </Suspense>
   );
 }

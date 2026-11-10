@@ -352,9 +352,9 @@ export default function RelatoriosPage() {
         rows.forEach(rowData => {
           const addedRow = worksheet.addRow(rowData);
           const isPix = String(rowData['Forma Recebimento'])?.toLowerCase().includes('pix');
-          const isPoupanca = String(rowData['Conta (Crédito)'])?.toLowerCase().includes('poupan') || 
-                             String(rowData['Conta (Débito)'])?.toLowerCase().includes('poupan') || 
-                             String(rowData['Forma Recebimento'])?.toLowerCase().includes('poupan');
+          const isPoupanca = String(rowData['Conta (Crédito)'])?.toLowerCase().includes('poupan') ||
+            String(rowData['Conta (Débito)'])?.toLowerCase().includes('poupan') ||
+            String(rowData['Forma Recebimento'])?.toLowerCase().includes('poupan');
           if (isPix || isPoupanca) {
             addedRow.eachCell((cell) => {
               cell.fill = {
@@ -481,56 +481,11 @@ export default function RelatoriosPage() {
       return;
     }
 
-    // 1. Get next lote number from pro_consig.borderos_lotes
-    let nextLote = 1;
-    const getTodayLocalDateStr = () => {
-      const d = new Date();
-      const year = d.getFullYear();
-      const month = String(d.getMonth() + 1).padStart(2, '0');
-      const day = String(d.getDate()).padStart(2, '0');
-      return `${year}-${month}-${day}`;
-    };
-
-    const todayStr = getTodayLocalDateStr();
-
-    try {
-      const { data: existingLotes, error: fetchError } = await supabase
-        .schema('pro_consig')
-        .from('borderos_lotes')
-        .select('lote')
-        .eq('data', todayStr)
-        .order('lote', { ascending: false })
-        .limit(1);
-
-      if (fetchError) {
-        console.error('Erro ao buscar lote:', fetchError);
-      } else if (existingLotes && existingLotes.length > 0) {
-        nextLote = existingLotes[0].lote + 1;
-      }
-
-      const { error: insertError } = await supabase
-        .schema('pro_consig')
-        .from('borderos_lotes')
-        .insert({ data: todayStr, lote: nextLote });
-
-      if (insertError) {
-        console.error('Erro ao gravar lote:', insertError);
-      }
-    } catch (err) {
-      console.error('Erro ao processar lote:', err);
-    }
-
-    // 2. Format title text
-    const todayFormatted = new Date().toLocaleDateString('pt-BR'); // dd/mm/yyyy
-    const titleText = `Borderô ${todayFormatted} - Lote ${nextLote}`;
-
-
-
     const parseBRLString = (val: any) => {
       if (val === undefined || val === null) return 0;
       if (typeof val === 'number') return val;
       let cleaned = String(val).replace(/\s/g, '');
-      
+
       if (cleaned.includes(',')) {
         cleaned = cleaned.replace(/\./g, '').replace(',', '.');
       } else {
@@ -563,6 +518,81 @@ export default function RelatoriosPage() {
           opGroupMap[op.operacao.toString()] = op.grupo;
         }
       });
+
+      const resolveSaleGrupo = (v: any): string => {
+        if (v.grupo !== undefined && v.grupo !== null && String(v.grupo).trim() !== '') {
+          return String(v.grupo).trim();
+        }
+        if (v.codigo_operacao && opGroupMap[v.codigo_operacao.toString()]) {
+          return opGroupMap[v.codigo_operacao.toString()].toString();
+        }
+        if (v.conta_ativacao) {
+          const matched = allContas?.find(c =>
+            Number(c.conta_ativacao) === Number(v.conta_ativacao) &&
+            (c.empresa_ativacao === v.empresa_ativacao || c.empresa_credora === v.empresa_credora)
+          );
+          if (matched && matched.grupo !== undefined && matched.grupo !== null) {
+            return matched.grupo.toString();
+          }
+          const matchedByConta = allContas?.find(c => Number(c.conta_ativacao) === Number(v.conta_ativacao));
+          if (matchedByConta && matchedByConta.grupo !== undefined && matchedByConta.grupo !== null) {
+            return matchedByConta.grupo.toString();
+          }
+        }
+        return '';
+      };
+
+      // Regra: Não exportar para o Excel do Borderô vendas pertencentes ao Grupo 3
+      allData = allData.filter(v => resolveSaleGrupo(v) !== '3');
+
+      if (allData.length === 0) {
+        setModalError('Nenhuma venda elegível encontrada para gerar o borderô (vendas do Grupo 3 não são exportadas).');
+        setLoading(false);
+        return;
+      }
+
+      // 1. Get next lote number from pro_consig.borderos_lotes
+      let nextLote = 1;
+      const getTodayLocalDateStr = () => {
+        const d = new Date();
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      };
+
+      const todayStr = getTodayLocalDateStr();
+
+      try {
+        const { data: existingLotes, error: fetchError } = await supabase
+          .schema('pro_consig')
+          .from('borderos_lotes')
+          .select('lote')
+          .eq('data', todayStr)
+          .order('lote', { ascending: false })
+          .limit(1);
+
+        if (fetchError) {
+          console.error('Erro ao buscar lote:', fetchError);
+        } else if (existingLotes && existingLotes.length > 0) {
+          nextLote = existingLotes[0].lote + 1;
+        }
+
+        const { error: insertError } = await supabase
+          .schema('pro_consig')
+          .from('borderos_lotes')
+          .insert({ data: todayStr, lote: nextLote });
+
+        if (insertError) {
+          console.error('Erro ao gravar lote:', insertError);
+        }
+      } catch (err) {
+        console.error('Erro ao processar lote:', err);
+      }
+
+      // 2. Format title text
+      const todayFormatted = new Date().toLocaleDateString('pt-BR'); // dd/mm/yyyy
+      const titleText = `Borderô ${todayFormatted} - Lote ${nextLote}`;
 
       // Import exceljs dynamically to avoid SSR building issues
       const ExcelJS = (await import('exceljs')).default;
@@ -685,23 +715,7 @@ export default function RelatoriosPage() {
         const isPix = v.forma_credito?.toLowerCase().includes('pix') || getFormaRecebimentoFormatted(v).toLowerCase().includes('pix');
 
         // Get Group
-        let saleGrupo = '';
-        if (v.codigo_operacao && opGroupMap[v.codigo_operacao.toString()]) {
-          saleGrupo = opGroupMap[v.codigo_operacao.toString()].toString();
-        } else {
-          const matched = allContas?.find(c =>
-            Number(c.conta_ativacao) === Number(v.conta_ativacao) &&
-            (c.empresa_ativacao === v.empresa_ativacao || c.empresa_credora === v.empresa_credora)
-          );
-          if (matched) {
-            saleGrupo = matched.grupo.toString();
-          } else {
-            const matchedByConta = allContas?.find(c => Number(c.conta_ativacao) === Number(v.conta_ativacao));
-            if (matchedByConta) {
-              saleGrupo = matchedByConta.grupo.toString();
-            }
-          }
-        }
+        const saleGrupo = resolveSaleGrupo(v);
 
         const rowData = {
           nome: v.clientes?.nome || '',
@@ -809,23 +823,7 @@ export default function RelatoriosPage() {
         const allObs = sales.map(s => s.observacao).filter(Boolean).join('; ');
 
         // Get Group
-        let saleGrupo = '';
-        if (primarySale.codigo_operacao && opGroupMap[primarySale.codigo_operacao.toString()]) {
-          saleGrupo = opGroupMap[primarySale.codigo_operacao.toString()].toString();
-        } else {
-          const matched = allContas?.find(c =>
-            Number(c.conta_ativacao) === Number(primarySale.conta_ativacao) &&
-            (c.empresa_ativacao === primarySale.empresa_ativacao || c.empresa_credora === primarySale.empresa_credora)
-          );
-          if (matched) {
-            saleGrupo = matched.grupo.toString();
-          } else {
-            const matchedByConta = allContas?.find(c => Number(c.conta_ativacao) === Number(primarySale.conta_ativacao));
-            if (matchedByConta) {
-              saleGrupo = matchedByConta.grupo.toString();
-            }
-          }
-        }
+        const saleGrupo = resolveSaleGrupo(primarySale);
 
         const rowData = {
           nome: primarySale.clientes?.nome || '',
@@ -894,7 +892,7 @@ export default function RelatoriosPage() {
         { header: 'OP', key: 'op', width: 6 },
         { header: 'Conta', key: 'conta', width: 15 },
         { header: 'DV', key: 'conta_dv', width: 6 },
-        { header: 'Vr. Contrato', key: 'vr_contrato', width: 15 },
+        { header: 'Valor Total Contrato', key: 'vr_contrato', width: 15 },
         { header: 'Liq. Cliente', key: 'liq_cliente', width: 15 },
         { header: 'Prazo', key: 'prazo', width: 8 },
         { header: 'Parcela', key: 'parcela', width: 15 },

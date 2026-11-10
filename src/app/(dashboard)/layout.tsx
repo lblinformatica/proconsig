@@ -5,7 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import Link from 'next/link';
 import Image from 'next/image';
-import { LogOut, Home, Users, FileText, CheckSquare, BarChart, Menu, Moon, Sun, Bell, CheckCheck, List, AlertCircle, User, History, Percent } from 'lucide-react';
+import { LogOut, Home, Users, FileText, CheckSquare, BarChart, Menu, Moon, Sun, Bell, CheckCheck, List, AlertCircle, User, History, Percent, ChevronDown, Landmark } from 'lucide-react';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -19,7 +19,36 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }, [userProfile?.id]);
 
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isVendasOpen, setIsVendasOpen] = useState(false);
+  const [isRelatoriosOpen, setIsRelatoriosOpen] = useState(false);
+  const [activeSubItem, setActiveSubItem] = useState<string>('');
   const [isDarkMode, setIsDarkMode] = useState(false);
+
+  // Sincroniza a abertura dos submenus quando a rota muda
+  useEffect(() => {
+    if (pathname.includes('/vendas')) {
+      setIsVendasOpen(true);
+      setIsRelatoriosOpen(false);
+      const isLoteQuery = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('tipo') === 'lote';
+      if (pathname.includes('/vendas/lote') || isLoteQuery) {
+        setActiveSubItem('vendas-lote');
+      } else if (pathname === '/vendas/novo' || pathname === '/vendas') {
+        setActiveSubItem('vendas-avulsa');
+      }
+    } else if (pathname.includes('/relatorios')) {
+      setIsRelatoriosOpen(true);
+      setIsVendasOpen(false);
+      if (pathname.includes('/relatorios/vendedor')) {
+        setActiveSubItem('rel-vendedor');
+      } else {
+        setActiveSubItem('rel-vendas');
+      }
+    } else {
+      setIsVendasOpen(false);
+      setIsRelatoriosOpen(false);
+      setActiveSubItem('');
+    }
+  }, [pathname]);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [showNotifDropdown, setShowNotifDropdown] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -317,12 +346,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     justifyContent: isSidebarCollapsed ? 'center' : 'flex-start',
     border: isActive ? 'none' : 'transparent',
     boxShadow: 'none',
-    padding: isSidebarCollapsed ? '0.5rem' : '0.5rem 1rem',
+    padding: isSidebarCollapsed ? '0.45rem' : '0.42rem 0.85rem',
     fontSize: '0.825rem'
   });
 
   return (
     <div className="dashboard-layout">
+      <style>{`
+        .sidebar-nav-no-scroll::-webkit-scrollbar {
+          display: none;
+        }
+      `}</style>
       {/* Sidebar */}
       <aside className="dashboard-sidebar" style={{ width: isSidebarCollapsed ? '70px' : '210px' }}>
         <div style={{ padding: isSidebarCollapsed ? '0.75rem 0.5rem' : '0.75rem 0.5rem', borderBottom: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexDirection: isSidebarCollapsed ? 'column' : 'row', gap: '0.4rem' }}>
@@ -350,7 +384,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </button>
         </div>
 
-        <nav style={{ flexGrow: 1, padding: isSidebarCollapsed ? '0.75rem 0.5rem' : '0.75rem 0.5rem', display: 'flex', flexDirection: 'column', gap: '0.15rem', overflowY: 'auto' }}>
+        <nav className="sidebar-nav-no-scroll" style={{ flexGrow: 1, padding: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.1rem', overflowY: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
           {/* Início (Dashboard): Visible to Admin and Vendedor */}
           {(userProfile?.nivel === 'admin' || userProfile?.nivel === 'vendedor') && (
             <Link href="/dashboard" className={`btn ${pathname === '/dashboard' ? 'btn-primary' : 'btn-secondary'}`} style={navItemStyle(pathname === '/dashboard')} title="Início">
@@ -374,9 +408,97 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
           {/* Vendas: Visible to Admin, Operacional, Financeiro, Vendedor */}
           {(userProfile?.nivel === 'admin' || userProfile?.nivel === 'operacional' || userProfile?.nivel === 'financeiro' || userProfile?.nivel === 'vendedor') && (
-            <Link href="/vendas" className={`btn ${pathname.includes('/vendas') ? 'btn-primary' : 'btn-secondary'}`} style={navItemStyle(pathname.includes('/vendas'))} title="Vendas">
-              <FileText size={18} style={{ flexShrink: 0 }} /> {!isSidebarCollapsed && <span style={{ whiteSpace: 'nowrap' }}>Vendas</span>}
-            </Link>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem' }}>
+              <button
+                type="button"
+                onClick={() => {
+                  if (isSidebarCollapsed) {
+                    setIsSidebarCollapsed(false);
+                    setIsVendasOpen(true);
+                    setIsRelatoriosOpen(false);
+                  } else {
+                    setIsVendasOpen(prev => {
+                      const next = !prev;
+                      if (next) setIsRelatoriosOpen(false);
+                      return next;
+                    });
+                  }
+                }}
+                className={`btn ${(pathname.includes('/vendas') && !isRelatoriosOpen) || isVendasOpen ? 'btn-primary' : 'btn-secondary'}`}
+                style={{
+                  ...navItemStyle((pathname.includes('/vendas') && !isRelatoriosOpen) || isVendasOpen),
+                  width: '100%',
+                  justifyContent: isSidebarCollapsed ? 'center' : 'space-between',
+                  backgroundColor: isVendasOpen ? 'rgba(79, 70, 229, 0.14)' : undefined,
+                  color: isVendasOpen ? 'var(--color-primary)' : undefined
+                }}
+                title="Vendas"
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <FileText size={18} style={{ flexShrink: 0 }} />
+                  {!isSidebarCollapsed && <span style={{ whiteSpace: 'nowrap' }}>Vendas</span>}
+                </div>
+                {!isSidebarCollapsed && (
+                  <ChevronDown
+                    size={15}
+                    style={{
+                      flexShrink: 0,
+                      transition: 'transform 0.2s ease',
+                      transform: isVendasOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                      opacity: 0.75
+                    }}
+                  />
+                )}
+              </button>
+
+              {!isSidebarCollapsed && isVendasOpen && (
+                <div style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.1rem',
+                  marginLeft: '1.35rem',
+                  paddingLeft: '0.65rem',
+                  borderLeft: '1.5px solid var(--color-border)',
+                  marginTop: '0.1rem',
+                  marginBottom: '0.15rem'
+                }}>
+                  <Link
+                    href="/vendas"
+                    onClick={() => setActiveSubItem('vendas-avulsa')}
+                    className={`btn ${pathname.includes('/vendas') && activeSubItem === 'vendas-avulsa' ? 'btn-primary' : 'btn-secondary'}`}
+                    style={{
+                      border: 'none',
+                      boxShadow: 'none',
+                      padding: '0.38rem 0.65rem',
+                      fontSize: '0.78rem',
+                      justifyContent: 'flex-start',
+                      background: pathname.includes('/vendas') && activeSubItem === 'vendas-avulsa' ? 'var(--color-primary)' : 'transparent',
+                      color: pathname.includes('/vendas') && activeSubItem === 'vendas-avulsa' ? '#fff' : 'var(--color-text-main)',
+                      fontWeight: pathname.includes('/vendas') && activeSubItem === 'vendas-avulsa' ? 600 : 500
+                    }}
+                  >
+                    <span style={{ whiteSpace: 'nowrap' }}>Avulsa</span>
+                  </Link>
+                  <Link
+                    href="/vendas?tipo=lote"
+                    onClick={() => setActiveSubItem('vendas-lote')}
+                    className={`btn ${pathname.includes('/vendas') && activeSubItem === 'vendas-lote' ? 'btn-primary' : 'btn-secondary'}`}
+                    style={{
+                      border: 'none',
+                      boxShadow: 'none',
+                      padding: '0.38rem 0.65rem',
+                      fontSize: '0.78rem',
+                      justifyContent: 'flex-start',
+                      background: pathname.includes('/vendas') && activeSubItem === 'vendas-lote' ? 'var(--color-primary)' : 'transparent',
+                      color: pathname.includes('/vendas') && activeSubItem === 'vendas-lote' ? '#fff' : 'var(--color-text-main)',
+                      fontWeight: pathname.includes('/vendas') && activeSubItem === 'vendas-lote' ? 600 : 500
+                    }}
+                  >
+                    <span style={{ whiteSpace: 'nowrap' }}>Lote</span>
+                  </Link>
+                </div>
+              )}
+            </div>
           )}
 
           {/* Operações: Visible to Admin only */}
@@ -409,8 +531,103 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
           {/* Relatórios: Visible to Admin, Operacional, Financeiro */}
           {(userProfile?.nivel === 'admin' || userProfile?.nivel === 'operacional' || userProfile?.nivel === 'financeiro') && (
-            <Link href="/relatorios" className={`btn ${pathname.includes('/relatorios') ? 'btn-primary' : 'btn-secondary'}`} style={navItemStyle(pathname.includes('/relatorios'))} title="Relatórios">
-              <BarChart size={18} style={{ flexShrink: 0 }} /> {!isSidebarCollapsed && <span style={{ whiteSpace: 'nowrap' }}>Relatórios</span>}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem' }}>
+              <button
+                type="button"
+                onClick={() => {
+                  if (isSidebarCollapsed) {
+                    setIsSidebarCollapsed(false);
+                    setIsRelatoriosOpen(true);
+                    setIsVendasOpen(false);
+                  } else {
+                    setIsRelatoriosOpen(prev => {
+                      const next = !prev;
+                      if (next) setIsVendasOpen(false);
+                      return next;
+                    });
+                  }
+                }}
+                className={`btn ${(pathname.includes('/relatorios') && !isVendasOpen) || isRelatoriosOpen ? 'btn-primary' : 'btn-secondary'}`}
+                style={{
+                  ...navItemStyle((pathname.includes('/relatorios') && !isVendasOpen) || isRelatoriosOpen),
+                  width: '100%',
+                  justifyContent: isSidebarCollapsed ? 'center' : 'space-between',
+                  backgroundColor: isRelatoriosOpen ? 'rgba(79, 70, 229, 0.14)' : undefined,
+                  color: isRelatoriosOpen ? 'var(--color-primary)' : undefined
+                }}
+                title="Relatórios"
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <BarChart size={18} style={{ flexShrink: 0 }} />
+                  {!isSidebarCollapsed && <span style={{ whiteSpace: 'nowrap' }}>Relatórios</span>}
+                </div>
+                {!isSidebarCollapsed && (
+                  <ChevronDown
+                    size={15}
+                    style={{
+                      flexShrink: 0,
+                      transition: 'transform 0.2s ease',
+                      transform: isRelatoriosOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                      opacity: 0.75
+                    }}
+                  />
+                )}
+              </button>
+
+              {!isSidebarCollapsed && isRelatoriosOpen && (
+                <div style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.1rem',
+                  marginLeft: '1.35rem',
+                  paddingLeft: '0.65rem',
+                  borderLeft: '1.5px solid var(--color-border)',
+                  marginTop: '0.1rem',
+                  marginBottom: '0.15rem'
+                }}>
+                  <Link
+                    href="/relatorios"
+                    onClick={() => setActiveSubItem('rel-vendas')}
+                    className={`btn ${pathname.includes('/relatorios') && activeSubItem === 'rel-vendas' ? 'btn-primary' : 'btn-secondary'}`}
+                    style={{
+                      border: 'none',
+                      boxShadow: 'none',
+                      padding: '0.38rem 0.65rem',
+                      fontSize: '0.78rem',
+                      justifyContent: 'flex-start',
+                      background: pathname.includes('/relatorios') && activeSubItem === 'rel-vendas' ? 'var(--color-primary)' : 'transparent',
+                      color: pathname.includes('/relatorios') && activeSubItem === 'rel-vendas' ? '#fff' : 'var(--color-text-main)',
+                      fontWeight: pathname.includes('/relatorios') && activeSubItem === 'rel-vendas' ? 600 : 500
+                    }}
+                  >
+                    <span style={{ whiteSpace: 'nowrap' }}>Vendas</span>
+                  </Link>
+                  <Link
+                    href="/relatorios/vendedor"
+                    onClick={() => setActiveSubItem('rel-vendedor')}
+                    className={`btn ${pathname.includes('/relatorios/vendedor') || (pathname.includes('/relatorios') && activeSubItem === 'rel-vendedor') ? 'btn-primary' : 'btn-secondary'}`}
+                    style={{
+                      border: 'none',
+                      boxShadow: 'none',
+                      padding: '0.38rem 0.65rem',
+                      fontSize: '0.78rem',
+                      justifyContent: 'flex-start',
+                      background: pathname.includes('/relatorios/vendedor') || (pathname.includes('/relatorios') && activeSubItem === 'rel-vendedor') ? 'var(--color-primary)' : 'transparent',
+                      color: pathname.includes('/relatorios/vendedor') || (pathname.includes('/relatorios') && activeSubItem === 'rel-vendedor') ? '#fff' : 'var(--color-text-main)',
+                      fontWeight: pathname.includes('/relatorios/vendedor') || (pathname.includes('/relatorios') && activeSubItem === 'rel-vendedor') ? 600 : 500
+                    }}
+                  >
+                    <span style={{ whiteSpace: 'nowrap' }}>Vendedor</span>
+                  </Link>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Contas: Visible to Admin only */}
+          {userProfile?.nivel === 'admin' && (
+            <Link href="/contas" className={`btn ${pathname.includes('/contas') ? 'btn-primary' : 'btn-secondary'}`} style={navItemStyle(pathname.includes('/contas'))} title="Contas">
+              <Landmark size={18} style={{ flexShrink: 0 }} /> {!isSidebarCollapsed && <span style={{ whiteSpace: 'nowrap' }}>Contas</span>}
             </Link>
           )}
 

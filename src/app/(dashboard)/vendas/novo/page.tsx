@@ -955,7 +955,7 @@ export default function NovaVenda() {
       <div className="animate-fade-in" style={{ maxWidth: '1050px', margin: '0 auto' }}>
         <div style={{ display: 'flex', alignItems: 'center', marginBottom: '1.5rem', gap: '1rem' }}>
           <Link href="/vendas" className="btn btn-secondary" style={{ padding: '0.5rem' }}><ArrowLeft size={20} /></Link>
-          <h1 style={{ margin: 0 }}>Nova Venda</h1>
+          <h1 style={{ margin: 0 }}>Nova Venda (Avulsa)</h1>
         </div>
 
         {error && (
