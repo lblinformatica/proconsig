@@ -5,7 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import Link from 'next/link';
 import Image from 'next/image';
-import { LogOut, Home, Users, FileText, CheckSquare, BarChart, Menu, Moon, Sun, Bell, CheckCheck, List, AlertCircle, User, History, Percent, ChevronDown, Landmark } from 'lucide-react';
+import { LogOut, Home, Users, FileText, CheckSquare, BarChart, Menu, Moon, Sun, Bell, CheckCheck, List, AlertCircle, User, History, Percent, ChevronDown, Landmark, Target } from 'lucide-react';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -215,19 +215,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     if (nivel === 'admin') return;
 
     if (nivel === 'operacional') {
-      const allowed = ['/clientes', '/vendas', '/relatorios', '/solicitacoes'];
+      const allowed = ['/clientes', '/vendas', '/relatorios', '/solicitacoes', '/contas', ...(userProfile.vendedor_vinculado ? ['/dashboard'] : [])];
       const isAllowed = allowed.some(path => pathname.startsWith(path));
       if (!isAllowed) {
         router.push('/vendas');
       }
     } else if (nivel === 'financeiro') {
-      const allowed = ['/clientes', '/vendas', '/relatorios'];
+      const allowed = ['/clientes', '/vendas', '/relatorios', '/contas', ...(userProfile.vendedor_vinculado ? ['/dashboard'] : [])];
       const isAllowed = allowed.some(path => pathname.startsWith(path));
       if (!isAllowed) {
         router.push('/relatorios');
       }
     } else if (nivel === 'vendedor') {
-      const allowed = ['/dashboard', '/vendas', '/clientes'];
+      const allowed = ['/dashboard', '/vendas', '/clientes', '/contas', '/relatorios/vendedor'];
       const isAllowed = allowed.some(path => pathname.startsWith(path) || pathname === '/');
       if (!isAllowed) {
         router.push('/vendas');
@@ -385,8 +385,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
 
         <nav className="sidebar-nav-no-scroll" style={{ flexGrow: 1, padding: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.1rem', overflowY: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-          {/* Início (Dashboard): Visible to Admin and Vendedor */}
-          {(userProfile?.nivel === 'admin' || userProfile?.nivel === 'vendedor') && (
+          {/* Início (Dashboard): Visible to Admin, Vendedor, or users with a linked seller */}
+          {(userProfile?.nivel === 'admin' || userProfile?.nivel === 'vendedor' || Boolean(userProfile?.vendedor_vinculado)) && (
             <Link href="/dashboard" className={`btn ${pathname === '/dashboard' ? 'btn-primary' : 'btn-secondary'}`} style={navItemStyle(pathname === '/dashboard')} title="Início">
               <Home size={18} style={{ flexShrink: 0 }} /> {!isSidebarCollapsed && <span style={{ whiteSpace: 'nowrap' }}>Início</span>}
             </Link>
@@ -403,6 +403,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           {userProfile?.nivel === 'admin' && (
             <Link href="/vendedores" className={`btn ${pathname.includes('/vendedores') ? 'btn-primary' : 'btn-secondary'}`} style={navItemStyle(pathname.includes('/vendedores'))} title="Vendedores">
               <User size={18} style={{ flexShrink: 0 }} /> {!isSidebarCollapsed && <span style={{ whiteSpace: 'nowrap' }}>Vendedores</span>}
+            </Link>
+          )}
+
+          {/* Metas: Visible to Admin only */}
+          {userProfile?.nivel === 'admin' && (
+            <Link href="/metas" className={`btn ${pathname.includes('/metas') ? 'btn-primary' : 'btn-secondary'}`} style={navItemStyle(pathname.includes('/metas'))} title="Metas">
+              <Target size={18} style={{ flexShrink: 0 }} /> {!isSidebarCollapsed && <span style={{ whiteSpace: 'nowrap' }}>Metas</span>}
             </Link>
           )}
 
@@ -529,8 +536,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </Link>
           )}
 
-          {/* Relatórios: Visible to Admin, Operacional, Financeiro */}
-          {(userProfile?.nivel === 'admin' || userProfile?.nivel === 'operacional' || userProfile?.nivel === 'financeiro') && (
+          {/* Relatórios: Visible to Admin, Operacional, Financeiro, Vendedor */}
+          {(userProfile?.nivel === 'admin' || userProfile?.nivel === 'operacional' || userProfile?.nivel === 'financeiro' || userProfile?.nivel === 'vendedor') && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem' }}>
               <button
                 type="button"
@@ -585,23 +592,25 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   marginTop: '0.1rem',
                   marginBottom: '0.15rem'
                 }}>
-                  <Link
-                    href="/relatorios"
-                    onClick={() => setActiveSubItem('rel-vendas')}
-                    className={`btn ${pathname.includes('/relatorios') && activeSubItem === 'rel-vendas' ? 'btn-primary' : 'btn-secondary'}`}
-                    style={{
-                      border: 'none',
-                      boxShadow: 'none',
-                      padding: '0.38rem 0.65rem',
-                      fontSize: '0.78rem',
-                      justifyContent: 'flex-start',
-                      background: pathname.includes('/relatorios') && activeSubItem === 'rel-vendas' ? 'var(--color-primary)' : 'transparent',
-                      color: pathname.includes('/relatorios') && activeSubItem === 'rel-vendas' ? '#fff' : 'var(--color-text-main)',
-                      fontWeight: pathname.includes('/relatorios') && activeSubItem === 'rel-vendas' ? 600 : 500
-                    }}
-                  >
-                    <span style={{ whiteSpace: 'nowrap' }}>Vendas</span>
-                  </Link>
+                  {userProfile?.nivel !== 'vendedor' && (
+                    <Link
+                      href="/relatorios"
+                      onClick={() => setActiveSubItem('rel-vendas')}
+                      className={`btn ${pathname.includes('/relatorios') && activeSubItem === 'rel-vendas' ? 'btn-primary' : 'btn-secondary'}`}
+                      style={{
+                        border: 'none',
+                        boxShadow: 'none',
+                        padding: '0.38rem 0.65rem',
+                        fontSize: '0.78rem',
+                        justifyContent: 'flex-start',
+                        background: pathname.includes('/relatorios') && activeSubItem === 'rel-vendas' ? 'var(--color-primary)' : 'transparent',
+                        color: pathname.includes('/relatorios') && activeSubItem === 'rel-vendas' ? '#fff' : 'var(--color-text-main)',
+                        fontWeight: pathname.includes('/relatorios') && activeSubItem === 'rel-vendas' ? 600 : 500
+                      }}
+                    >
+                      <span style={{ whiteSpace: 'nowrap' }}>Vendas</span>
+                    </Link>
+                  )}
                   <Link
                     href="/relatorios/vendedor"
                     onClick={() => setActiveSubItem('rel-vendedor')}
@@ -624,8 +633,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </div>
           )}
 
-          {/* Contas: Visible to Admin only */}
-          {userProfile?.nivel === 'admin' && (
+          {/* Contas: Visible to all authenticated users */}
+          {(userProfile?.nivel === 'admin' || userProfile?.nivel === 'operacional' || userProfile?.nivel === 'financeiro' || userProfile?.nivel === 'vendedor') && (
             <Link href="/contas" className={`btn ${pathname.includes('/contas') ? 'btn-primary' : 'btn-secondary'}`} style={navItemStyle(pathname.includes('/contas'))} title="Contas">
               <Landmark size={18} style={{ flexShrink: 0 }} /> {!isSidebarCollapsed && <span style={{ whiteSpace: 'nowrap' }}>Contas</span>}
             </Link>

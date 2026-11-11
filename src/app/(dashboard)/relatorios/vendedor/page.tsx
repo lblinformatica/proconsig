@@ -28,14 +28,12 @@ interface ContratoConfronto {
   vendedor_original: string;
   vendedor_formatado: string;
   vendedor_codigo: string;
-  grupo: number | null;
   convenio: string;
   valor_contrato: number;
   parcela_valor: number;
   qtd_parcelas: number;
   soma_parcelas: number;
-  primeiro_vencimento: string;
-  ultimo_vencimento: string;
+  vencimento: string;
   vendido: boolean;
   venda_id?: string;
   data_venda?: string;
@@ -68,8 +66,9 @@ export default function RelatorioVendedorPage() {
 
   // Filters
   const [vendedorFilter, setVendedorFilter] = useState('todos');
+  const [lockedVendedor, setLockedVendedor] = useState<string | null>(null);
+  const [vendedorNomeSearch, setVendedorNomeSearch] = useState('');
   const [situacaoFilter, setSituacaoFilter] = useState<'pendentes' | 'vendidos' | 'todos'>('pendentes');
-  const [grupoFilter, setGrupoFilter] = useState('todos');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(0);
 
@@ -127,6 +126,28 @@ export default function RelatorioVendedorPage() {
   const carregarConfronto = useCallback(async () => {
     setLoading(true);
     try {
+      // 0. Buscar perfil do usuário logado para checar vendedor vinculado
+      let userNivel = 'admin';
+      let userVendedorVinculado = '';
+      let userConta = '';
+      let userNome = '';
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user?.id) {
+        const { data: profile } = await supabase
+          .from('usuarios')
+          .select('nivel, vendedor_vinculado, conta, nome')
+          .eq('supabase_user_id', session.user.id)
+          .single();
+
+        if (profile) {
+          userNivel = profile.nivel || 'operacional';
+          userVendedorVinculado = profile.vendedor_vinculado || '';
+          userConta = profile.conta || '';
+          userNome = profile.nome || '';
+        }
+      }
+
       // 1. Buscar vendedores
       const { data: vData } = await supabase
         .schema('pro_consig')
@@ -155,11 +176,11 @@ export default function RelatorioVendedorPage() {
         return { formatted: clean, codigo: clean };
       };
 
-      // 2. Buscar todas as operações e todas as vendas
-      const [allOps, allVendas] = await Promise.all([
+      // 2. Buscar todas as metas e todas as vendas
+      const [allMetas, allVendas] = await Promise.all([
         fetchAllRows(
-          'operacoes',
-          'operacao, cpf, nome_cliente, vendedor, convenio, grupo, contrato, parcela_valor, valor, vencimento, num_parcela'
+          'metas',
+          'operacao, vencimento, cpf, nome_cliente, vendedor, contrato, restam, parcela_valor, cod_fundo, convenio, saldo'
         ),
         fetchAllRows(
           'vendas',
@@ -176,52 +197,33 @@ export default function RelatorioVendedorPage() {
         if (numContrato && !vendasMap.has(numContrato)) vendasMap.set(numContrato, v);
       });
 
-      // 4. Agrupar operações por número único de operação (contrato)
-      const opsGrouped = new Map<string, any[]>();
-      allOps.forEach((o: any) => {
-        if (!o.operacao) return;
-        const opKey = String(o.operacao).trim();
-        if (!opsGrouped.has(opKey)) {
-          opsGrouped.set(opKey, []);
-        }
-        opsGrouped.get(opKey)!.push(o);
-      });
-
-      // 5. Construir lista confrontada
+      // 4. Construir lista confrontada (1 registro por operação em metas)
       const resultado: ContratoConfronto[] = [];
 
-      opsGrouped.forEach((parcelas, opKey) => {
-        const first = parcelas[0];
-        const vendResolved = resolveVendedor(first.vendedor || '');
+      allMetas.forEach((m: any) => {
+        if (!m.operacao) return;
+        const opKey = String(m.operacao).trim();
+        const vendResolved = resolveVendedor(m.vendedor || '');
 
-        // Ordenar vencimentos para pegar primeiro e último
-        const vencimentos = parcelas
-          .map(p => p.vencimento)
-          .filter(Boolean)
-          .sort();
-
-        const qtdParcelas = parcelas.filter(p => Number(p.num_parcela) !== 0).length;
-        const somaParcelas = parcelas.reduce((acc, curr) => acc + parseNumeric(curr.valor), 0);
-        const valorContrato = parseNumeric(first.contrato);
-        const parcelaValor = parseNumeric(first.parcela_valor) || parseNumeric(first.valor);
-
+        const qtdParcelas = Number(m.restam) || 0;
+        const somaParcelas = parseNumeric(m.saldo);
+        const valorContrato = parseNumeric(m.contrato);
+        const parcelaValor = parseNumeric(m.parcela_valor);
         const vendaMatch = vendasMap.get(opKey);
 
         resultado.push({
           operacao: opKey,
-          cpf: first.cpf || '-',
-          nome_cliente: first.nome_cliente || '-',
-          vendedor_original: first.vendedor || '-',
+          cpf: m.cpf || '-',
+          nome_cliente: m.nome_cliente || '-',
+          vendedor_original: m.vendedor || '-',
           vendedor_formatado: vendResolved.formatted,
           vendedor_codigo: vendResolved.codigo,
-          grupo: first.grupo !== undefined && first.grupo !== null ? Number(first.grupo) : null,
-          convenio: first.convenio ? String(first.convenio).trim() : '-',
+          convenio: m.cod_fundo ? String(m.cod_fundo).trim() : (m.convenio ? String(m.convenio).trim() : '-'),
           valor_contrato: valorContrato,
           parcela_valor: parcelaValor,
           qtd_parcelas: qtdParcelas,
           soma_parcelas: somaParcelas,
-          primeiro_vencimento: vencimentos[0] || '',
-          ultimo_vencimento: vencimentos[vencimentos.length - 1] || '',
+          vencimento: m.vencimento || '',
           vendido: !!vendaMatch,
           venda_id: vendaMatch?.venda_id || undefined,
           data_venda: vendaMatch?.created_at || undefined,
@@ -238,7 +240,44 @@ export default function RelatorioVendedorPage() {
         return Number(b.operacao) - Number(a.operacao);
       });
 
-      setContratos(resultado);
+      // Filtrar pelo vendedor vinculado caso o usuário não seja admin
+      let resultadoFinal = resultado;
+      if (userNivel !== 'admin') {
+        if (userVendedorVinculado) {
+          const codTarget = userVendedorVinculado.trim().toUpperCase();
+          const vendObj = vendList.find((v: any) => v.codigo.trim().toUpperCase() === codTarget);
+          const formattedTarget = vendObj ? `${vendObj.codigo} - ${vendObj.nome}` : codTarget;
+          setLockedVendedor(formattedTarget);
+          setVendedorFilter(formattedTarget);
+          resultadoFinal = resultado.filter(
+            item => item.vendedor_codigo.trim().toUpperCase() === codTarget
+          );
+        } else if (userNivel === 'vendedor') {
+          resultadoFinal = resultado.filter(
+            item =>
+              item.vendedor_codigo.trim().toUpperCase() === userConta.trim().toUpperCase() ||
+              item.vendedor_formatado.toUpperCase().includes(userNome.trim().toUpperCase())
+          );
+          const matchedVend =
+            resultadoFinal[0]?.vendedor_formatado ||
+            (() => {
+              const vObj = vendList.find(
+                (v: any) =>
+                  v.codigo.trim().toUpperCase() === userConta.trim().toUpperCase() ||
+                  v.nome.trim().toUpperCase() === userNome.trim().toUpperCase()
+              );
+              return vObj ? `${vObj.codigo} - ${vObj.nome}` : '';
+            })();
+          if (matchedVend) {
+            setLockedVendedor(matchedVend);
+            setVendedorFilter(matchedVend);
+          }
+        }
+      } else {
+        setLockedVendedor(null);
+      }
+
+      setContratos(resultadoFinal);
     } catch (err: any) {
       console.error('Erro ao confrontar operações e vendas:', err);
       setModalAlert({
@@ -258,26 +297,18 @@ export default function RelatorioVendedorPage() {
   // Lista única de vendedores presentes nas operações
   const vendedoresUnicos = useMemo(() => {
     const sets = new Set<string>();
+    if (lockedVendedor) sets.add(lockedVendedor);
     contratos.forEach(c => {
       if (c.vendedor_formatado) sets.add(c.vendedor_formatado);
     });
     return Array.from(sets).sort((a, b) => a.localeCompare(b));
-  }, [contratos]);
+  }, [contratos, lockedVendedor]);
 
-  // Lista única de grupos presentes nas operações
-  const gruposUnicos = useMemo(() => {
-    const sets = new Set<number>();
-    contratos.forEach(c => {
-      if (c.grupo !== null && !isNaN(c.grupo)) sets.add(c.grupo);
-    });
-    return Array.from(sets).sort((a, b) => a - b);
-  }, [contratos]);
-
-  // Filtragem principal (sem o filtro de situação para calcular os cards de resumo do vendedor/grupo selecionado)
+  // Filtragem principal (sem o filtro de situação para calcular os cards de resumo do vendedor selecionado)
   const contratosBaseFiltrados = useMemo(() => {
     return contratos.filter(c => {
       if (vendedorFilter !== 'todos' && c.vendedor_formatado !== vendedorFilter) return false;
-      if (grupoFilter !== 'todos' && String(c.grupo) !== grupoFilter) return false;
+      if (vendedorNomeSearch.trim() && !c.vendedor_formatado.toLowerCase().includes(vendedorNomeSearch.trim().toLowerCase())) return false;
       if (search.trim()) {
         const term = search.trim().toLowerCase();
         const matchOp = c.operacao.toLowerCase().includes(term);
@@ -288,7 +319,7 @@ export default function RelatorioVendedorPage() {
       }
       return true;
     });
-  }, [contratos, vendedorFilter, grupoFilter, search]);
+  }, [contratos, vendedorFilter, vendedorNomeSearch, search]);
 
   // Totais gerais dos cards
   const kpis = useMemo(() => {
@@ -309,8 +340,6 @@ export default function RelatorioVendedorPage() {
     let totalGeralContratos = 0;
 
     contratos.forEach(c => {
-      if (grupoFilter !== 'todos' && String(c.grupo) !== grupoFilter) return;
-
       totalGeralContratos += 1;
       const key = c.vendedor_formatado;
       if (!map.has(key)) {
@@ -346,8 +375,12 @@ export default function RelatorioVendedorPage() {
       perc_pendente: item.total_contratos > 0 ? (item.pendentes / item.total_contratos) * 100 : 0
     }));
 
-    return list.sort((a, b) => a.vendedor.localeCompare(b.vendedor));
-  }, [contratos, grupoFilter]);
+    const filteredList = vendedorNomeSearch.trim()
+      ? list.filter(item => item.vendedor.toLowerCase().includes(vendedorNomeSearch.trim().toLowerCase()))
+      : list;
+
+    return filteredList.sort((a, b) => a.vendedor.localeCompare(b.vendedor));
+  }, [contratos, vendedorNomeSearch]);
 
   // Lista final aplicando o filtro de Situação (Falta Vender / Já Vendidos / Todos)
   const contratosExibidos = useMemo(() => {
@@ -361,7 +394,7 @@ export default function RelatorioVendedorPage() {
   // Resetar página quando filtros mudam
   useEffect(() => {
     setPage(0);
-  }, [vendedorFilter, situacaoFilter, grupoFilter, search]);
+  }, [vendedorFilter, vendedorNomeSearch, situacaoFilter, search]);
 
   const paginatedContratos = useMemo(() => {
     const start = page * PAGE_SIZE;
@@ -443,12 +476,11 @@ export default function RelatorioVendedorPage() {
         { header: 'Operação / Contrato', key: 'operacao', width: 20 },
         { header: 'CPF', key: 'cpf', width: 18 },
         { header: 'Nome do Cliente', key: 'nome_cliente', width: 34 },
-        { header: 'Grupo', key: 'grupo', width: 10 },
-        { header: 'Convênio', key: 'convenio', width: 38 },
+        { header: 'Convênio / Fundo', key: 'convenio', width: 38 },
         { header: 'Valor Contrato (R$)', key: 'valor_contrato', width: 20 },
         { header: 'Valor Parcela (R$)', key: 'parcela_valor', width: 18 },
-        { header: 'Qtd. Parcelas', key: 'qtd_parcelas', width: 15 },
-        { header: 'Soma Parcelas (R$)', key: 'soma_parcelas', width: 20 },
+        { header: 'Restam (Parcelas)', key: 'qtd_parcelas', width: 18 },
+        { header: 'Saldo (R$)', key: 'soma_parcelas', width: 20 },
         { header: 'ID Venda', key: 'venda_id', width: 16 },
         { header: 'Data Venda', key: 'data_venda', width: 16 },
         { header: 'Status Venda', key: 'status_venda', width: 15 }
@@ -465,7 +497,6 @@ export default function RelatorioVendedorPage() {
           operacao: c.operacao,
           cpf: c.cpf,
           nome_cliente: c.nome_cliente,
-          grupo: c.grupo ?? '-',
           convenio: c.convenio,
           valor_contrato: c.valor_contrato,
           parcela_valor: c.parcela_valor,
@@ -479,14 +510,13 @@ export default function RelatorioVendedorPage() {
         row.getCell(1).alignment = { horizontal: 'center' };
         row.getCell(3).alignment = { horizontal: 'center' };
         row.getCell(4).alignment = { horizontal: 'center' };
-        row.getCell(6).alignment = { horizontal: 'center' };
+        row.getCell(7).numFmt = '#,##0.00';
         row.getCell(8).numFmt = '#,##0.00';
-        row.getCell(9).numFmt = '#,##0.00';
-        row.getCell(10).alignment = { horizontal: 'center' };
-        row.getCell(11).numFmt = '#,##0.00';
+        row.getCell(9).alignment = { horizontal: 'center' };
+        row.getCell(10).numFmt = '#,##0.00';
+        row.getCell(11).alignment = { horizontal: 'center' };
         row.getCell(12).alignment = { horizontal: 'center' };
         row.getCell(13).alignment = { horizontal: 'center' };
-        row.getCell(14).alignment = { horizontal: 'center' };
       });
 
       const buffer = await workbook.xlsx.writeBuffer();
@@ -494,7 +524,7 @@ export default function RelatorioVendedorPage() {
         type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
       });
       const dateStr = new Date().toISOString().split('T')[0];
-      const filename = `Confronto_Vendedor_Operacoes_${dateStr}.xlsx`;
+      const filename = `Confronto_Vendedor_Metas_${dateStr}.xlsx`;
 
       const link = document.createElement('a');
       link.href = URL.createObjectURL(blob);
@@ -530,10 +560,10 @@ export default function RelatorioVendedorPage() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
           <div>
             <h1 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              Relatório por Vendedor (Operações × Vendas)
+              Relatório por Vendedor (Metas × Vendas)
             </h1>
             <p style={{ color: 'var(--color-text-muted)', margin: '0.25rem 0 0 0', fontSize: '0.9rem' }}>
-              Acompanhe os contratos importados em Operações e identifique o que ainda falta vender por vendedor.
+              Acompanhe os contratos importados em Metas e identifique o que ainda falta vender por vendedor.
             </p>
           </div>
 
@@ -568,7 +598,7 @@ export default function RelatorioVendedorPage() {
               {loading ? '...' : kpis.total}
             </div>
             <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', marginTop: '0.2rem' }}>
-              Contratos únicos na base de operações
+              Contratos únicos na base de metas
             </div>
           </div>
 
@@ -617,18 +647,40 @@ export default function RelatorioVendedorPage() {
           </div>
         </div>
 
+        {/* Filtro do Nome do Vendedor (Fora e antes do Quadro de Resumo) */}
+        <div className="card" style={{ marginBottom: '1rem', padding: '0.85rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <Search size={18} style={{ color: 'var(--color-text-muted)', flexShrink: 0 }} />
+          <input
+            type="text"
+            placeholder="Filtrar nome do vendedor..."
+            value={vendedorNomeSearch}
+            onChange={e => setVendedorNomeSearch(e.target.value)}
+            style={{ width: '100%', border: 'none', background: 'transparent', outline: 'none', color: 'var(--color-text-main)', padding: '0.15rem 0' }}
+          />
+          {vendedorNomeSearch.trim() !== '' && (
+            <button
+              type="button"
+              onClick={() => setVendedorNomeSearch('')}
+              className="btn btn-secondary"
+              style={{ padding: '0.25rem 0.65rem', fontSize: '0.75rem', flexShrink: 0 }}
+            >
+              Limpar
+            </button>
+          )}
+        </div>
+
         {/* Vendas / Resumo por Vendedor (Layout com 3 Barras de Progresso igual ao Dashboard) */}
         <div className="card" style={{ marginBottom: '1.5rem', padding: '1.25rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
             <div>
               <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem', fontSize: '1rem', margin: 0 }}>
-                <Target size={18} style={{ color: 'var(--color-primary)' }} /> Vendas por Vendedor (Operações × Vendas)
+                <Target size={18} style={{ color: 'var(--color-primary)' }} /> Vendas por Vendedor (Metas × Vendas)
               </h3>
               <p style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem', margin: '0.2rem 0 0 0' }}>
                 Acompanhamento de contratos totais, vendas realizadas e contratos pendentes por vendedor. Clique em um vendedor para filtrar a tabela abaixo.
               </p>
             </div>
-            {vendedorFilter !== 'todos' && (
+            {vendedorFilter !== 'todos' && !lockedVendedor && (
               <button
                 onClick={() => setVendedorFilter('todos')}
                 className="btn btn-secondary"
@@ -638,6 +690,12 @@ export default function RelatorioVendedorPage() {
               </button>
             )}
           </div>
+
+          {!loading && resumoPorVendedor.length === 0 && (
+            <div style={{ textAlign: 'center', padding: '1.5rem', color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>
+              Nenhum vendedor encontrado com o filtro informado.
+            </div>
+          )}
 
           {!loading && resumoPorVendedor.length > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
@@ -650,9 +708,13 @@ export default function RelatorioVendedorPage() {
                 return (
                   <div
                     key={r.vendedor}
-                    onClick={() => setVendedorFilter(isSelected ? 'todos' : r.vendedor)}
+                    onClick={() => {
+                      if (!lockedVendedor) {
+                        setVendedorFilter(isSelected ? 'todos' : r.vendedor);
+                      }
+                    }}
                     style={{
-                      cursor: 'pointer',
+                      cursor: lockedVendedor ? 'default' : 'pointer',
                       padding: '0.75rem 0.85rem',
                       borderRadius: '8px',
                       borderBottom: idx < resumoPorVendedor.length - 1 && !isSelected ? '1px solid var(--color-border)' : undefined,
@@ -687,7 +749,7 @@ export default function RelatorioVendedorPage() {
                       {/* Barra 1: Total */}
                       <div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: '0.2rem' }}>
-                          <span>Total (Operações): <strong style={{ color: 'var(--color-text-main)' }}>{r.total_contratos}</strong></span>
+                          <span>Total (Metas): <strong style={{ color: 'var(--color-text-main)' }}>{r.total_contratos}</strong></span>
                           <span>Soma: <strong style={{ color: 'var(--color-text-main)' }}>R$ {r.valor_total.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong></span>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -772,11 +834,18 @@ export default function RelatorioVendedorPage() {
                 Vendedor
               </label>
               <select
-                value={vendedorFilter}
-                onChange={e => setVendedorFilter(e.target.value)}
-                style={{ width: '100%' }}
+                value={lockedVendedor || vendedorFilter}
+                onChange={e => {
+                  if (!lockedVendedor) setVendedorFilter(e.target.value);
+                }}
+                disabled={Boolean(lockedVendedor)}
+                style={{
+                  width: '100%',
+                  opacity: lockedVendedor ? 0.75 : 1,
+                  cursor: lockedVendedor ? 'not-allowed' : 'pointer'
+                }}
               >
-                <option value="todos">Todos os Vendedores</option>
+                {!lockedVendedor && <option value="todos">Todos os Vendedores</option>}
                 {vendedoresUnicos.map(v => (
                   <option key={v} value={v}>{v}</option>
                 ))}
@@ -797,22 +866,6 @@ export default function RelatorioVendedorPage() {
                 <option value="todos">Todos os Contratos</option>
               </select>
             </div>
-
-            <div>
-              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.35rem', color: 'var(--color-text-muted)' }}>
-                Grupo
-              </label>
-              <select
-                value={grupoFilter}
-                onChange={e => setGrupoFilter(e.target.value)}
-                style={{ width: '100%' }}
-              >
-                <option value="todos">Todos os Grupos</option>
-                {gruposUnicos.map(g => (
-                  <option key={g} value={String(g)}>Grupo {g}</option>
-                ))}
-              </select>
-            </div>
           </div>
         </div>
 
@@ -826,7 +879,7 @@ export default function RelatorioVendedorPage() {
 
           {loading ? (
             <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-muted)' }}>
-              Cruzando base de operações com as vendas realizadas...
+              Cruzando base de metas com as vendas realizadas...
             </div>
           ) : paginatedContratos.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-muted)' }}>
@@ -843,11 +896,10 @@ export default function RelatorioVendedorPage() {
                       <th style={{ textAlign: 'center' }}>Operação</th>
                       <th style={{ textAlign: 'left' }}>CPF</th>
                       <th style={{ textAlign: 'left' }}>Cliente</th>
-                      <th style={{ textAlign: 'center' }}>Grupo</th>
                       <th style={{ textAlign: 'right' }}>Valor Total Contrato</th>
                       <th style={{ textAlign: 'right' }}>Parcela</th>
-                      <th style={{ textAlign: 'center' }}>Parcelas</th>
-                      <th style={{ textAlign: 'right' }}>Soma Parcelas</th>
+                      <th style={{ textAlign: 'center' }}>Restam</th>
+                      <th style={{ textAlign: 'right' }}>Saldo</th>
                       <th style={{ textAlign: 'left' }}>Venda / Data</th>
                     </tr>
                   </thead>
@@ -918,9 +970,6 @@ export default function RelatorioVendedorPage() {
                         </td>
                         <td style={{ fontWeight: 500, fontSize: '0.85rem' }}>
                           {item.nome_cliente}
-                        </td>
-                        <td style={{ textAlign: 'center', fontWeight: 700 }}>
-                          {item.grupo ?? '-'}
                         </td>
                         <td style={{ textAlign: 'right', fontSize: '0.85rem', fontWeight: 600 }}>
                           R$ {item.valor_contrato.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}

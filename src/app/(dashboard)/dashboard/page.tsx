@@ -44,7 +44,7 @@ export default function DashboardPage() {
 
       const { data: profile } = await supabase
         .from('usuarios')
-        .select('nivel, id, conta, nome')
+        .select('nivel, id, conta, nome, vendedor_vinculado')
         .eq('supabase_user_id', session.user.id)
         .single();
 
@@ -52,6 +52,7 @@ export default function DashboardPage() {
       const uid = profile?.id ?? null;
       const userConta = profile?.conta ?? '';
       const userNome = profile?.nome ?? '';
+      const userVendedorVinculado = profile?.vendedor_vinculado ?? '';
       setNivel(userNivel);
       setUserId(uid);
 
@@ -160,14 +161,23 @@ export default function DashboardPage() {
           totalVendidoHoje,
           atingidoDiarioPercent
         };
-      }).sort((a, b) => b.totalVendido - a.totalVendido);
+      }).sort((a, b) => b.totalVendido - a.totalVendido).map((item, idx) => ({
+        ...item,
+        ranking: idx + 1
+      }));
 
       let finalProd = computedProd;
-      if (userNivel === 'vendedor') {
-        finalProd = computedProd.filter(item => 
-          item.codigo.toUpperCase() === userConta.toUpperCase() ||
-          item.nome.toUpperCase() === userNome.toUpperCase()
-        );
+      if (userNivel !== 'admin') {
+        if (userVendedorVinculado) {
+          finalProd = computedProd.filter(item =>
+            item.codigo.trim().toUpperCase() === userVendedorVinculado.trim().toUpperCase()
+          );
+        } else if (userNivel === 'vendedor') {
+          finalProd = computedProd.filter(item =>
+            item.codigo.toUpperCase() === userConta.toUpperCase() ||
+            item.nome.toUpperCase() === userNome.toUpperCase()
+          );
+        }
       }
 
       setVendedoresProduction(finalProd);
@@ -216,102 +226,100 @@ export default function DashboardPage() {
     }
   ];
 
-  if (nivel === 'vendedor') {
+  if (nivel !== 'admin') {
     const formatBrl = (val: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
-    const myProd = vendedoresProduction[0];
 
     return (
-      <div style={{ maxWidth: '800px', margin: '2rem auto' }}>
-        <div style={{ marginBottom: '2.5rem' }}>
-          <h1 style={{ margin: 0, fontSize: '1.75rem' }}>Minha Produção</h1>
-          <p style={{ color: 'var(--color-text-muted)', marginTop: '0.25rem' }}>Acompanhamento pessoal de vendas e metas do mês atual.</p>
-        </div>
+      <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
+        <div className="card">
+          <h3 style={{ fontSize: '1.1rem', marginBottom: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <Target size={18} color="var(--color-primary)" /> Produção por Vendedor
+          </h3>
+          <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', marginBottom: '1.5rem' }}>
+            Acompanhamento de vendas, metas e operações importadas do mês atual.
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            {vendedoresProduction.map((item, idx) => (
+              <div key={idx} style={{ paddingBottom: '0.75rem', borderBottom: idx < vendedoresProduction.length - 1 ? '1px solid var(--color-border)' : 'none', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', fontWeight: 700, color: 'var(--color-text-main)' }}>
+                  <span>{item.ranking || idx + 1}º - {item.codigo} - {item.nome}</span>
+                </div>
 
-        {myProd ? (
-          <div className="card" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-            <h3 style={{ fontSize: '1.25rem', margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--color-primary)' }}>
-              <Target size={22} /> {myProd.codigo} - {myProd.nome}
-            </h3>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '2rem', marginTop: '1rem' }}>
-              {/* Meta Mensal */}
-              <div className="card" style={{ backgroundColor: 'var(--color-bg-body)', padding: '1.5rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: 'var(--color-text-muted)', marginBottom: '0.5rem' }}>
-                  <span>Meta Mensal</span>
-                  <span>
-                    Meta: {myProd.metaCadastrada > 0 ? (
-                      <span style={{ color: 'var(--color-warning)', fontWeight: 600 }}>Cadastrada</span>
-                    ) : (
-                      <span style={{ color: 'var(--color-success)', fontWeight: 600 }}>Dinâmica</span>
-                    )} ({formatBrl(myProd.meta)})
-                  </span>
-                </div>
-                <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--color-text-main)', marginBottom: '1rem' }}>
-                  {formatBrl(myProd.totalVendido)}
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                  <div style={{ flex: 1, height: '8px', backgroundColor: 'var(--color-border)', borderRadius: '4px', overflow: 'hidden' }}>
-                    <div style={{
-                      height: '100%',
-                      width: `${Math.min(myProd.atingidoPercent, 100)}%`,
-                      backgroundColor: myProd.atingidoPercent >= 100 ? 'var(--color-success)' : 'var(--color-primary)',
-                      borderRadius: '4px',
-                      transition: 'width 1s ease'
-                    }} />
-                  </div>
-                  <span style={{ fontSize: '0.85rem', fontWeight: 700, color: myProd.atingidoPercent >= 100 ? 'var(--color-success)' : 'var(--color-primary)' }}>
-                    {myProd.atingidoPercent.toFixed(0)}%
-                  </span>
-                </div>
-              </div>
-
-              {/* Meta Diária */}
-              <div className="card" style={{ backgroundColor: 'var(--color-bg-body)', padding: '1.5rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: 'var(--color-text-muted)', marginBottom: '0.5rem' }}>
-                  <span>Vendas Hoje</span>
-                  <span>
-                    Meta Diária: {myProd.metaDiaria > 0 ? (
-                      <strong style={{ color: 'var(--color-text-main)' }}>{formatBrl(myProd.metaDiaria)}</strong>
-                    ) : (
-                      <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic' }}>Não cadastrada</span>
-                    )}
-                  </span>
-                </div>
-                <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--color-text-main)', marginBottom: '1rem' }}>
-                  {formatBrl(myProd.totalVendidoHoje)}
-                </div>
-                {myProd.metaDiaria > 0 ? (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                    <div style={{ flex: 1, height: '8px', backgroundColor: 'var(--color-border)', borderRadius: '4px', overflow: 'hidden' }}>
-                      <div style={{
-                        height: '100%',
-                        width: `${Math.min(myProd.atingidoDiarioPercent, 100)}%`,
-                        backgroundColor: myProd.atingidoDiarioPercent >= 100 ? 'var(--color-success)' : 'var(--color-primary)',
-                        borderRadius: '4px',
-                        transition: 'width 1s ease'
-                      }} />
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', flexWrap: 'wrap' }}>
+                  {/* Meta Mensal */}
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: '0.2rem' }}>
+                      <span>Mensal (Vendas): <strong>{formatBrl(item.totalVendido)}</strong></span>
+                      <span>
+                        Meta: {item.metaCadastrada > 0 ? (
+                          <span style={{ color: 'var(--color-warning)', fontWeight: 600 }}>Cadastrada</span>
+                        ) : (
+                          <span style={{ color: 'var(--color-success)', fontWeight: 600 }}>Dinâmica</span>
+                        )} ({formatBrl(item.meta)})
+                      </span>
                     </div>
-                    <span style={{ fontSize: '0.85rem', fontWeight: 700, color: myProd.atingidoDiarioPercent >= 100 ? 'var(--color-success)' : 'var(--color-primary)' }}>
-                      {myProd.atingidoDiarioPercent.toFixed(0)}%
-                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <div style={{ flex: 1, height: '6px', backgroundColor: 'var(--color-bg-body)', borderRadius: '3px', overflow: 'hidden' }}>
+                        <div style={{
+                          height: '100%',
+                          width: `${Math.min(item.atingidoPercent, 100)}%`,
+                          backgroundColor: item.atingidoPercent >= 100 ? 'var(--color-success)' : 'var(--color-primary)',
+                          borderRadius: '3px',
+                          transition: 'width 1s ease'
+                        }} />
+                      </div>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 700, color: item.atingidoPercent >= 100 ? 'var(--color-success)' : 'var(--color-primary)', minWidth: '35px', textAlign: 'right' }}>
+                        {item.atingidoPercent.toFixed(0)}%
+                      </span>
+                    </div>
                   </div>
-                ) : (
-                  <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', marginTop: '0.5rem' }}>
-                    Nenhuma meta diária definida.
+
+                  {/* Meta Diária */}
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: '0.2rem' }}>
+                      <span>Hoje: <strong>{formatBrl(item.totalVendidoHoje)}</strong></span>
+                      <span>
+                        Meta Diária: {item.metaDiaria > 0 ? (
+                          <strong style={{ color: 'var(--color-text-main)' }}>{formatBrl(item.metaDiaria)}</strong>
+                        ) : (
+                          <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic' }}>Não cadastrada</span>
+                        )}
+                      </span>
+                    </div>
+                    {item.metaDiaria > 0 ? (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <div style={{ flex: 1, height: '6px', backgroundColor: 'var(--color-bg-body)', borderRadius: '3px', overflow: 'hidden' }}>
+                          <div style={{
+                            height: '100%',
+                            width: `${Math.min(item.atingidoDiarioPercent, 100)}%`,
+                            backgroundColor: item.atingidoDiarioPercent >= 100 ? 'var(--color-success)' : 'var(--color-primary)',
+                            borderRadius: '3px',
+                            transition: 'width 1s ease'
+                          }} />
+                        </div>
+                        <span style={{ fontSize: '0.75rem', fontWeight: 700, color: item.atingidoDiarioPercent >= 100 ? 'var(--color-success)' : 'var(--color-primary)', minWidth: '35px', textAlign: 'right' }}>
+                          {item.atingidoDiarioPercent.toFixed(0)}%
+                        </span>
+                      </div>
+                    ) : (
+                      <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', height: '14px', display: 'flex', alignItems: 'center' }}>
+                        -
+                      </div>
+                    )}
                   </div>
-                )}
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: '0.1rem' }}>
+                  <span>Participação no mês: <strong>{item.totalPercent.toFixed(1)}%</strong></span>
+                  <span>Total Operações Mês: <strong>{formatBrl(item.totalOperacoes)}</strong></span>
+                </div>
               </div>
-            </div>
-            
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: 'var(--color-text-muted)', marginTop: '1.5rem', borderTop: '1px solid var(--color-border)', paddingTop: '1.5rem' }}>
-              <span>Total de Operações Importadas no Mês: <strong>{formatBrl(myProd.totalOperacoes)}</strong></span>
-            </div>
+            ))}
+            {vendedoresProduction.length === 0 && (
+              <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>Nenhum vendedor vinculado encontrado ou sem produção este mês.</p>
+            )}
           </div>
-        ) : (
-          <div className="card" style={{ padding: '3rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
-            Nenhuma métrica de produção ativa foi encontrada para seu código ou nome de usuário.
-          </div>
-        )}
+        </div>
       </div>
     );
   }

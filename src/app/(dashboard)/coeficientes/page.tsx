@@ -384,7 +384,7 @@ export default function CoeficientesPage() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
           <div>
             <h1 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <Percent size={28} /> Coeficientes
+              Coeficientes
             </h1>
             <p style={{ color: 'var(--color-text-muted)', margin: '0.25rem 0 0 0', fontSize: '0.9rem' }}>
               Gerencie a tabela de prazos e coeficientes para cálculo automático de prazo nas vendas.

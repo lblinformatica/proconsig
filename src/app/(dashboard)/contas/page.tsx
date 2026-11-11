@@ -18,9 +18,13 @@ export default function ContasPage() {
   const router = useRouter();
   const [contas, setContas] = useState<Conta[]>([]);
   const [loading, setLoading] = useState(true);
+  const [userNivel, setUserNivel] = useState('');
   const [search, setSearch] = useState('');
   const [grupoFilter, setGrupoFilter] = useState('');
+  const [credoraFilter, setCredoraFilter] = useState('');
   const [saving, setSaving] = useState(false);
+
+  const isAdmin = userNivel === 'admin';
 
   // Modal State for Add / Edit
   const [showModal, setShowModal] = useState(false);
@@ -73,7 +77,7 @@ export default function ContasPage() {
     });
   };
 
-  // 1. Check user permission
+  // 1. Check user permission (all authenticated users can view; only admin can create/edit/delete)
   useEffect(() => {
     const checkUser = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -87,8 +91,8 @@ export default function ContasPage() {
         .eq('supabase_user_id', session.user.id)
         .single();
 
-      if (profile && profile.nivel !== 'admin') {
-        router.push('/vendas');
+      if (profile?.nivel) {
+        setUserNivel(profile.nivel);
       }
     };
     checkUser();
@@ -125,12 +129,25 @@ export default function ContasPage() {
     return Array.from(sets).sort((a, b) => a - b);
   }, [contas]);
 
-  // Se o grupo filtrado não existir mais após uma exclusão, reseta o estado grupoFilter para exibir todos
+  const credorasDisponiveis = useMemo(() => {
+    const sets = new Set<string>();
+    contas.forEach(c => {
+      if (c.empresa_credora && c.empresa_credora.trim()) {
+        sets.add(c.empresa_credora.trim().toUpperCase());
+      }
+    });
+    return Array.from(sets).sort((a, b) => a.localeCompare(b));
+  }, [contas]);
+
+  // Se o grupo ou empresa credora filtrados não existirem mais após uma exclusão, reseta o filtro correspondente
   useEffect(() => {
     if (!loading && grupoFilter && !gruposDisponiveis.includes(Number(grupoFilter))) {
       setGrupoFilter('');
     }
-  }, [gruposDisponiveis, grupoFilter, loading]);
+    if (!loading && credoraFilter && !credorasDisponiveis.includes(credoraFilter)) {
+      setCredoraFilter('');
+    }
+  }, [gruposDisponiveis, grupoFilter, credorasDisponiveis, credoraFilter, loading]);
 
   // Form helpers
   const handleOpenAdd = () => {
@@ -189,8 +206,8 @@ export default function ContasPage() {
     // Validação de duplicidade da chave composta (conta_ativacao + grupo)
     const duplicate = contas.find(
       c => Number(c.conta_ativacao) === contaNum &&
-           Number(c.grupo) === grupoNum &&
-           (!editingConta || c.id !== editingConta.id)
+        Number(c.grupo) === grupoNum &&
+        (!editingConta || c.id !== editingConta.id)
     );
 
     if (duplicate) {
@@ -294,9 +311,10 @@ export default function ContasPage() {
     }
   };
 
-  // Filter list by search term and group
+  // Filter list by search term, group and empresa credora
   const filteredContas = contas.filter(c => {
     if (grupoFilter && String(c.grupo) !== grupoFilter) return false;
+    if (credoraFilter && (c.empresa_credora || '').trim().toUpperCase() !== credoraFilter) return false;
     if (!search.trim()) return true;
     const term = search.trim().toLowerCase();
     const contaStr = String(c.conta_ativacao);
@@ -444,19 +462,23 @@ export default function ContasPage() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
           <div>
             <h1 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <Landmark size={28} /> Contas de Ativação
+              Contas de Ativação
             </h1>
             <p style={{ color: 'var(--color-text-muted)', margin: '0.25rem 0 0 0', fontSize: '0.9rem' }}>
-              Gerencie as contas de ativação, grupos e empresas credoras vinculadas às vendas.
+              {isAdmin
+                ? 'Gerencie as contas de ativação, grupos e empresas credoras vinculadas às vendas.'
+                : 'Consulte as contas de ativação, grupos e empresas credoras vinculadas às vendas.'}
             </p>
           </div>
-          <button
-            onClick={handleOpenAdd}
-            className="btn btn-primary"
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
-          >
-            <Plus size={18} /> Nova Conta
-          </button>
+          {isAdmin && (
+            <button
+              onClick={handleOpenAdd}
+              className="btn btn-primary"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
+            >
+              <Plus size={18} /> Nova Conta
+            </button>
+          )}
         </div>
 
         {/* Filter Card */}
@@ -472,18 +494,33 @@ export default function ContasPage() {
             />
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <Filter size={16} style={{ color: 'var(--color-text-muted)' }} />
-            <select
-              value={grupoFilter}
-              onChange={e => setGrupoFilter(e.target.value)}
-              style={{ padding: '0.4rem 0.75rem', borderRadius: '6px', border: '1px solid var(--color-border)', fontSize: '0.85rem' }}
-            >
-              <option value="">Todos os Grupos</option>
-              {gruposDisponiveis.map(g => (
-                <option key={g} value={String(g)}>Grupo {g}</option>
-              ))}
-            </select>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <Filter size={16} style={{ color: 'var(--color-text-muted)' }} />
+              <select
+                value={credoraFilter}
+                onChange={e => setCredoraFilter(e.target.value)}
+                style={{ padding: '0.4rem 0.75rem', borderRadius: '6px', border: '1px solid var(--color-border)', fontSize: '0.85rem' }}
+              >
+                <option value="">Todas as Empresas Credoras</option>
+                {credorasDisponiveis.map(emp => (
+                  <option key={emp} value={emp}>{emp}</option>
+                ))}
+              </select>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <select
+                value={grupoFilter}
+                onChange={e => setGrupoFilter(e.target.value)}
+                style={{ padding: '0.4rem 0.75rem', borderRadius: '6px', border: '1px solid var(--color-border)', fontSize: '0.85rem' }}
+              >
+                <option value="">Todos os Grupos</option>
+                {gruposDisponiveis.map(g => (
+                  <option key={g} value={String(g)}>Grupo {g}</option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
 
@@ -506,7 +543,7 @@ export default function ContasPage() {
                     <th style={{ textAlign: 'center', width: '150px' }}>Conta Ativação</th>
                     <th style={{ textAlign: 'left' }}>Empresa de Ativação</th>
                     <th style={{ textAlign: 'left' }}>Empresa Credora</th>
-                    <th style={{ textAlign: 'right', width: '120px' }}>Ações</th>
+                    {isAdmin && <th style={{ textAlign: 'right', width: '120px' }}>Ações</th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -524,26 +561,28 @@ export default function ContasPage() {
                       <td style={{ fontSize: '0.9rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>
                         {item.empresa_credora}
                       </td>
-                      <td style={{ textAlign: 'right' }}>
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
-                          <button
-                            onClick={() => handleOpenEdit(item)}
-                            className="btn btn-secondary"
-                            style={{ padding: '0.4rem' }}
-                            title="Editar"
-                          >
-                            <Edit2 size={16} />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(item)}
-                            className="btn btn-secondary"
-                            style={{ padding: '0.4rem', color: 'var(--color-danger)' }}
-                            title="Excluir"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
-                      </td>
+                      {isAdmin && (
+                        <td style={{ textAlign: 'right' }}>
+                          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+                            <button
+                              onClick={() => handleOpenEdit(item)}
+                              className="btn btn-secondary"
+                              style={{ padding: '0.4rem' }}
+                              title="Editar"
+                            >
+                              <Edit2 size={16} />
+                            </button>
+                            <button
+                              onClick={() => handleDelete(item)}
+                              className="btn btn-secondary"
+                              style={{ padding: '0.4rem', color: 'var(--color-danger)' }}
+                              title="Excluir"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>

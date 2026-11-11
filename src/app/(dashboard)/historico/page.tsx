@@ -131,7 +131,6 @@ export default function HistoricoSaldosPage() {
     <div className="animate-fade-in">
       <div style={{ marginBottom: '1.5rem' }}>
         <h1 style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', margin: 0 }}>
-          <History size={28} style={{ color: 'var(--color-primary)' }} />
           Histórico de Alterações de Saldo
         </h1>
         <p style={{ color: 'var(--color-text-muted)', marginTop: '0.5rem' }}>

@@ -6,7 +6,7 @@ import { headers } from 'next/headers';
 
 export async function adminUpdateUser(
   userId: string, 
-  data: { nome: string; conta?: string; email: string; nivel?: string; grupos_permitidos?: string[] }
+  data: { nome: string; conta?: string; email: string; nivel?: string; grupos_permitidos?: string[]; vendedor_vinculado?: string | null }
 ) {
   try {
     // 1. Find the Supabase Auth ID for that public user profile
@@ -53,6 +53,9 @@ export async function adminUpdateUser(
     if (data.conta) dbUpdate.conta = data.conta.toLowerCase();
     if (data.nivel) dbUpdate.nivel = data.nivel;
     if (data.grupos_permitidos) dbUpdate.grupos_permitidos = data.grupos_permitidos;
+    if (data.vendedor_vinculado !== undefined) {
+      dbUpdate.vendedor_vinculado = data.nivel === 'admin' ? null : (data.vendedor_vinculado || null);
+    }
 
     const { error: dbError } = await supabaseAdmin
       .from('usuarios')
