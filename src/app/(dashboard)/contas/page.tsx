@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { supabase } from '@/lib/supabaseClient';
+import { supabase , DB_SCHEMA } from '@/lib/supabaseClient';
 import { Edit2, Trash2, Search, Plus, Landmark, X, Filter } from 'lucide-react';
 import { ConfirmModal } from '@/components/ConfirmModal';
 import { useRouter } from 'next/navigation';
@@ -102,7 +102,7 @@ export default function ContasPage() {
   const fetchContas = useCallback(async () => {
     setLoading(true);
     const { data, error } = await supabase
-      .schema('pro_consig')
+      .schema(DB_SCHEMA)
       .from('contas')
       .select('*')
       .order('grupo', { ascending: true })
@@ -219,7 +219,7 @@ export default function ContasPage() {
     try {
       if (editingConta) {
         const { error } = await supabase
-          .schema('pro_consig')
+          .schema(DB_SCHEMA)
           .from('contas')
           .update({
             conta_ativacao: contaNum,
@@ -233,7 +233,7 @@ export default function ContasPage() {
         showAlert('Sucesso', 'Conta de ativação atualizada com sucesso!', 'success');
       } else {
         const { error } = await supabase
-          .schema('pro_consig')
+          .schema(DB_SCHEMA)
           .from('contas')
           .insert({
             conta_ativacao: contaNum,
@@ -263,7 +263,7 @@ export default function ContasPage() {
     try {
       // Verifica se a conta (conta_ativacao + grupo) está sendo utilizada em vendas
       const { data: vendasGrupo, error: checkError } = await supabase
-        .schema('pro_consig')
+        .schema(DB_SCHEMA)
         .from('vendas')
         .select('id, conta_ativacao')
         .eq('grupo', item.grupo)
@@ -292,7 +292,7 @@ export default function ContasPage() {
         `Tem certeza que deseja excluir a Conta Ativação ${item.conta_ativacao} do Grupo ${item.grupo} (${item.empresa_ativacao})? Esta ação não poderá ser desfeita.`,
         async () => {
           const { error } = await supabase
-            .schema('pro_consig')
+            .schema(DB_SCHEMA)
             .from('contas')
             .delete()
             .eq('id', item.id);

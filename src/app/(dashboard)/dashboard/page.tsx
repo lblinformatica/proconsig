@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabaseClient';
+import { supabase , DB_SCHEMA } from '@/lib/supabaseClient';
 import { FileText, Clock, CheckCircle, Users, TrendingUp, ShieldCheck, Database, History, ChevronRight, BarChart3, AlertCircle, Info, Target } from 'lucide-react';
 
 
@@ -99,9 +99,9 @@ export default function DashboardPage() {
       const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString();
 
       const [sellersRes, salesRes, opsRes] = await Promise.all([
-        supabase.schema('pro_consig').from('vendedores').select('codigo, nome, meta, meta_diaria'),
-        supabase.schema('pro_consig').from('vendas').select('valor, corretor, created_at').gte('created_at', firstDay).lt('created_at', lastDay),
-        supabase.schema('pro_consig').from('operacoes').select('valor, vendedor').gte('data_importacao', firstDay).lt('data_importacao', lastDay)
+        supabase.schema(DB_SCHEMA).from('vendedores').select('codigo, nome, meta, meta_diaria'),
+        supabase.schema(DB_SCHEMA).from('vendas').select('valor, corretor, created_at').gte('created_at', firstDay).lt('created_at', lastDay),
+        supabase.schema(DB_SCHEMA).from('operacoes').select('valor, vendedor').gte('data_importacao', firstDay).lt('data_importacao', lastDay)
       ]);
 
       const sellers = sellersRes.data || [];

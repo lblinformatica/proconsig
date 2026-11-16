@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { supabase } from '@/lib/supabaseClient';
+import { supabase , DB_SCHEMA } from '@/lib/supabaseClient';
 import {
   Search,
   Filter,
@@ -105,7 +105,7 @@ export default function RelatorioVendedorPage() {
 
     while (hasMore) {
       const { data, error } = await supabase
-        .schema('pro_consig')
+        .schema(DB_SCHEMA)
         .from(table)
         .select(selectCols)
         .range(pageIdx * batchSize, (pageIdx + 1) * batchSize - 1);
@@ -150,7 +150,7 @@ export default function RelatorioVendedorPage() {
 
       // 1. Buscar vendedores
       const { data: vData } = await supabase
-        .schema('pro_consig')
+        .schema(DB_SCHEMA)
         .from('vendedores')
         .select('id, codigo, nome')
         .order('codigo', { ascending: true });

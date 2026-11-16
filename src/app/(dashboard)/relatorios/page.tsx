@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { supabase } from '@/lib/supabaseClient';
+import { supabase , DB_SCHEMA } from '@/lib/supabaseClient';
 import { Download, FileSearch, Calendar, Filter, ChevronLeft, ChevronRight, FileText, Clock, User, Search, Copy, Check } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { ConfirmModal } from '@/components/ConfirmModal';
@@ -21,13 +21,13 @@ export default function RelatoriosPage() {
 
   useEffect(() => {
     const fetchMetadata = async () => {
-      const { data: vData } = await supabase.schema('pro_consig').from('vendedores').select('codigo, nome');
+      const { data: vData } = await supabase.schema(DB_SCHEMA).from('vendedores').select('codigo, nome');
       if (vData) setVendedores(vData);
 
-      const { data: cData } = await supabase.schema('pro_consig').from('contas').select('*');
+      const { data: cData } = await supabase.schema(DB_SCHEMA).from('contas').select('*');
       if (cData) setContas(cData);
 
-      const { data: oData } = await supabase.schema('pro_consig').from('operacoes').select('operacao, grupo');
+      const { data: oData } = await supabase.schema(DB_SCHEMA).from('operacoes').select('operacao, grupo');
       if (oData) setOperacoes(oData);
     };
     fetchMetadata();
@@ -500,12 +500,12 @@ export default function RelatoriosPage() {
 
     try {
       // Fetch contas and operacoes to resolve Grupo
-      const { data: allContas } = await supabase.schema('pro_consig').from('contas').select('*');
+      const { data: allContas } = await supabase.schema(DB_SCHEMA).from('contas').select('*');
       const uniqueOpCodes = Array.from(new Set(allData.map(v => v.codigo_operacao).filter(Boolean)));
       let opsData: any[] = [];
       if (uniqueOpCodes.length > 0) {
         const { data } = await supabase
-          .schema('pro_consig')
+          .schema(DB_SCHEMA)
           .from('operacoes')
           .select('operacao, grupo')
           .in('operacao', uniqueOpCodes);
@@ -565,7 +565,7 @@ export default function RelatoriosPage() {
 
       try {
         const { data: existingLotes, error: fetchError } = await supabase
-          .schema('pro_consig')
+          .schema(DB_SCHEMA)
           .from('borderos_lotes')
           .select('lote')
           .eq('data', todayStr)
@@ -579,7 +579,7 @@ export default function RelatoriosPage() {
         }
 
         const { error: insertError } = await supabase
-          .schema('pro_consig')
+          .schema(DB_SCHEMA)
           .from('borderos_lotes')
           .insert({ data: todayStr, lote: nextLote });
 

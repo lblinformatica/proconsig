@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Edit2, X } from 'lucide-react';
 import { adminUpdateUser } from '@/app/actions/admin';
-import { supabase } from '@/lib/supabaseClient';
+import { supabase , DB_SCHEMA } from '@/lib/supabaseClient';
 
 interface EditUserModalProps {
   isOpen: boolean;
@@ -31,7 +31,7 @@ export function EditUserModal({ isOpen, user, onClose, onSuccess }: EditUserModa
     if (!isOpen) return;
     const loadVendedores = async () => {
       const { data } = await supabase
-        .schema('pro_consig')
+        .schema(DB_SCHEMA)
         .from('vendedores')
         .select('codigo, nome')
         .eq('ativo', true)

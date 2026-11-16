@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { supabase } from '@/lib/supabaseClient';
+import { supabase , DB_SCHEMA } from '@/lib/supabaseClient';
 import { ConfirmModal } from '@/components/ConfirmModal';
 import {
   Search,
@@ -74,7 +74,7 @@ export default function BaixasPage() {
     const from = page * PAGE_SIZE;
     const to = from + PAGE_SIZE - 1;
 
-    let query = supabase.schema('pro_consig').from('baixas').select('*', { count: 'exact' })
+    let query = supabase.schema(DB_SCHEMA).from('baixas').select('*', { count: 'exact' })
       .order('nome', { ascending: true })
       .order('operacao', { ascending: true })
       .order('vencimento', { ascending: true })
@@ -100,7 +100,7 @@ export default function BaixasPage() {
   }, [page, search]);
 
   const fetchHistory = useCallback(async () => {
-    const { data, error } = await supabase.schema('pro_consig').from('baixas').select('nome_arquivo, data_importacao').order('data_importacao', { ascending: false });
+    const { data, error } = await supabase.schema(DB_SCHEMA).from('baixas').select('nome_arquivo, data_importacao').order('data_importacao', { ascending: false });
     if (error) {
       console.error(error);
       return;
@@ -204,7 +204,7 @@ export default function BaixasPage() {
 
         // 2. Evitar duplicados contra o banco de dados baseado em CPF + OPERACAO + MES_ANO (YYYY-MM)
         const cpfs = Array.from(new Set(uniqueToInsert.map(r => r.cpf)));
-        const { data: existing } = await supabase.schema('pro_consig').from('baixas')
+        const { data: existing } = await supabase.schema(DB_SCHEMA).from('baixas')
           .select('cpf, operacao, vencimento')
           .in('cpf', cpfs);
 
@@ -221,7 +221,7 @@ export default function BaixasPage() {
           return;
         }
 
-        const { error } = await supabase.schema('pro_consig').from('baixas').insert(finalToInsert);
+        const { error } = await supabase.schema(DB_SCHEMA).from('baixas').insert(finalToInsert);
 
         if (error) throw error;
 
@@ -245,7 +245,7 @@ export default function BaixasPage() {
     if (!showConfirmDelete) return;
 
     setIsDeleting(true);
-    const { error } = await supabase.schema('pro_consig').from('baixas').delete()
+    const { error } = await supabase.schema(DB_SCHEMA).from('baixas').delete()
       .eq('nome_arquivo', showConfirmDelete.nome_arquivo)
       .eq('data_importacao', showConfirmDelete.data_importacao);
 
@@ -458,7 +458,7 @@ export default function BaixasPage() {
         confirmText="Sim, Excluir"
         onConfirm={async () => {
           if (!singleDeleteId) return;
-          const { error } = await supabase.schema('pro_consig').from('baixas').delete().eq('id', singleDeleteId);
+          const { error } = await supabase.schema(DB_SCHEMA).from('baixas').delete().eq('id', singleDeleteId);
           if (error) {
             showAlert('Erro', 'Falha ao excluir baixa: ' + error.message, 'danger');
           } else {

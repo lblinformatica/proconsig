@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabaseClient';
+import { supabase , DB_SCHEMA } from '@/lib/supabaseClient';
 import { ArrowLeft } from 'lucide-react';
 import { ConfirmModal } from '@/components/ConfirmModal';
 
@@ -48,7 +48,7 @@ export default function EditarVendedor() {
     const fetchVendedor = async () => {
       try {
         const { data, error: dbError } = await supabase
-          .schema('pro_consig')
+          .schema(DB_SCHEMA)
           .from('vendedores')
           .select('*')
           .eq('id', params.id)
@@ -104,7 +104,7 @@ export default function EditarVendedor() {
       const metaNum = form.meta ? parseFloat(form.meta.replace(/\./g, '').replace(',', '.')) : 0;
       const metaDiariaNum = form.meta_diaria ? parseFloat(form.meta_diaria.replace(/\./g, '').replace(',', '.')) : 0;
       const { error: dbError } = await supabase
-        .schema('pro_consig')
+        .schema(DB_SCHEMA)
         .from('vendedores')
         .update({
           codigo: form.codigo.trim(),

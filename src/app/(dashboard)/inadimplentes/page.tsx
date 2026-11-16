@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { supabase } from '@/lib/supabaseClient';
+import { supabase , DB_SCHEMA } from '@/lib/supabaseClient';
 import { ConfirmModal } from '@/components/ConfirmModal';
 import {
   Search,
@@ -72,7 +72,7 @@ export default function InadimplentesPage() {
     const from = page * PAGE_SIZE;
     const to = from + PAGE_SIZE - 1;
 
-    let query = supabase.schema('pro_consig').from('inadimplentes').select('*', { count: 'exact' }).order('nome', { ascending: true }).range(from, to);
+    let query = supabase.schema(DB_SCHEMA).from('inadimplentes').select('*', { count: 'exact' }).order('nome', { ascending: true }).range(from, to);
 
     let searchParam = search;
     if (search.includes('.') || search.includes('-')) {
@@ -94,7 +94,7 @@ export default function InadimplentesPage() {
   }, [page, search]);
 
   const fetchHistory = useCallback(async () => {
-    const { data, error } = await supabase.schema('pro_consig').from('inadimplentes').select('nome_arquivo, data_importacao').order('data_importacao', { ascending: false });
+    const { data, error } = await supabase.schema(DB_SCHEMA).from('inadimplentes').select('nome_arquivo, data_importacao').order('data_importacao', { ascending: false });
     if (error) {
       console.error(error);
       return;
@@ -164,7 +164,7 @@ export default function InadimplentesPage() {
 
         // 2. Evitar duplicados contra o banco de dados baseado em CPF
         const cpfs = Array.from(new Set(uniqueToInsert.map(r => r.cpf)));
-        const { data: existing } = await supabase.schema('pro_consig').from('inadimplentes')
+        const { data: existing } = await supabase.schema(DB_SCHEMA).from('inadimplentes')
           .select('cpf')
           .in('cpf', cpfs);
 
@@ -178,7 +178,7 @@ export default function InadimplentesPage() {
           return;
         }
 
-        const { error } = await supabase.schema('pro_consig').from('inadimplentes').insert(finalToInsert);
+        const { error } = await supabase.schema(DB_SCHEMA).from('inadimplentes').insert(finalToInsert);
 
         if (error) throw error;
 
@@ -202,7 +202,7 @@ export default function InadimplentesPage() {
     if (!showConfirmDelete) return;
 
     setIsDeleting(true);
-    const { error } = await supabase.schema('pro_consig').from('inadimplentes').delete()
+    const { error } = await supabase.schema(DB_SCHEMA).from('inadimplentes').delete()
       .eq('nome_arquivo', showConfirmDelete.nome_arquivo)
       .eq('data_importacao', showConfirmDelete.data_importacao);
 
@@ -221,7 +221,7 @@ export default function InadimplentesPage() {
     if (!recordToDelete) return;
 
     setIsDeleting(true);
-    const { error } = await supabase.schema('pro_consig').from('inadimplentes').delete()
+    const { error } = await supabase.schema(DB_SCHEMA).from('inadimplentes').delete()
       .eq('id', recordToDelete.id);
 
     if (error) {

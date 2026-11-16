@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabaseClient';
+import { supabase , DB_SCHEMA } from '@/lib/supabaseClient';
 import { ArrowLeft, CheckCircle2, Search, AlertTriangle, UserPlus, Info, ListFilter, Calculator, User, Building, Loader2, Landmark, Wallet, LayoutGrid, X } from 'lucide-react';
 import { validateCPF, formatCPF, formatAgencia } from '@/lib/cpf';
 import { ConfirmModal } from '@/components/ConfirmModal';
@@ -38,7 +38,7 @@ export default function NovaVenda() {
   useEffect(() => {
     const fetchVendedores = async () => {
       const { data } = await supabase
-        .schema('pro_consig')
+        .schema(DB_SCHEMA)
         .from('vendedores')
         .select('codigo, nome')
         .eq('ativo', true)
@@ -47,7 +47,7 @@ export default function NovaVenda() {
     };
     const fetchGrupos = async () => {
       const { data } = await supabase
-        .schema('pro_consig')
+        .schema(DB_SCHEMA)
         .from('contas')
         .select('grupo')
         .not('grupo', 'is', null)
@@ -59,7 +59,7 @@ export default function NovaVenda() {
     };
     const fetchCoeficientes = async () => {
       const { data } = await supabase
-        .schema('pro_consig')
+        .schema(DB_SCHEMA)
         .from('coeficientes')
         .select('*')
         .eq('ativo', true)
@@ -109,7 +109,7 @@ export default function NovaVenda() {
     setLoadingSumModal(true);
     try {
       const { data, error } = await supabase
-        .schema('pro_consig')
+        .schema(DB_SCHEMA)
         .from('vendas')
         .select('id, operacao, codigo_operacao, abat, status')
         .eq('cpf', formattedCpf);
@@ -178,7 +178,7 @@ export default function NovaVenda() {
     }
 
     const { data } = await supabase
-      .schema('pro_consig')
+      .schema(DB_SCHEMA)
       .from('contas')
       .select('empresa_ativacao, empresa_credora')
       .eq('grupo', numGrupo)
@@ -222,7 +222,7 @@ export default function NovaVenda() {
     const rawCpf = formattedCpf.replace(/[^\d]/g, '');
 
     // Verificar Inadimplência
-    const { data: inadimplente } = await supabase.schema('pro_consig').from('inadimplentes').select('id').eq('cpf', rawCpf).limit(1).maybeSingle();
+    const { data: inadimplente } = await supabase.schema(DB_SCHEMA).from('inadimplentes').select('id').eq('cpf', rawCpf).limit(1).maybeSingle();
 
     if (inadimplente) {
       setSearchLoading(false);
@@ -231,10 +231,10 @@ export default function NovaVenda() {
     }
 
     // Buscar Baixas (Parcelas já pagas)
-    const { data: baixas } = await supabase.schema('pro_consig').from('baixas').select('*').eq('cpf', rawCpf);
+    const { data: baixas } = await supabase.schema(DB_SCHEMA).from('baixas').select('*').eq('cpf', rawCpf);
     setBaixasCliente(baixas || []);
 
-    const { data: cliente } = await supabase.schema('pro_consig').from('clientes').select('*').eq('cpf', formattedCpf).single();
+    const { data: cliente } = await supabase.schema(DB_SCHEMA).from('clientes').select('*').eq('cpf', formattedCpf).single();
 
     if (cliente) {
       setClientFound(cliente);
@@ -258,8 +258,8 @@ export default function NovaVenda() {
       }));
 
       // Busca operações disponíveis que NÃO têm venda registrada
-      const { data: ops } = await supabase.schema('pro_consig').from('operacoes').select('*').eq('cpf', formattedCpf);
-      const { data: existingVendas } = await supabase.schema('pro_consig').from('vendas').select('contrato').eq('cpf', formattedCpf);
+      const { data: ops } = await supabase.schema(DB_SCHEMA).from('operacoes').select('*').eq('cpf', formattedCpf);
+      const { data: existingVendas } = await supabase.schema(DB_SCHEMA).from('vendas').select('contrato').eq('cpf', formattedCpf);
 
       if (ops) {
         const soldContracts = new Set(existingVendas?.map(v => v.contrato) || []);
@@ -507,7 +507,7 @@ export default function NovaVenda() {
       const opSelecionada = operacoesDisponiveis.find(o => o.operacao.toString() === form.codigo_operacao);
       const grupo = opSelecionada?.grupo;
 
-      let query = supabase.schema('pro_consig').from('contas').select('*').eq('conta_ativacao', conta);
+      let query = supabase.schema(DB_SCHEMA).from('contas').select('*').eq('conta_ativacao', conta);
 
       if (grupo) {
         query = query.eq('grupo', grupo);
@@ -849,7 +849,7 @@ export default function NovaVenda() {
       // Validação de Duplicidade (CPF + Número da Operação/Contrato) — Permitir duplicado quando for NOVO contrato (form.operacao === 'NOVO')
       if (form.operacao !== 'NOVO') {
         const { data: duplicate } = await supabase
-          .schema('pro_consig')
+          .schema(DB_SCHEMA)
           .from('vendas')
           .select('id')
           .eq('cpf', formatCPF(cpf))
@@ -870,7 +870,7 @@ export default function NovaVenda() {
       const abatidasCount = Math.min(validSelected.length, restamCount);
 
       const { data: newVenda, error: insertError } = await supabase
-        .schema('pro_consig')
+        .schema(DB_SCHEMA)
         .from('vendas')
         .insert({
           cpf: formatCPF(cpf),
@@ -912,7 +912,7 @@ export default function NovaVenda() {
 
       if (Math.abs(typedSaldo - valorParaSaldo) > 0.009) {
         await supabase
-          .schema('pro_consig')
+          .schema(DB_SCHEMA)
           .from('historico_saldos')
           .insert({
             venda_id: newVenda.id,

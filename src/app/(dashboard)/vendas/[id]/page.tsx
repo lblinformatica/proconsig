@@ -3,7 +3,7 @@
 import { useEffect, useState, use } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabaseClient';
+import { supabase , DB_SCHEMA } from '@/lib/supabaseClient';
 import { ArrowLeft, Edit2, User, Landmark, Wallet, Calculator, Info, FileText, Calendar, Building } from 'lucide-react';
 import { formatCPF, formatAgencia } from '@/lib/cpf';
 
@@ -18,7 +18,7 @@ export default function VendaDetails(props: { params: Promise<{ id: string }> })
 
   useEffect(() => {
     const fetchVendedores = async () => {
-      const { data } = await supabase.schema('pro_consig').from('vendedores').select('codigo, nome');
+      const { data } = await supabase.schema(DB_SCHEMA).from('vendedores').select('codigo, nome');
       if (data) setVendedores(data);
     };
     fetchVendedores();
@@ -48,7 +48,7 @@ export default function VendaDetails(props: { params: Promise<{ id: string }> })
 
           // 2. Fetch client info
           const { data: clientData, error: clientErr } = await supabase
-            .schema('pro_consig')
+            .schema(DB_SCHEMA)
             .from('clientes')
             .select('*')
             .eq('cpf', formatCPF(vendaData.cpf))

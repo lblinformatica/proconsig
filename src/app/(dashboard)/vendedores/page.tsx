@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { supabase } from '@/lib/supabaseClient';
+import { supabase , DB_SCHEMA } from '@/lib/supabaseClient';
 import { Edit2, Trash2, Search, Plus, ChevronLeft, ChevronRight, Filter, User } from 'lucide-react';
 import Link from 'next/link';
 import { ConfirmModal } from '@/components/ConfirmModal';
@@ -77,7 +77,7 @@ export default function VendedoresList() {
     const to = from + PAGE_SIZE - 1;
 
     let query = supabase
-      .schema('pro_consig')
+      .schema(DB_SCHEMA)
       .from('vendedores')
       .select('*', { count: 'exact' })
       .order('codigo', { ascending: true })
@@ -109,7 +109,7 @@ export default function VendedoresList() {
     setLoading(true);
     // Check if the seller has registered sales
     const { count, error: countError } = await supabase
-      .schema('pro_consig')
+      .schema(DB_SCHEMA)
       .from('vendas')
       .select('*', { count: 'exact', head: true })
       .or(`corretor.eq."${seller.codigo}",carteira.eq."${seller.codigo}"`);
@@ -133,7 +133,7 @@ export default function VendedoresList() {
         onConfirm: async () => {
           setLoading(true);
           const { error: updateError } = await supabase
-            .schema('pro_consig')
+            .schema(DB_SCHEMA)
             .from('vendedores')
             .update({ ativo: false })
             .eq('id', id);
@@ -163,7 +163,7 @@ export default function VendedoresList() {
       onConfirm: async () => {
         setLoading(true);
         const { error } = await supabase
-          .schema('pro_consig')
+          .schema(DB_SCHEMA)
           .from('vendedores')
           .delete()
           .eq('id', id);

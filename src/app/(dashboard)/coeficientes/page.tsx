@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { supabase } from '@/lib/supabaseClient';
+import { supabase , DB_SCHEMA } from '@/lib/supabaseClient';
 import { Edit2, Trash2, Search, Plus, Percent, Check, X } from 'lucide-react';
 import { ConfirmModal } from '@/components/ConfirmModal';
 import { useRouter } from 'next/navigation';
@@ -94,7 +94,7 @@ export default function CoeficientesPage() {
   const fetchCoeficientes = useCallback(async () => {
     setLoading(true);
     const { data, error } = await supabase
-      .schema('pro_consig')
+      .schema(DB_SCHEMA)
       .from('coeficientes')
       .select('*')
       .order('prazo', { ascending: true });
@@ -171,7 +171,7 @@ export default function CoeficientesPage() {
       if (editingId) {
         // Update
         const { error } = await supabase
-          .schema('pro_consig')
+          .schema(DB_SCHEMA)
           .from('coeficientes')
           .update({
             prazo: prazoNum,
@@ -187,7 +187,7 @@ export default function CoeficientesPage() {
       } else {
         // Insert
         const { error } = await supabase
-          .schema('pro_consig')
+          .schema(DB_SCHEMA)
           .from('coeficientes')
           .insert({
             prazo: prazoNum,
@@ -212,7 +212,7 @@ export default function CoeficientesPage() {
   const handleToggleStatus = async (item: Coeficiente) => {
     const newStatus = !item.ativo;
     const { error } = await supabase
-      .schema('pro_consig')
+      .schema(DB_SCHEMA)
       .from('coeficientes')
       .update({ ativo: newStatus, updated_at: new Date().toISOString() })
       .eq('id', item.id);
@@ -230,7 +230,7 @@ export default function CoeficientesPage() {
       `Tem certeza que deseja excluir o coeficiente para o prazo de ${prazo}x? Esta ação não poderá ser desfeita.`,
       async () => {
         const { error } = await supabase
-          .schema('pro_consig')
+          .schema(DB_SCHEMA)
           .from('coeficientes')
           .delete()
           .eq('id', id);

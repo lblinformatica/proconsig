@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo, use } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabaseClient';
+import { supabase , DB_SCHEMA } from '@/lib/supabaseClient';
 import { ArrowLeft, CheckCircle2, Search, AlertTriangle, UserPlus, Info, ListFilter, Calculator, User, Building, Loader2, Landmark, Wallet, LayoutGrid } from 'lucide-react';
 import { validateCPF, formatCPF, formatAgencia } from '@/lib/cpf';
 import { ConfirmModal } from '@/components/ConfirmModal';
@@ -40,7 +40,7 @@ export default function EditarVenda(props: { params: Promise<{ id: string }> }) 
   useEffect(() => {
     const fetchVendedores = async () => {
       const { data } = await supabase
-        .schema('pro_consig')
+        .schema(DB_SCHEMA)
         .from('vendedores')
         .select('codigo, nome')
         .order('codigo', { ascending: true });
@@ -48,7 +48,7 @@ export default function EditarVenda(props: { params: Promise<{ id: string }> }) 
     };
     const fetchCoeficientes = async () => {
       const { data } = await supabase
-        .schema('pro_consig')
+        .schema(DB_SCHEMA)
         .from('coeficientes')
         .select('*')
         .eq('ativo', true)
@@ -112,7 +112,7 @@ export default function EditarVenda(props: { params: Promise<{ id: string }> }) 
   useEffect(() => {
     const fetchVenda = async () => {
       try {
-        const { data: venda, error: vError } = await supabase.schema('pro_consig').from('vendas').select('*').eq('id', params.id).single();
+        const { data: venda, error: vError } = await supabase.schema(DB_SCHEMA).from('vendas').select('*').eq('id', params.id).single();
         if (vError) throw vError;
 
         if (venda) {
@@ -172,12 +172,12 @@ export default function EditarVenda(props: { params: Promise<{ id: string }> }) 
           });
 
           // Carrega cliente e operações
-          const { data: cliente } = await supabase.schema('pro_consig').from('clientes').select('*').eq('cpf', venda.cpf).single();
+          const { data: cliente } = await supabase.schema(DB_SCHEMA).from('clientes').select('*').eq('cpf', venda.cpf).single();
           if (cliente) {
             setClientFound(cliente);
             setSearchInitiated(true);
-            const { data: ops } = await supabase.schema('pro_consig').from('operacoes').select('*').eq('cpf', venda.cpf);
-            const { data: otherVendas } = await supabase.schema('pro_consig').from('vendas').select('contrato').eq('cpf', venda.cpf).neq('id', params.id);
+            const { data: ops } = await supabase.schema(DB_SCHEMA).from('operacoes').select('*').eq('cpf', venda.cpf);
+            const { data: otherVendas } = await supabase.schema(DB_SCHEMA).from('vendas').select('contrato').eq('cpf', venda.cpf).neq('id', params.id);
             if (ops) {
               const soldElsewhere = new Set(otherVendas?.map(v => v.contrato) || []);
               setOperacoesDisponiveis(ops.filter(o => !soldElsewhere.has(o.operacao.toString())));
@@ -201,7 +201,7 @@ export default function EditarVenda(props: { params: Promise<{ id: string }> }) 
     const rawCpf = formattedCpf.replace(/[^\d]/g, '');
 
     // Verificar Inadimplência
-    const { data: inadimplente } = await supabase.schema('pro_consig').from('inadimplentes').select('id').eq('cpf', rawCpf).limit(1).maybeSingle();
+    const { data: inadimplente } = await supabase.schema(DB_SCHEMA).from('inadimplentes').select('id').eq('cpf', rawCpf).limit(1).maybeSingle();
 
     if (inadimplente) {
       setSearchLoading(false);
@@ -209,14 +209,14 @@ export default function EditarVenda(props: { params: Promise<{ id: string }> }) 
     }
 
     // Buscar Baixas (Parcelas já pagas)
-    const { data: baixas } = await supabase.schema('pro_consig').from('baixas').select('*').eq('cpf', rawCpf);
+    const { data: baixas } = await supabase.schema(DB_SCHEMA).from('baixas').select('*').eq('cpf', rawCpf);
     setBaixasCliente(baixas || []);
 
-    const { data: cliente } = await supabase.schema('pro_consig').from('clientes').select('*').eq('cpf', formattedCpf).single();
+    const { data: cliente } = await supabase.schema(DB_SCHEMA).from('clientes').select('*').eq('cpf', formattedCpf).single();
     if (cliente) {
       setClientFound(cliente);
-      const { data: ops } = await supabase.schema('pro_consig').from('operacoes').select('*').eq('cpf', formattedCpf);
-      const { data: existingVendas } = await supabase.schema('pro_consig').from('vendas').select('contrato').eq('cpf', formattedCpf).neq('id', params.id);
+      const { data: ops } = await supabase.schema(DB_SCHEMA).from('operacoes').select('*').eq('cpf', formattedCpf);
+      const { data: existingVendas } = await supabase.schema(DB_SCHEMA).from('vendas').select('contrato').eq('cpf', formattedCpf).neq('id', params.id);
       if (ops) {
         const sold = new Set(existingVendas?.map(v => v.contrato) || []);
         setOperacoesDisponiveis(ops.filter(o => !sold.has(o.operacao.toString())));
@@ -322,7 +322,7 @@ export default function EditarVenda(props: { params: Promise<{ id: string }> }) 
 
         const fetchContas = async () => {
           try {
-            const { data: allContas } = await supabase.schema('pro_consig').from('contas').select('*');
+            const { data: allContas } = await supabase.schema(DB_SCHEMA).from('contas').select('*');
             const contaData = allContas?.find(c =>
               Number(c.grupo) === Number(opSelecionada.grupo) &&
               Number(c.conta_ativacao) === Number(opSelecionada.contacobranca)
@@ -442,7 +442,7 @@ export default function EditarVenda(props: { params: Promise<{ id: string }> }) 
       const opSelecionada = operacoesDisponiveis.find(o => o.operacao.toString() === form.codigo_operacao);
       const grupo = opSelecionada?.grupo;
 
-      let query = supabase.schema('pro_consig').from('contas').select('*').eq('conta_ativacao', conta);
+      let query = supabase.schema(DB_SCHEMA).from('contas').select('*').eq('conta_ativacao', conta);
 
       if (grupo) {
         query = query.eq('grupo', grupo);
@@ -731,7 +731,7 @@ export default function EditarVenda(props: { params: Promise<{ id: string }> }) 
     try {
       // Valida duplicidade excluindo esta venda — Permitir duplicado quando for NOVO contrato (form.operacao === 'NOVO')
       if (form.operacao !== 'NOVO') {
-        const { data: duplicate } = await supabase.schema('pro_consig').from('vendas').select('id').eq('cpf', formatCPF(cpf)).eq('contrato', form.contrato).neq('id', params.id).maybeSingle();
+        const { data: duplicate } = await supabase.schema(DB_SCHEMA).from('vendas').select('id').eq('cpf', formatCPF(cpf)).eq('contrato', form.contrato).neq('id', params.id).maybeSingle();
         if (duplicate) { setDuplicateModal(true); setLoading(false); return; }
       }
 
@@ -741,7 +741,7 @@ export default function EditarVenda(props: { params: Promise<{ id: string }> }) 
       const restamCount = parcelasExibidas.length;
       const abatidasCount = Math.min(validSelected.length, restamCount);
 
-      const { error: updateError } = await supabase.schema('pro_consig').from('vendas').update({
+      const { error: updateError } = await supabase.schema(DB_SCHEMA).from('vendas').update({
         cpf: formatCPF(cpf),
         orgao: form.orgao, empresa: form.empresa, operacao: form.operacao,
         codigo_operacao: form.codigo_operacao, corretor: form.corretor,
@@ -783,7 +783,7 @@ export default function EditarVenda(props: { params: Promise<{ id: string }> }) 
 
           if (userData) {
             await supabase
-              .schema('pro_consig')
+              .schema(DB_SCHEMA)
               .from('historico_saldos')
               .insert({
                 venda_id: params.id,

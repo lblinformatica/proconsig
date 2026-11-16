@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabaseClient';
+import { supabase , DB_SCHEMA } from '@/lib/supabaseClient';
 import {
   Search,
   Filter,
@@ -91,7 +91,7 @@ export default function MetasPage() {
   useEffect(() => {
     const fetchVendedores = async () => {
       const { data } = await supabase
-        .schema('pro_consig')
+        .schema(DB_SCHEMA)
         .from('vendedores')
         .select('id, codigo, nome')
         .order('codigo', { ascending: true });

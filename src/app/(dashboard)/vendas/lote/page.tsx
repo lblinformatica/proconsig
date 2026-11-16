@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, Fragment } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabaseClient';
+import { supabase , DB_SCHEMA } from '@/lib/supabaseClient';
 import {
   ArrowLeft,
   CheckCircle2,
@@ -120,7 +120,7 @@ export default function NovaVendaLote() {
   useEffect(() => {
     const fetchVendedores = async () => {
       const { data } = await supabase
-        .schema('pro_consig')
+        .schema(DB_SCHEMA)
         .from('vendedores')
         .select('codigo, nome')
         .eq('ativo', true)
@@ -129,7 +129,7 @@ export default function NovaVendaLote() {
     };
     const fetchContas = async () => {
       const { data } = await supabase
-        .schema('pro_consig')
+        .schema(DB_SCHEMA)
         .from('contas')
         .select('*')
         .order('grupo', { ascending: true });
@@ -141,7 +141,7 @@ export default function NovaVendaLote() {
     };
     const fetchCoeficientes = async () => {
       const { data } = await supabase
-        .schema('pro_consig')
+        .schema(DB_SCHEMA)
         .from('coeficientes')
         .select('*')
         .eq('ativo', true)
@@ -239,7 +239,7 @@ export default function NovaVendaLote() {
     setLoadingSumModal(true);
     try {
       const { data, error } = await supabase
-        .schema('pro_consig')
+        .schema(DB_SCHEMA)
         .from('vendas')
         .select('id, operacao, codigo_operacao, abat, status')
         .eq('cpf', formattedCpf);
@@ -327,7 +327,7 @@ export default function NovaVendaLote() {
     }
 
     const { data } = await supabase
-      .schema('pro_consig')
+      .schema(DB_SCHEMA)
       .from('contas')
       .select('empresa_ativacao, empresa_credora')
       .eq('grupo', numGrupo)
@@ -374,7 +374,7 @@ export default function NovaVendaLote() {
 
     // Verificar Inadimplência
     const { data: inadimplente } = await supabase
-      .schema('pro_consig')
+      .schema(DB_SCHEMA)
       .from('inadimplentes')
       .select('id')
       .eq('cpf', rawCpf)
@@ -391,10 +391,10 @@ export default function NovaVendaLote() {
     }
 
     // Buscar Baixas (Parcelas já pagas)
-    const { data: baixas } = await supabase.schema('pro_consig').from('baixas').select('*').eq('cpf', rawCpf);
+    const { data: baixas } = await supabase.schema(DB_SCHEMA).from('baixas').select('*').eq('cpf', rawCpf);
     setBaixasCliente(baixas || []);
 
-    const { data: cliente } = await supabase.schema('pro_consig').from('clientes').select('*').eq('cpf', formattedCpf).single();
+    const { data: cliente } = await supabase.schema(DB_SCHEMA).from('clientes').select('*').eq('cpf', formattedCpf).single();
 
     if (cliente) {
       setClientFound(cliente);
@@ -418,8 +418,8 @@ export default function NovaVendaLote() {
       }));
 
       // Busca operações disponíveis que NÃO têm venda registrada
-      const { data: ops } = await supabase.schema('pro_consig').from('operacoes').select('*').eq('cpf', formattedCpf);
-      const { data: existingVendas } = await supabase.schema('pro_consig').from('vendas').select('contrato, codigo_operacao').eq('cpf', formattedCpf);
+      const { data: ops } = await supabase.schema(DB_SCHEMA).from('operacoes').select('*').eq('cpf', formattedCpf);
+      const { data: existingVendas } = await supabase.schema(DB_SCHEMA).from('vendas').select('contrato, codigo_operacao').eq('cpf', formattedCpf);
 
       if (ops) {
         const soldContracts = new Set<string>();
@@ -967,7 +967,7 @@ export default function NovaVendaLote() {
 
       // Validação de duplicidade para os contratos selecionados
       const { data: duplicates } = await supabase
-        .schema('pro_consig')
+        .schema(DB_SCHEMA)
         .from('vendas')
         .select('contrato')
         .eq('cpf', formattedCpf)
@@ -1055,7 +1055,7 @@ export default function NovaVendaLote() {
       });
 
       const { error: insertError } = await supabase
-        .schema('pro_consig')
+        .schema(DB_SCHEMA)
         .from('vendas')
         .insert(payloads);
 

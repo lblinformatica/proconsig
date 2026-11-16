@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { supabase } from '@/lib/supabaseClient';
+import { supabase , DB_SCHEMA } from '@/lib/supabaseClient';
 import { Edit2, Trash2, Search, Plus, ChevronLeft, ChevronRight, Filter, Copy, Check, Eye, Lock, Calculator, Download, X } from 'lucide-react';
 import Link from 'next/link';
 import { ConfirmModal } from '@/components/ConfirmModal';
@@ -69,7 +69,7 @@ function VendasListContent() {
         }
       }
 
-      const { data: vData } = await supabase.schema('pro_consig').from('vendedores').select('codigo, nome');
+      const { data: vData } = await supabase.schema(DB_SCHEMA).from('vendedores').select('codigo, nome');
       if (vData) setVendedores(vData);
     };
     init();
@@ -204,7 +204,7 @@ function VendasListContent() {
     setLoadingSumModal(true);
     try {
       const { data, error } = await supabase
-        .schema('pro_consig')
+        .schema(DB_SCHEMA)
         .from('vendas')
         .select('id, operacao, codigo_operacao, abat, status')
         .eq('cpf', venda.cpf);

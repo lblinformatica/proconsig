@@ -2,10 +2,10 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { supabase } from '@/lib/supabaseClient';
+import { supabase, DB_SCHEMA } from '@/lib/supabaseClient';
 import Link from 'next/link';
 import Image from 'next/image';
-import { LogOut, Home, Users, FileText, CheckSquare, BarChart, Menu, Moon, Sun, Bell, CheckCheck, List, AlertCircle, User, History, Percent, ChevronDown, Landmark, Target } from 'lucide-react';
+import { LogOut, Home, Users, FileText, CheckSquare, BarChart, Menu, Moon, Sun, Bell, CheckCheck, List, AlertCircle, User, History, Percent, ChevronDown, Landmark, Target, ExternalLink, FlaskConical } from 'lucide-react';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -23,6 +23,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [isRelatoriosOpen, setIsRelatoriosOpen] = useState(false);
   const [activeSubItem, setActiveSubItem] = useState<string>('');
   const [isDarkMode, setIsDarkMode] = useState(false);
+  const [isDev, setIsDev] = useState(false);
+
+  useEffect(() => {
+    const isDevEnv =
+      DB_SCHEMA === 'pro_consig_dev' ||
+      (typeof window !== 'undefined' && (window.location.hostname.startsWith('dev.') || window.location.hostname.includes('-dev')));
+    setIsDev(isDevEnv);
+  }, []);
 
   // Sincroniza a abertura dos submenus quando a rota muda
   useEffect(() => {
@@ -276,7 +284,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         'postgres_changes',
         {
           event: 'INSERT',
-          schema: 'pro_consig',
+          schema: DB_SCHEMA,
           table: 'notificacoes',
           filter: `usuario_id=eq.${currentUserId}`
         },
@@ -670,9 +678,107 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       {/* Main Content */}
       <main className="dashboard-main">
+        {/* Banner de Homologação / Testes */}
+        {isDev && (
+          <div style={{
+            background: 'linear-gradient(90deg, #b45309 0%, #d97706 100%)',
+            color: '#ffffff',
+            padding: '0.45rem 1.25rem',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            fontSize: '0.8rem',
+            fontWeight: 600,
+            boxShadow: '0 2px 6px rgba(180, 83, 9, 0.25)',
+            zIndex: 10
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+              <span style={{ fontSize: '1rem', lineHeight: 1 }}>⚠️</span>
+              <span>
+                AMBIENTE DE TESTES / HOMOLOGAÇÃO &mdash; <span style={{ fontWeight: 400, opacity: 0.95 }}>Dados isolados ({DB_SCHEMA}). Alterações aqui não afetam a Produção.</span>
+              </span>
+            </div>
+            {userProfile?.nivel === 'admin' && (
+              <a
+                href="https://centralpagamentos.com.br"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  background: 'rgba(255, 255, 255, 0.2)',
+                  color: '#ffffff',
+                  border: '1px solid rgba(255, 255, 255, 0.4)',
+                  padding: '0.2rem 0.65rem',
+                  borderRadius: '4px',
+                  textDecoration: 'none',
+                  fontSize: '0.75rem',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                  fontWeight: 600,
+                  transition: 'background 0.2s',
+                  flexShrink: 0
+                }}
+                onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255, 255, 255, 0.35)')}
+                onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)')}
+              >
+                Voltar para Produção <ExternalLink size={12} />
+              </a>
+            )}
+          </div>
+        )}
+
         <header className="dashboard-header">
-          <div style={{ fontWeight: 600 }}>Bem-vindo de volta!</div>
+          <div style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+            <span>Bem-vindo de volta!</span>
+            {isDev && (
+              <span style={{
+                background: 'rgba(217, 119, 6, 0.15)',
+                color: '#d97706',
+                border: '1px solid rgba(217, 119, 6, 0.35)',
+                padding: '0.15rem 0.5rem',
+                borderRadius: '12px',
+                fontSize: '0.7rem',
+                fontWeight: 700,
+                letterSpacing: '0.03em'
+              }}>
+                DEV / TESTES
+              </span>
+            )}
+          </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            {/* Atalho para Ambiente de Testes (apenas para Admin quando em Produção) */}
+            {!isDev && userProfile?.nivel === 'admin' && (
+              <a
+                href="https://dev.centralpagamentos.com.br"
+                target="_blank"
+                rel="noopener noreferrer"
+                title="Acessar ambiente de homologação e testes"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                  color: 'var(--color-text-muted)',
+                  background: 'var(--color-bg-body)',
+                  border: '1px solid var(--color-border)',
+                  borderRadius: '6px',
+                  padding: '0.35rem 0.65rem',
+                  textDecoration: 'none',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.color = 'var(--color-primary)';
+                  e.currentTarget.style.borderColor = 'var(--color-primary)';
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.color = 'var(--color-text-muted)';
+                  e.currentTarget.style.borderColor = 'var(--color-border)';
+                }}
+              >
+                <FlaskConical size={14} /> Ambiente de Testes <ExternalLink size={12} />
+              </a>
+            )}
             {/* Theme Toggle */}
             <button onClick={toggleDarkMode} className="btn btn-secondary" style={{ padding: '0.5rem', borderRadius: '50%', background: 'transparent', border: 'none', boxShadow: 'none', color: 'var(--color-text-muted)' }} title="Alternar Tema">
               {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}

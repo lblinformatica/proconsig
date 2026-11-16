@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabaseClient';
+import { supabase , DB_SCHEMA } from '@/lib/supabaseClient';
 import { History, Search, User, ChevronLeft, ChevronRight, Loader2, Eye } from 'lucide-react';
 import Link from 'next/link';
 
@@ -50,7 +50,7 @@ export default function HistoricoSaldosPage() {
     const to = from + PAGE_SIZE - 1;
 
     let query = supabase
-      .schema('pro_consig')
+      .schema(DB_SCHEMA)
       .from('historico_saldos')
       .select('*, vendas!inner(id, venda_id, grupo, operacao, codigo_operacao, contrato)', { count: 'exact' })
       .order('created_at', { ascending: false })
