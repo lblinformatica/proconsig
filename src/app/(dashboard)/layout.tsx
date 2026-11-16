@@ -681,21 +681,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {/* Banner de Homologação / Testes */}
         {isDev && (
           <div style={{
-            background: 'linear-gradient(90deg, #b45309 0%, #d97706 100%)',
-            color: '#ffffff',
+            background: isDarkMode ? 'rgba(234, 179, 8, 0.12)' : '#FEF9C3',
+            color: isDarkMode ? '#FDE047' : '#713F12',
+            borderBottom: isDarkMode ? '1px solid rgba(234, 179, 8, 0.25)' : '1px solid #FDE047',
             padding: '0.45rem 1.25rem',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            fontSize: '0.8rem',
-            fontWeight: 600,
-            boxShadow: '0 2px 6px rgba(180, 83, 9, 0.25)',
+            fontSize: '0.815rem',
+            fontWeight: 500,
             zIndex: 10
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-              <span style={{ fontSize: '1rem', lineHeight: 1 }}>⚠️</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <span style={{ fontSize: '0.95rem', lineHeight: 1 }}>⚠️</span>
               <span>
-                AMBIENTE DE TESTES / HOMOLOGAÇÃO &mdash; <span style={{ fontWeight: 400, opacity: 0.95 }}>Dados isolados ({DB_SCHEMA}). Alterações aqui não afetam a Produção.</span>
+                <strong style={{ fontWeight: 600 }}>Ambiente de Testes</strong> &mdash; Dados isolados (pro_consig_dev).
               </span>
             </div>
             {userProfile?.nivel === 'admin' && (
@@ -704,9 +704,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 target="_blank"
                 rel="noopener noreferrer"
                 style={{
-                  background: 'rgba(255, 255, 255, 0.2)',
-                  color: '#ffffff',
-                  border: '1px solid rgba(255, 255, 255, 0.4)',
+                  background: isDarkMode ? 'rgba(234, 179, 8, 0.15)' : 'rgba(113, 63, 18, 0.08)',
+                  color: isDarkMode ? '#FDE047' : '#713F12',
+                  border: isDarkMode ? '1px solid rgba(234, 179, 8, 0.3)' : '1px solid rgba(113, 63, 18, 0.2)',
                   padding: '0.2rem 0.65rem',
                   borderRadius: '4px',
                   textDecoration: 'none',
@@ -718,8 +718,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   transition: 'background 0.2s',
                   flexShrink: 0
                 }}
-                onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255, 255, 255, 0.35)')}
-                onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)')}
+                onMouseEnter={e => (e.currentTarget.style.background = isDarkMode ? 'rgba(234, 179, 8, 0.25)' : 'rgba(113, 63, 18, 0.15)')}
+                onMouseLeave={e => (e.currentTarget.style.background = isDarkMode ? 'rgba(234, 179, 8, 0.15)' : 'rgba(113, 63, 18, 0.08)')}
               >
                 Voltar para Produção <ExternalLink size={12} />
               </a>
@@ -732,14 +732,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <span>Bem-vindo de volta!</span>
             {isDev && (
               <span style={{
-                background: 'rgba(217, 119, 6, 0.15)',
-                color: '#d97706',
-                border: '1px solid rgba(217, 119, 6, 0.35)',
+                background: isDarkMode ? 'rgba(234, 179, 8, 0.15)' : '#FEF9C3',
+                color: isDarkMode ? '#FDE047' : '#854D0E',
+                border: isDarkMode ? '1px solid rgba(234, 179, 8, 0.3)' : '1px solid #FDE047',
                 padding: '0.15rem 0.5rem',
                 borderRadius: '12px',
                 fontSize: '0.7rem',
-                fontWeight: 700,
-                letterSpacing: '0.03em'
+                fontWeight: 600,
+                letterSpacing: '0.02em'
               }}>
                 DEV / TESTES
               </span>
