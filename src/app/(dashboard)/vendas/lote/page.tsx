@@ -161,7 +161,8 @@ export default function NovaVendaLote() {
   const [expandedContratos, setExpandedContratos] = useState<string[]>([]);
   const [baixasCliente, setBaixasCliente] = useState<any[]>([]);
   const [hasOperationsButAllSold, setHasOperationsButAllSold] = useState(false);
-  const [lastAutoObs, setLastAutoObs] = useState('');
+  const [observacoesContratos, setObservacoesContratos] = useState<{ [operacao: string]: string }>({});
+  const [manualObsFlags, setManualObsFlags] = useState<{ [operacao: string]: boolean }>({});
 
   const [form, setForm] = useState({
     orgao: '',
@@ -274,6 +275,8 @@ export default function NovaVendaLote() {
     setOperacoesDisponiveis([]);
     setSelectedOpIds([]);
     setExpandedContratos([]);
+    setObservacoesContratos({});
+    setManualObsFlags({});
     setHasOperationsButAllSold(false);
     setForm(f => ({
       ...f,
@@ -368,6 +371,8 @@ export default function NovaVendaLote() {
     setClientFound(null);
     setSelectedOpIds([]);
     setExpandedContratos([]);
+    setObservacoesContratos({});
+    setManualObsFlags({});
 
     const formattedCpf = formatCPF(cpf);
     const rawCpf = formattedCpf.replace(/[^\d]/g, '');
@@ -641,10 +646,68 @@ export default function NovaVendaLote() {
     setSelectedOpIds(prev => (prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]));
   };
 
+  const gerarObservacaoIndividual = (c: ContratoAgrupado) => {
+    const parts: string[] = [];
+    const contaAtiv = c.conta_ativacao;
+    const empAtiv = c.empresa_ativacao;
+
+    if (contaAtiv || empAtiv) {
+      if (contaAtiv && empAtiv) {
+        parts.push(`ATIVAÇÃO ${contaAtiv.trim()} - ${empAtiv.trim().toUpperCase()}`);
+      } else if (contaAtiv) {
+        parts.push(`ATIVAÇÃO ${contaAtiv.trim()}`);
+      } else if (empAtiv) {
+        parts.push(`ATIVAÇÃO ${empAtiv.trim().toUpperCase()}`);
+      }
+    }
+
+    const parcelasRef = c.parcelasSelecionadas.length > 0 ? c.parcelasSelecionadas : c.parcelasAbertas;
+    const maisAntiga = [...parcelasRef].sort(
+      (a, b) => new Date(a.vencimento).getTime() - new Date(b.vencimento).getTime()
+    )[0];
+
+    if (maisAntiga?.vencimento) {
+      const d = new Date(maisAntiga.vencimento + 'T12:00:00');
+      const m = (d.getMonth() + 1).toString().padStart(2, '0');
+      const y = d.getFullYear().toString();
+      const mesNome = MONTH_NAMES[m] || '';
+      if (mesNome && y) {
+        parts.push(`INICIO ${mesNome}/${y}`);
+      }
+    } else if (form.inicio_mes && form.inicio_ano) {
+      const mesNome = MONTH_NAMES[form.inicio_mes] || '';
+      if (mesNome) parts.push(`INICIO ${mesNome}/${form.inicio_ano}`);
+    }
+
+    const restamCount = c.parcelasAbertas.length;
+    const abatidasCount = Math.min(c.parcelasSelecionadas.length, restamCount);
+    parts.push(`RESTAM ${restamCount} ABATIDAS ${abatidasCount}`);
+
+    return parts.join(' - ');
+  };
+
   const toggleExpandContrato = (operacao: string) => {
     setExpandedContratos(prev =>
       prev.includes(operacao) ? prev.filter(op => op !== operacao) : [...prev, operacao]
     );
+  };
+
+  const handleObservacaoChange = (operacao: string, val: string) => {
+    setObservacoesContratos(prev => ({
+      ...prev,
+      [operacao]: val
+    }));
+    setManualObsFlags(prev => ({
+      ...prev,
+      [operacao]: true
+    }));
+  };
+
+  const getObservacaoContrato = (c: ContratoAgrupado) => {
+    if (manualObsFlags[c.operacao]) {
+      return observacoesContratos[c.operacao] ?? '';
+    }
+    return gerarObservacaoIndividual(c);
   };
 
   // Atualiza automaticamente os campos calculados de Valores e Condições, Ativação e Início quando a seleção muda
@@ -712,57 +775,6 @@ export default function NovaVendaLote() {
       buscarEmpresasPorGrupoEConta(grupoOp, contaOp, true);
     }
   }, [contratosSelecionados, totaisLote]);
-
-  // Geração automática da Observação padrão
-  useEffect(() => {
-    const parts: string[] = [];
-    if (form.conta_ativacao || form.empresa_ativacao) {
-      if (form.conta_ativacao && form.empresa_ativacao) {
-        parts.push(`ATIVAÇÃO ${form.conta_ativacao.trim()} - ${form.empresa_ativacao.trim().toUpperCase()}`);
-      } else if (form.conta_ativacao) {
-        parts.push(`ATIVAÇÃO ${form.conta_ativacao.trim()}`);
-      } else if (form.empresa_ativacao) {
-        parts.push(`ATIVAÇÃO ${form.empresa_ativacao.trim().toUpperCase()}`);
-      }
-    }
-
-    const mesNome = form.inicio_mes ? MONTH_NAMES[form.inicio_mes] || '' : '';
-    if (mesNome && form.inicio_ano) {
-      parts.push(`INICIO ${mesNome}/${form.inicio_ano}`);
-    }
-
-    if (contratosSelecionados.length > 0) {
-      const restamTotal = contratosSelecionados.reduce((acc, c) => acc + c.parcelasAbertas.length, 0);
-      const abatidasTotal = Math.min(
-        contratosSelecionados.reduce((acc, c) => acc + c.parcelasSelecionadas.length, 0),
-        restamTotal
-      );
-      parts.push(`RESTAM ${restamTotal} ABATIDAS ${abatidasTotal}`);
-    }
-
-    if (form.dia_util) {
-      let du = form.dia_util.trim();
-      if (/^\d+$/.test(du) && !du.includes('°') && !du.includes('º')) {
-        du = `${du}°`;
-      }
-      parts.push(`${du.toUpperCase()} DIA UTIL`);
-    }
-
-    const generated = parts.join(' - ');
-    if (!form.observacao || form.observacao === lastAutoObs) {
-      setForm(f => ({ ...f, observacao: generated }));
-      setLastAutoObs(generated);
-    }
-  }, [
-    form.conta_ativacao,
-    form.empresa_ativacao,
-    form.inicio_mes,
-    form.inicio_ano,
-    form.dia_util,
-    contratosSelecionados,
-    lastAutoObs,
-    form.observacao
-  ]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -849,53 +861,6 @@ export default function NovaVendaLote() {
       }
     }
     setForm(f => ({ ...f, [name]: finalValue }));
-  };
-
-  const gerarObservacaoIndividual = (c: ContratoAgrupado) => {
-    const parts: string[] = [];
-    const contaAtiv = form.conta_ativacao || c.conta_ativacao;
-    const empAtiv = form.empresa_ativacao || c.empresa_ativacao;
-
-    if (contaAtiv || empAtiv) {
-      if (contaAtiv && empAtiv) {
-        parts.push(`ATIVAÇÃO ${contaAtiv.trim()} - ${empAtiv.trim().toUpperCase()}`);
-      } else if (contaAtiv) {
-        parts.push(`ATIVAÇÃO ${contaAtiv.trim()}`);
-      } else if (empAtiv) {
-        parts.push(`ATIVAÇÃO ${empAtiv.trim().toUpperCase()}`);
-      }
-    }
-
-    const maisAntiga = [...c.parcelasSelecionadas].sort(
-      (a, b) => new Date(a.vencimento).getTime() - new Date(b.vencimento).getTime()
-    )[0];
-
-    if (maisAntiga?.vencimento) {
-      const d = new Date(maisAntiga.vencimento + 'T12:00:00');
-      const m = (d.getMonth() + 1).toString().padStart(2, '0');
-      const y = d.getFullYear().toString();
-      const mesNome = MONTH_NAMES[m] || '';
-      if (mesNome && y) {
-        parts.push(`INICIO ${mesNome}/${y}`);
-      }
-    } else if (form.inicio_mes && form.inicio_ano) {
-      const mesNome = MONTH_NAMES[form.inicio_mes] || '';
-      if (mesNome) parts.push(`INICIO ${mesNome}/${form.inicio_ano}`);
-    }
-
-    const restamCount = c.parcelasAbertas.length;
-    const abatidasCount = Math.min(c.parcelasSelecionadas.length, restamCount);
-    parts.push(`RESTAM ${restamCount} ABATIDAS ${abatidasCount}`);
-
-    if (form.dia_util) {
-      let du = form.dia_util.trim();
-      if (/^\d+$/.test(du) && !du.includes('°') && !du.includes('º')) {
-        du = `${du}°`;
-      }
-      parts.push(`${du.toUpperCase()} DIA UTIL`);
-    }
-
-    return parts.join(' - ');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -1003,12 +968,13 @@ export default function NovaVendaLote() {
         const restamCount = c.parcelasAbertas.length;
         const abatidasCount = Math.min(c.parcelasSelecionadas.length, restamCount);
 
-        const grupoFinal = form.grupo ? parseInt(form.grupo, 10) : (c.grupo ? parseInt(c.grupo, 10) : null);
-        const contaAtivFinal = form.conta_ativacao || c.conta_ativacao;
-        const empAtivFinal = form.empresa_ativacao || c.empresa_ativacao;
-        const empCredFinal = form.empresa_credora || c.empresa_credora;
+        const grupoFinal = c.grupo ? parseInt(c.grupo, 10) : null;
+        const contaAtivFinal = c.conta_ativacao || null;
+        const empAtivFinal = c.empresa_ativacao || null;
+        const empCredFinal = c.empresa_credora || null;
 
         return {
+          tipo_venda: 'lote',
           cpf: formattedCpf,
           created_by: userData.id,
           orgao: form.orgao,
@@ -1035,9 +1001,9 @@ export default function NovaVendaLote() {
           empresa_ativacao: empAtivFinal,
           conta_ativacao: contaAtivFinal,
           inicio: dataInicio,
-          dia_util: form.dia_util,
+          dia_util: null,
           empresa_credora: empCredFinal,
-          observacao: gerarObservacaoIndividual(c),
+          observacao: getObservacaoContrato(c),
           forma_credito: form.forma_credito,
           pix_tipo_chave: form.pix_tipo_chave,
           pix_chave: form.pix_chave,
@@ -1570,6 +1536,54 @@ export default function NovaVendaLote() {
                                           </table>
                                         </div>
                                       )}
+
+                                      {/* Observações do Contrato */}
+                                      <div style={{ marginTop: '0.75rem' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+                                          <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-primary)' }}>
+                                            Observações
+                                          </label>
+                                          {manualObsFlags[c.operacao] && (
+                                            <button
+                                              type="button"
+                                              onClick={() => {
+                                                setManualObsFlags(prev => ({ ...prev, [c.operacao]: false }));
+                                                setObservacoesContratos(prev => {
+                                                  const next = { ...prev };
+                                                  delete next[c.operacao];
+                                                  return next;
+                                                });
+                                              }}
+                                              style={{
+                                                background: 'none',
+                                                border: 'none',
+                                                color: 'var(--color-primary)',
+                                                fontSize: '0.72rem',
+                                                cursor: 'pointer',
+                                                textDecoration: 'underline'
+                                              }}
+                                            >
+                                              Restaurar observação automática
+                                            </button>
+                                          )}
+                                        </div>
+                                        <textarea
+                                          value={getObservacaoContrato(c)}
+                                          onChange={e => handleObservacaoChange(c.operacao, e.target.value)}
+                                          rows={2}
+                                          placeholder="Observação deste contrato..."
+                                          style={{
+                                            width: '100%',
+                                            resize: 'vertical',
+                                            fontSize: '0.82rem',
+                                            borderRadius: '6px',
+                                            border: '1px solid var(--color-border)',
+                                            padding: '0.5rem',
+                                            backgroundColor: 'var(--color-bg-surface)',
+                                            color: 'var(--color-text-main, #333)'
+                                          }}
+                                        />
+                                      </div>
                                     </td>
                                   </tr>
                                 )}
@@ -1716,15 +1730,15 @@ export default function NovaVendaLote() {
                     <Wallet size={18} /> Dados Para Crédito (Recebimento)
                   </div>
                 </legend>
-                <div style={{ marginBottom: '1rem' }}>
-                  <label style={fs}>Forma de Recebimento</label>
-                  <select name="forma_credito" value={form.forma_credito} onChange={handleChange} style={{ width: '300px' }}>
-                    <option value="conta">Crédito em Conta</option>
-                    <option value="pix">PIX</option>
-                  </select>
-                </div>
-                {form.forma_credito === 'conta' && (
-                  <div className="animate-fade-in" style={{ display: 'grid', gridTemplateColumns: '120px 180px 100px 60px 120px 60px', gap: '1rem' }}>
+                {form.forma_credito === 'conta' ? (
+                  <div className="animate-fade-in" style={{ display: 'grid', gridTemplateColumns: '180px 1.2fr 140px 100px 60px 120px 60px', gap: '0.75rem', alignItems: 'flex-start' }}>
+                    <div>
+                      <label style={fs}>Forma de Recebimento</label>
+                      <select name="forma_credito" value={form.forma_credito} onChange={handleChange} style={{ width: '100%' }}>
+                        <option value="conta">Crédito em Conta</option>
+                        <option value="pix">PIX</option>
+                      </select>
+                    </div>
                     <div>
                       <label style={fs}>Banco</label>
                       <input name="credito_banco" type="text" value={form.credito_banco} onChange={handleChange} style={{ width: '100%' }} />
@@ -1753,10 +1767,16 @@ export default function NovaVendaLote() {
                       <input name="credito_conta_dv" type="text" value={form.credito_conta_dv} onChange={handleChange} style={{ width: '100%' }} />
                     </div>
                   </div>
-                )}
-                {form.forma_credito === 'pix' && (
-                  <div className="animate-fade-in" style={{ display: 'flex', gap: '1rem' }}>
-                    <div style={{ width: '200px' }}>
+                ) : (
+                  <div className="animate-fade-in" style={{ display: 'grid', gridTemplateColumns: '180px 200px 1fr', gap: '0.75rem', alignItems: 'flex-start' }}>
+                    <div>
+                      <label style={fs}>Forma de Recebimento</label>
+                      <select name="forma_credito" value={form.forma_credito} onChange={handleChange} style={{ width: '100%' }}>
+                        <option value="conta">Crédito em Conta</option>
+                        <option value="pix">PIX</option>
+                      </select>
+                    </div>
+                    <div>
                       <label style={fs}>Tipo de Chave</label>
                       <select name="pix_tipo_chave" value={form.pix_tipo_chave} onChange={handleChange} style={{ width: '100%' }}>
                         <option value="">Selecione...</option>
@@ -1766,88 +1786,30 @@ export default function NovaVendaLote() {
                         <option value="aleatoria">Chave Aleatória</option>
                       </select>
                     </div>
-                    <div style={{ flex: 1 }}>
+                    <div>
                       <label style={fs}>Chave PIX</label>
                       <input name="pix_chave" type="text" value={form.pix_chave} onChange={handleChange} style={{ width: '100%' }} />
                     </div>
                   </div>
                 )}
-              </div>
 
-              {/* ATIVAÇÃO E CONTRATO */}
-              <div className="card" style={{ marginBottom: '1rem' }}>
-                <legend style={ls}>Ativação, Contrato e Lote</legend>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem' }}>
-                  <div>
-                    <label style={fs}>Nº do(s) Contrato(s)</label>
-                    <input name="contrato" type="text" value={form.contrato} readOnly style={readonlyStyle} />
-                  </div>
-                  <div>
-                    <label style={fs}>Grupo</label>
-                    <select name="grupo" value={form.grupo} onChange={handleChange} required style={{ width: '100%' }}>
-                      <option value="">Selecione...</option>
-                      {gruposDisponiveis.map(g => (
-                        <option key={g} value={g}>
-                          Grupo {g}
+                <div style={{ marginTop: '1.25rem', paddingTop: '1rem', borderTop: '1px solid var(--color-border)', display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                  <div style={{ width: '140px' }}>
+                    <label style={fs}>Mês</label>
+                    <select name="inicio_mes" value={form.inicio_mes} onChange={handleChange} required style={{ width: '100%' }}>
+                      <option value="">--</option>
+                      {['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'].map(m => (
+                        <option key={m} value={m}>
+                          {m}
                         </option>
                       ))}
                     </select>
                   </div>
-                  <div>
-                    <label style={fs}>Conta Ativação</label>
-                    <input
-                      name="conta_ativacao"
-                      type="text"
-                      value={form.conta_ativacao}
-                      onChange={handleChange}
-                      onBlur={e => buscarEmpresasPorGrupoEConta(form.grupo, e.target.value)}
-                      required
-                      style={{ width: '100%' }}
-                    />
-                  </div>
-                  <div>
-                    <label style={fs}>Empresa Ativação</label>
-                    <input name="empresa_ativacao" type="text" value={form.empresa_ativacao} readOnly placeholder="Automático..." style={readonlyStyle} />
-                  </div>
-
-                  <div>
-                    <label style={fs}>Dia Útil Adicional</label>
-                    <input name="dia_util" type="text" value={form.dia_util} onChange={handleChange} required style={{ width: '100%' }} />
-                  </div>
-                  <div>
-                    <label style={fs}>Empresa Credora</label>
-                    <input name="empresa_credora" type="text" value={form.empresa_credora} readOnly placeholder="Automático..." style={readonlyStyle} />
-                  </div>
-                  <div style={{ gridColumn: 'span 2', display: 'flex', gap: '0.5rem' }}>
-                    <div style={{ flex: 1 }}>
-                      <label style={fs}>Mês</label>
-                      <select name="inicio_mes" value={form.inicio_mes} onChange={handleChange} required style={{ width: '100%' }}>
-                        <option value="">--</option>
-                        {['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'].map(m => (
-                          <option key={m} value={m}>
-                            {m}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div style={{ flex: 1.5 }}>
-                      <label style={fs}>Ano</label>
-                      <input name="inicio_ano" type="number" value={form.inicio_ano} onChange={handleChange} required style={{ width: '100%' }} />
-                    </div>
+                  <div style={{ width: '160px' }}>
+                    <label style={fs}>Ano</label>
+                    <input name="inicio_ano" type="number" value={form.inicio_ano} onChange={handleChange} required style={{ width: '100%' }} />
                   </div>
                 </div>
-              </div>
-
-              <div className="card" style={{ marginBottom: '1.5rem' }}>
-                <legend style={ls}>Observações</legend>
-                <textarea
-                  name="observacao"
-                  value={form.observacao}
-                  onChange={handleChange}
-                  rows={2}
-                  placeholder="Adicione detalhes..."
-                  style={{ width: '100%', resize: 'vertical' }}
-                />
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginBottom: '2rem' }}>

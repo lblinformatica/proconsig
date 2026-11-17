@@ -873,6 +873,7 @@ export default function NovaVenda() {
         .schema(DB_SCHEMA)
         .from('vendas')
         .insert({
+          tipo_venda: 'avulsa',
           cpf: formatCPF(cpf),
           created_by: userData.id,
           orgao: form.orgao, empresa: form.empresa, operacao: form.operacao,

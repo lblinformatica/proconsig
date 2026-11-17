@@ -695,7 +695,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <span style={{ fontSize: '0.95rem', lineHeight: 1 }}>⚠️</span>
               <span>
-                <strong style={{ fontWeight: 600 }}>Ambiente de Testes</strong> &mdash; Dados isolados (pro_consig_dev).
+                <strong style={{ fontWeight: 600 }}>Ambiente de Testes</strong>
               </span>
             </div>
             {userProfile?.nivel === 'admin' && (
@@ -730,20 +730,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <header className="dashboard-header">
           <div style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
             <span>Bem-vindo de volta!</span>
-            {isDev && (
-              <span style={{
-                background: isDarkMode ? 'rgba(234, 179, 8, 0.15)' : '#FEF9C3',
-                color: isDarkMode ? '#FDE047' : '#854D0E',
-                border: isDarkMode ? '1px solid rgba(234, 179, 8, 0.3)' : '1px solid #FDE047',
-                padding: '0.15rem 0.5rem',
-                borderRadius: '12px',
-                fontSize: '0.7rem',
-                fontWeight: 600,
-                letterSpacing: '0.02em'
-              }}>
-                DEV / TESTES
-              </span>
-            )}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
             {/* Atalho para Ambiente de Testes (apenas para Admin quando em Produção) */}

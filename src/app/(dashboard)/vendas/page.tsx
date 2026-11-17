@@ -140,10 +140,18 @@ function VendasListContent() {
     }
 
     let query = supabase
+      .schema(DB_SCHEMA)
       .from('vendas')
       .select(selectFields, { count: 'exact' })
       .order('created_at', { ascending: false })
       .range(from, to);
+
+    // Separar Vendas Avulsas de Vendas em Lote
+    if (isLoteMode) {
+      query = query.eq('tipo_venda', 'lote');
+    } else {
+      query = query.or('tipo_venda.eq.avulsa,tipo_venda.is.null');
+    }
 
     if (search) {
       if (isCPFSearch) {
@@ -167,11 +175,15 @@ function VendasListContent() {
     if (data) setVendas(data);
     if (count !== null) setTotal(count);
     setLoading(false);
-  }, [page, search, nivel, userId, allowedGroups]);
+  }, [page, search, nivel, userId, allowedGroups, isLoteMode]);
+
+  useEffect(() => {
+    setPage(0);
+  }, [isLoteMode]);
 
   useEffect(() => {
     if (nivel !== '') fetchVendas();
-  }, [page, search, nivel, userId, allowedGroups]);
+  }, [page, search, nivel, userId, allowedGroups, isLoteMode]);
 
   const handleDelete = async (id: string) => {
     // Verifica se a venda está paga antes de permitir exclusão
@@ -251,9 +263,16 @@ function VendasListContent() {
       }
 
       let query = supabase
+        .schema(DB_SCHEMA)
         .from('vendas')
         .select(selectFields)
         .order('created_at', { ascending: false });
+
+      if (isLoteMode) {
+        query = query.eq('tipo_venda', 'lote');
+      } else {
+        query = query.or('tipo_venda.eq.avulsa,tipo_venda.is.null');
+      }
 
       if (search) {
         if (isCPFSearch) {
@@ -430,7 +449,9 @@ function VendasListContent() {
           {loading ? (
             <div style={{ textAlign: 'center', padding: '4rem' }}>Carregando vendas...</div>
           ) : vendas.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '4rem', color: 'var(--color-text-muted)' }}>Nenhuma venda encontrada.</div>
+            <div style={{ textAlign: 'center', padding: '4rem', color: 'var(--color-text-muted)' }}>
+              {isLoteMode ? 'Nenhuma venda em lote encontrada.' : 'Nenhuma venda avulsa encontrada.'}
+            </div>
           ) : (
             <>
               <div className="table-wrapper">
