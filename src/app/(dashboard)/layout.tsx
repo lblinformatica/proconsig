@@ -368,21 +368,34 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* Sidebar */}
       <aside className="dashboard-sidebar" style={{ width: isSidebarCollapsed ? '70px' : '210px' }}>
         <div style={{ padding: isSidebarCollapsed ? '0.75rem 0.5rem' : '0.75rem 0.5rem', borderBottom: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexDirection: isSidebarCollapsed ? 'column' : 'row', gap: '0.4rem' }}>
-          <div style={{ overflow: 'hidden', display: 'flex', flexDirection: isSidebarCollapsed ? 'column' : 'row', alignItems: 'center', gap: '0.5rem' }}>
-            <Image
-              src="/branding.png"
-              alt="Logo"
-              width={isSidebarCollapsed ? 28 : 34}
-              height={isSidebarCollapsed ? 28 : 34}
-              style={{ borderRadius: '6px', objectFit: 'cover' }}
-            />
+          <div style={{ overflow: 'hidden', display: 'flex', flexDirection: isSidebarCollapsed ? 'column' : 'row', alignItems: 'center', gap: '0.55rem' }}>
+            <div style={{
+              width: isSidebarCollapsed ? 32 : 36,
+              height: isSidebarCollapsed ? 32 : 36,
+              borderRadius: '8px',
+              backgroundColor: '#ffffff',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+              padding: '3px',
+              flexShrink: 0
+            }}>
+              <Image
+                src="/ovale_icon.png"
+                alt="Grupo Ovale"
+                width={isSidebarCollapsed ? 26 : 30}
+                height={isSidebarCollapsed ? 26 : 30}
+                style={{ objectFit: 'contain' }}
+              />
+            </div>
             {!isSidebarCollapsed && (
               <div style={{ display: 'flex', flexDirection: 'column' }}>
-                <h1 style={{ color: 'var(--color-primary)', margin: 0, fontSize: '0.78rem', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
+                <h1 style={{ color: 'var(--color-primary)', margin: 0, fontSize: '0.8rem', fontWeight: 700, whiteSpace: 'nowrap', letterSpacing: '-0.01em' }}>
                   Central Pagamentos
                 </h1>
-                <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: '0.05rem', whiteSpace: 'nowrap' }}>
-                  Nível: <span style={{ textTransform: 'capitalize', fontWeight: 'bold' }}>{userProfile?.nivel}</span>
+                <div style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)', marginTop: '0.05rem', whiteSpace: 'nowrap' }}>
+                  Grupo Ovale • <span style={{ textTransform: 'capitalize', fontWeight: 600 }}>{userProfile?.nivel}</span>
                 </div>
               </div>
             )}

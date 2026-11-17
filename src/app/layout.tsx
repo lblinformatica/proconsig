@@ -13,10 +13,12 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "CentralPagamentos",
-  description: "Sistema de Gestão de Pagamentos",
+  title: "Central de Pagamentos — Grupo Ovale",
+  description: "Sistema de Gestão de Pagamentos e Vendas",
   icons: {
-    icon: "/branding.png",
+    icon: "/ovale_icon.png",
+    shortcut: "/ovale_icon.png",
+    apple: "/ovale_icon.png",
   },
 };
 
