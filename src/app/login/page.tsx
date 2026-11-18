@@ -116,26 +116,26 @@ export default function Login() {
         }
         .login-page.is-dark .login-input::placeholder { color: #475569 !important; }
         .login-page.is-dark .login-input:focus {
-          border-color: #6366f1 !important;
-          background: rgba(99,102,241,0.1) !important;
-          box-shadow: 0 0 0 3px rgba(99,102,241,0.2) !important;
+          border-color: #f97316 !important;
+          background: rgba(249,115,22,0.1) !important;
+          box-shadow: 0 0 0 3px rgba(249,115,22,0.2) !important;
         }
         .login-page.is-dark .login-input-icon { color: #475569; }
-        .login-page.is-dark .login-input-wrap:focus-within .login-input-icon { color: #818cf8; }
+        .login-page.is-dark .login-input-wrap:focus-within .login-input-icon { color: #f97316; }
         .login-page.is-dark .login-toggle-pw { color: #475569; }
-        .login-page.is-dark .login-toggle-pw:hover { color: #818cf8; }
+        .login-page.is-dark .login-toggle-pw:hover { color: #f97316; }
         .login-page.is-dark .login-register { color: #475569; }
-        .login-page.is-dark .login-register a { color: #818cf8; }
-        .login-page.is-dark .login-register a:hover { color: #a5b4fc; }
-        .login-page.is-dark .login-forgot { color: #6366f1; }
+        .login-page.is-dark .login-register a { color: #fb923c; }
+        .login-page.is-dark .login-register a:hover { color: #fdba74; }
+        .login-page.is-dark .login-forgot { color: #f97316; }
         .login-page.is-dark .login-divider { color: #334155; }
         .login-page.is-dark .login-divider::before,
         .login-page.is-dark .login-divider::after { background: rgba(255,255,255,0.07); }
         .login-page.is-dark .login-right::before {
-          background: radial-gradient(circle, rgba(99,102,241,0.25) 0%, transparent 70%);
+          background: radial-gradient(circle, rgba(249,115,22,0.22) 0%, transparent 70%);
         }
         .login-page.is-dark .login-right::after {
-          background: radial-gradient(circle, rgba(14,165,233,0.18) 0%, transparent 70%);
+          background: radial-gradient(circle, rgba(234,88,12,0.15) 0%, transparent 70%);
         }
         .login-page.is-dark .login-mobile-name { color: #fff; }
 
@@ -155,26 +155,26 @@ export default function Login() {
         }
         .login-page.is-light .login-input::placeholder { color: #94a3b8 !important; }
         .login-page.is-light .login-input:focus {
-          border-color: #6366f1 !important;
+          border-color: #ea580c !important;
           background: #fff !important;
-          box-shadow: 0 0 0 3px rgba(99,102,241,0.15) !important;
+          box-shadow: 0 0 0 3px rgba(234,88,12,0.15) !important;
         }
         .login-page.is-light .login-input-icon { color: #94a3b8; }
-        .login-page.is-light .login-input-wrap:focus-within .login-input-icon { color: #6366f1; }
+        .login-page.is-light .login-input-wrap:focus-within .login-input-icon { color: #ea580c; }
         .login-page.is-light .login-toggle-pw { color: #94a3b8; }
-        .login-page.is-light .login-toggle-pw:hover { color: #6366f1; }
+        .login-page.is-light .login-toggle-pw:hover { color: #ea580c; }
         .login-page.is-light .login-register { color: #475569; }
-        .login-page.is-light .login-register a { color: #4f46e5; }
-        .login-page.is-light .login-register a:hover { color: #4338ca; }
-        .login-page.is-light .login-forgot { color: #4f46e5; }
+        .login-page.is-light .login-register a { color: #ea580c; }
+        .login-page.is-light .login-register a:hover { color: #c2410c; }
+        .login-page.is-light .login-forgot { color: #ea580c; }
         .login-page.is-light .login-divider { color: #cbd5e1; }
         .login-page.is-light .login-divider::before,
         .login-page.is-light .login-divider::after { background: #e2e8f0; }
         .login-page.is-light .login-right::before {
-          background: radial-gradient(circle, rgba(99,102,241,0.1) 0%, transparent 70%);
+          background: radial-gradient(circle, rgba(249,115,22,0.08) 0%, transparent 70%);
         }
         .login-page.is-light .login-right::after {
-          background: radial-gradient(circle, rgba(14,165,233,0.08) 0%, transparent 70%);
+          background: radial-gradient(circle, rgba(234,88,12,0.06) 0%, transparent 70%);
         }
         .login-page.is-light .login-mobile-name { color: #0f172a; }
         .login-page.is-light .login-error {
@@ -202,8 +202,8 @@ export default function Login() {
           object-position: center;
           width: 100%;
           height: 100%;
-          filter: grayscale(100%) contrast(1.1);
-          opacity: 0.12;
+          filter: grayscale(100%);
+          opacity: 0.20;
         }
         .login-left-overlay {
           position: absolute;
@@ -247,14 +247,20 @@ export default function Login() {
           color: #1e3a8a;
         }
 
+        .login-left-tagline {
+          min-height: 220px;
+          display: flex;
+          flex-direction: column;
+          justify-content: flex-start;
+        }
         .login-left-tagline h2 {
           font-family: 'Outfit', sans-serif;
-          font-size: 1.95rem;
-          font-weight: 700;
+          font-size: 2.35rem;
+          font-weight: 600;
           line-height: 1.25;
           color: #1e293b;
           letter-spacing: -0.02em;
-          margin-bottom: 0.85rem;
+          margin-bottom: 2.95rem;
         }
         .login-left-tagline p {
           font-size: 1.05rem;
@@ -429,15 +435,15 @@ export default function Login() {
         }
         .login-input::placeholder { color: #475569 !important; }
         .login-input:focus {
-          border-color: #6366f1 !important;
-          background: rgba(99,102,241,0.1) !important;
-          box-shadow: 0 0 0 3px rgba(99,102,241,0.2) !important;
+          border-color: #f97316 !important;
+          background: rgba(249,115,22,0.1) !important;
+          box-shadow: 0 0 0 3px rgba(249,115,22,0.2) !important;
         }
         /* hide browser credential/autofill icons that can overlap */
         .login-input::-webkit-credentials-auto-fill-button,
         .login-input::-webkit-contacts-auto-fill-button { visibility: hidden; }
         .login-input-wrap:focus-within .login-input-icon {
-          color: #818cf8;
+          color: #f97316;
         }
         .login-toggle-pw {
           position: absolute;
@@ -451,24 +457,24 @@ export default function Login() {
           padding: 0;
           transition: color 0.2s;
         }
-        .login-toggle-pw:hover { color: #818cf8; }
+        .login-toggle-pw:hover { color: #f97316; }
 
         .login-forgot {
           display: block;
           text-align: right;
           margin-top: 0.5rem;
           font-size: 0.8rem;
-          color: #6366f1;
+          color: #f97316;
           font-weight: 500;
           transition: color 0.2s;
         }
-        .login-forgot:hover { color: #818cf8; }
+        .login-forgot:hover { color: #fb923c; }
 
         .login-submit {
           width: 100%;
           margin-top: 1.75rem;
           padding: 0.95rem;
-          background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+          background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
           color: #fff;
           border: none;
           border-radius: 0.625rem;
@@ -480,7 +486,7 @@ export default function Login() {
           justify-content: center;
           gap: 0.625rem;
           transition: all 0.25s ease;
-          box-shadow: 0 4px 20px rgba(99,102,241,0.35);
+          box-shadow: 0 4px 20px rgba(234,88,12,0.35);
           letter-spacing: 0.01em;
           position: relative;
           overflow: hidden;
@@ -496,7 +502,7 @@ export default function Login() {
         .login-submit:hover:not(:disabled)::before { opacity: 1; }
         .login-submit:hover:not(:disabled) {
           transform: translateY(-2px);
-          box-shadow: 0 8px 28px rgba(99,102,241,0.5);
+          box-shadow: 0 8px 28px rgba(234,88,12,0.5);
         }
         .login-submit:active:not(:disabled) { transform: translateY(0); }
         .login-submit:disabled {
@@ -580,7 +586,7 @@ export default function Login() {
         {/* ── Left panel ── */}
         <div className="login-left">
           <Image
-            src="/fundo_ovale.jpg"
+            src="/fundo_ovale_calculadora.jpg"
             alt="Fundo Grupo Ovale"
             fill
             sizes="50vw"
@@ -594,8 +600,8 @@ export default function Login() {
                 src="/logotipo_ovale_transparente.png"
                 alt="Grupo Ovale"
                 width={300}
-                height={207}
-                style={{ height: '105px', width: 'auto', objectFit: 'contain' }}
+                height={20}
+                style={{ height: '150px', width: 'auto', objectFit: 'contain' }}
                 priority
               />
               <span className="login-brand-title">
@@ -612,10 +618,10 @@ export default function Login() {
             </div>
 
             <div className="login-left-pills">
-              <span className="login-pill"><CheckCircle2 size={14} color="#f97316" /> Clientes</span>
-              <span className="login-pill"><CheckCircle2 size={14} color="#f97316" /> Pagamentos</span>
-              <span className="login-pill"><CheckCircle2 size={14} color="#f97316" /> Relatórios</span>
-              <span className="login-pill"><CheckCircle2 size={14} color="#f97316" /> Controle de Acesso</span>
+              <span className="login-pill">Pagamentos</span>
+              <span className="login-pill">Clientes</span>
+              <span className="login-pill">Relatórios</span>
+              <span className="login-pill">Controle de Acesso</span>
             </div>
           </div>
         </div>

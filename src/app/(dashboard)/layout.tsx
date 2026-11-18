@@ -391,11 +391,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </div>
             {!isSidebarCollapsed && (
               <div style={{ display: 'flex', flexDirection: 'column' }}>
-                <h1 style={{ color: 'var(--color-primary)', margin: 0, fontSize: '0.8rem', fontWeight: 700, whiteSpace: 'nowrap', letterSpacing: '-0.01em' }}>
-                  Central Pagamentos
+                <h1 style={{ margin: 0, fontSize: '0.80rem', fontWeight: 600, whiteSpace: 'nowrap', letterSpacing: '-0.02em', fontFamily: 'Outfit, sans-serif' }}>
+                  <span style={{ color: isDarkMode ? '#edf2f8ff' : '#ea580c' }}>Central</span>
+                  <span style={{ color: isDarkMode ? '#edf2f8ff' : '#1e3a8a' }}>Pagamentos</span>
                 </h1>
                 <div style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)', marginTop: '0.05rem', whiteSpace: 'nowrap' }}>
-                  Grupo Ovale • <span style={{ textTransform: 'capitalize', fontWeight: 600 }}>{userProfile?.nivel}</span>
+                  <span style={{ textTransform: 'capitalize', fontWeight: 600 }}>{userProfile?.nivel}</span>
                 </div>
               </div>
             )}
@@ -457,7 +458,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   ...navItemStyle((pathname.includes('/vendas') && !isRelatoriosOpen) || isVendasOpen),
                   width: '100%',
                   justifyContent: isSidebarCollapsed ? 'center' : 'space-between',
-                  backgroundColor: isVendasOpen ? 'rgba(79, 70, 229, 0.14)' : undefined,
+                  backgroundColor: isVendasOpen ? 'var(--color-primary-light)' : undefined,
                   color: isVendasOpen ? 'var(--color-primary)' : undefined
                 }}
                 title="Vendas"
@@ -580,7 +581,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   ...navItemStyle((pathname.includes('/relatorios') && !isVendasOpen) || isRelatoriosOpen),
                   width: '100%',
                   justifyContent: isSidebarCollapsed ? 'center' : 'space-between',
-                  backgroundColor: isRelatoriosOpen ? 'rgba(79, 70, 229, 0.14)' : undefined,
+                  backgroundColor: isRelatoriosOpen ? 'var(--color-primary-light)' : undefined,
                   color: isRelatoriosOpen ? 'var(--color-primary)' : undefined
                 }}
                 title="Relatórios"
@@ -837,7 +838,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                           <div key={n.id} style={{
                             padding: '0.75rem 1rem',
                             borderBottom: '1px solid var(--color-border)',
-                            background: n.lida ? 'transparent' : 'rgba(79,70,229,0.06)',
+                            background: n.lida ? 'transparent' : 'var(--color-primary-light)',
                             transition: 'background 0.2s'
                           }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem' }}>
