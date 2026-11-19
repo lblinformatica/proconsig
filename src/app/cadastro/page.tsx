@@ -185,19 +185,27 @@ export default function Cadastro() {
     .reg-brand {
       display: flex;
       align-items: center;
-      gap: 1.5rem;
+      gap: 1.25rem;
       flex-wrap: wrap;
+    }
+    .reg-brand-divider {
+      width: 1px;
+      height: 44px;
+      background-color: #cbd5e1;
+    }
+    .reg-page.dark .reg-brand-divider {
+      background-color: rgba(255, 255, 255, 0.2);
     }
     .reg-brand-title {
       font-family: 'Outfit', sans-serif;
-      font-size: 2.35rem;
+      font-size: 2.15rem;
       font-weight: 800;
       letter-spacing: -0.03em;
       line-height: 1;
       white-space: nowrap;
     }
-    .reg-brand-orange { color: #ea580c; }
-    .reg-brand-blue { color: #1e3a8a; }
+    .reg-brand-orange { color: #ea8508; }
+    .reg-brand-blue { color: #192e69ff; }
 
     .reg-left-tagline {
       min-height: 220px;
@@ -417,11 +425,11 @@ export default function Cadastro() {
           <div className="reg-left-content">
             <div className="reg-brand">
               <Image
-                src="/logotipo_ovale_transparente.png"
+                src="/logo_ovale_novo.png"
                 alt="Grupo Ovale"
-                width={300}
-                height={20}
-                style={{ height: '150px', width: 'auto', objectFit: 'contain' }}
+                width={200}
+                height={100}
+                style={{ height: '100px', width: 'auto', objectFit: 'contain' }}
                 priority
               />
               <span className="reg-brand-title">

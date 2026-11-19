@@ -392,8 +392,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             {!isSidebarCollapsed && (
               <div style={{ display: 'flex', flexDirection: 'column' }}>
                 <h1 style={{ margin: 0, fontSize: '0.80rem', fontWeight: 600, whiteSpace: 'nowrap', letterSpacing: '-0.02em', fontFamily: 'Outfit, sans-serif' }}>
-                  <span style={{ color: isDarkMode ? '#edf2f8ff' : '#ea580c' }}>Central</span>
-                  <span style={{ color: isDarkMode ? '#edf2f8ff' : '#1e3a8a' }}>Pagamentos</span>
+                  <span style={{ color: isDarkMode ? '#edf2f8ff' : '#ea8508' }}>Central</span>
+                  <span style={{ color: isDarkMode ? '#edf2f8ff' : '#192e69ff' }}>Pagamentos</span>
                 </h1>
                 <div style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)', marginTop: '0.05rem', whiteSpace: 'nowrap' }}>
                   <span style={{ textTransform: 'capitalize', fontWeight: 600 }}>{userProfile?.nivel}</span>

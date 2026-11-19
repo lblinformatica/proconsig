@@ -229,22 +229,30 @@ export default function Login() {
         .login-brand {
           display: flex;
           align-items: center;
-          gap: 1.5rem;
+          gap: 1.25rem;
           flex-wrap: wrap;
+        }
+        .login-brand-divider {
+          width: 1px;
+          height: 44px;
+          background-color: #cbd5e1;
+        }
+        .login-page.is-dark .login-brand-divider {
+          background-color: rgba(255, 255, 255, 0.2);
         }
         .login-brand-title {
           font-family: 'Outfit', sans-serif;
-          font-size: 2.35rem;
+          font-size: 2.15rem;
           font-weight: 800;
           letter-spacing: -0.03em;
           line-height: 1;
           white-space: nowrap;
         }
         .login-brand-orange {
-          color: #ea580c;
+          color: #ea8508;
         }
         .login-brand-blue {
-          color: #1e3a8a;
+          color: #192e69ff;
         }
 
         .login-left-tagline {
@@ -597,11 +605,11 @@ export default function Login() {
           <div className="login-left-content">
             <div className="login-brand">
               <Image
-                src="/logotipo_ovale_transparente.png"
+                src="/logo_ovale_novo.png"
                 alt="Grupo Ovale"
-                width={300}
-                height={20}
-                style={{ height: '150px', width: 'auto', objectFit: 'contain' }}
+                width={200}
+                height={100}
+                style={{ height: 'px', width: 'auto', objectFit: 'contain' }}
                 priority
               />
               <span className="login-brand-title">
@@ -633,7 +641,7 @@ export default function Login() {
             {/* Mobile brand */}
             <div className="login-mobile-brand">
               <div style={{ background: '#fff', padding: '0.35rem 0.65rem', borderRadius: '10px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)', display: 'inline-flex' }}>
-                <Image src="/ovale_icon.png" alt="Grupo Ovale" width={32} height={32} style={{ height: '32px', width: 'auto' }} />
+                <Image src="/ovale_icon_novo.png" alt="Grupo Ovale" width={32} height={32} style={{ height: '32px', width: 'auto' }} />
               </div>
               <div>
                 <span className="login-mobile-name" style={{ display: 'block', fontSize: '1.25rem', lineHeight: 1.1 }}>Central de Pagamentos</span>

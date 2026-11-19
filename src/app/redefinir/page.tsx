@@ -176,22 +176,30 @@ export default function RedefinirSenha() {
         .login-brand {
           display: flex;
           align-items: center;
-          gap: 1.5rem;
+          gap: 1.25rem;
           flex-wrap: wrap;
+        }
+        .login-brand-divider {
+          width: 1px;
+          height: 44px;
+          background-color: #cbd5e1;
+        }
+        .login-page.is-dark .login-brand-divider {
+          background-color: rgba(255, 255, 255, 0.2);
         }
         .login-brand-title {
           font-family: 'Outfit', sans-serif;
-          font-size: 2.35rem;
+          font-size: 2.15rem;
           font-weight: 800;
           letter-spacing: -0.03em;
           line-height: 1;
           white-space: nowrap;
         }
         .login-brand-orange {
-          color: #ea580c;
+          color: #ea8508;
         }
         .login-brand-blue {
-          color: #1e3a8a;
+          color: #192e69ff;
         }
 
         .login-left-tagline {
@@ -374,11 +382,11 @@ export default function RedefinirSenha() {
           <div className="login-left-content">
             <div className="login-brand">
               <Image
-                src="/logotipo_ovale_transparente.png"
+                src="/logo_ovale_novo.png"
                 alt="Grupo Ovale"
-                width={300}
-                height={20}
-                style={{ height: '150px', width: 'auto', objectFit: 'contain' }}
+                width={200}
+                height={100}
+                style={{ height: '100px', width: 'auto', objectFit: 'contain' }}
                 priority
               />
               <span className="login-brand-title">
