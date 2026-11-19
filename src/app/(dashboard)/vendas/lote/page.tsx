@@ -163,6 +163,7 @@ export default function NovaVendaLote() {
   const [hasOperationsButAllSold, setHasOperationsButAllSold] = useState(false);
   const [observacoesContratos, setObservacoesContratos] = useState<{ [operacao: string]: string }>({});
   const [manualObsFlags, setManualObsFlags] = useState<{ [operacao: string]: boolean }>({});
+  const [inicioContratos, setInicioContratos] = useState<{ [operacao: string]: { mes: string; ano: string } }>({});
 
   const [form, setForm] = useState({
     orgao: '',
@@ -277,6 +278,7 @@ export default function NovaVendaLote() {
     setExpandedContratos([]);
     setObservacoesContratos({});
     setManualObsFlags({});
+    setInicioContratos({});
     setHasOperationsButAllSold(false);
     setForm(f => ({
       ...f,
@@ -373,6 +375,7 @@ export default function NovaVendaLote() {
     setExpandedContratos([]);
     setObservacoesContratos({});
     setManualObsFlags({});
+    setInicioContratos({});
 
     const formattedCpf = formatCPF(cpf);
     const rawCpf = formattedCpf.replace(/[^\d]/g, '');
@@ -646,6 +649,40 @@ export default function NovaVendaLote() {
     setSelectedOpIds(prev => (prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]));
   };
 
+  const getInicioContrato = (c: ContratoAgrupado): { mes: string; ano: string } => {
+    if (inicioContratos[c.operacao]) {
+      return inicioContratos[c.operacao];
+    }
+    const parcelasRef = c.parcelasSelecionadas.length > 0 ? c.parcelasSelecionadas : c.parcelasAbertas;
+    const maisAntiga = [...parcelasRef].sort(
+      (a, b) => new Date(a.vencimento).getTime() - new Date(b.vencimento).getTime()
+    )[0];
+
+    if (maisAntiga?.vencimento) {
+      const d = new Date(maisAntiga.vencimento + 'T12:00:00');
+      return {
+        mes: (d.getMonth() + 1).toString().padStart(2, '0'),
+        ano: d.getFullYear().toString()
+      };
+    }
+    return {
+      mes: form.inicio_mes || '',
+      ano: form.inicio_ano || new Date().getFullYear().toString()
+    };
+  };
+
+  const handleInicioContratoChange = (operacao: string, field: 'mes' | 'ano', value: string) => {
+    const c = contratosAgrupados.find(x => x.operacao === operacao);
+    const current = c ? getInicioContrato(c) : { mes: '', ano: new Date().getFullYear().toString() };
+    setInicioContratos(prev => ({
+      ...prev,
+      [operacao]: {
+        ...current,
+        [field]: value
+      }
+    }));
+  };
+
   const gerarObservacaoIndividual = (c: ContratoAgrupado) => {
     const parts: string[] = [];
     const contaAtiv = c.conta_ativacao;
@@ -661,22 +698,12 @@ export default function NovaVendaLote() {
       }
     }
 
-    const parcelasRef = c.parcelasSelecionadas.length > 0 ? c.parcelasSelecionadas : c.parcelasAbertas;
-    const maisAntiga = [...parcelasRef].sort(
-      (a, b) => new Date(a.vencimento).getTime() - new Date(b.vencimento).getTime()
-    )[0];
-
-    if (maisAntiga?.vencimento) {
-      const d = new Date(maisAntiga.vencimento + 'T12:00:00');
-      const m = (d.getMonth() + 1).toString().padStart(2, '0');
-      const y = d.getFullYear().toString();
-      const mesNome = MONTH_NAMES[m] || '';
-      if (mesNome && y) {
-        parts.push(`INICIO ${mesNome}/${y}`);
+    const inicio = getInicioContrato(c);
+    if (inicio.mes && inicio.ano) {
+      const mesNome = MONTH_NAMES[inicio.mes] || '';
+      if (mesNome) {
+        parts.push(`INICIO ${mesNome}/${inicio.ano}`);
       }
-    } else if (form.inicio_mes && form.inicio_ano) {
-      const mesNome = MONTH_NAMES[form.inicio_mes] || '';
-      if (mesNome) parts.push(`INICIO ${mesNome}/${form.inicio_ano}`);
     }
 
     const restamCount = c.parcelasAbertas.length;
@@ -910,6 +937,18 @@ export default function NovaVendaLote() {
       );
     }
 
+    // Validar Mês e Ano de início de cada contrato selecionado
+    const contratoSemInicio = contratosSelecionados.find(c => {
+      const ini = getInicioContrato(c);
+      return !ini.mes || !ini.ano;
+    });
+    if (contratoSemInicio) {
+      return showAlert(
+        'Mês / Ano Ausente',
+        `Por favor, informe o Mês e Ano de início no contrato ${contratoSemInicio.operacao}.`
+      );
+    }
+
     setLoading(true);
     setError('');
 
@@ -949,18 +988,10 @@ export default function NovaVendaLote() {
 
       // Monta os registros individuais (Opção A: 1 registro de venda por contrato selecionado)
       const payloads = contratosSelecionados.map(c => {
-        const maisAntiga = [...c.parcelasSelecionadas].sort(
-          (a, b) => new Date(a.vencimento).getTime() - new Date(b.vencimento).getTime()
-        )[0];
-
+        const inicio = getInicioContrato(c);
         let dataInicio: string | null = null;
-        if (maisAntiga?.vencimento) {
-          const d = new Date(maisAntiga.vencimento + 'T12:00:00');
-          const m = (d.getMonth() + 1).toString().padStart(2, '0');
-          const y = d.getFullYear().toString();
-          dataInicio = `${y}-${m}-01`;
-        } else if (form.inicio_mes && form.inicio_ano) {
-          dataInicio = `${form.inicio_ano}-${form.inicio_mes}-01`;
+        if (inicio.mes && inicio.ano) {
+          dataInicio = `${inicio.ano}-${inicio.mes}-01`;
         }
 
         const saldoContrato = Number(c.somaLiquidaSelecionada.toFixed(2));
@@ -1537,52 +1568,98 @@ export default function NovaVendaLote() {
                                         </div>
                                       )}
 
-                                      {/* Observações do Contrato */}
-                                      <div style={{ marginTop: '0.75rem' }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
-                                          <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-primary)' }}>
-                                            Observações
-                                          </label>
-                                          {manualObsFlags[c.operacao] && (
-                                            <button
-                                              type="button"
-                                              onClick={() => {
-                                                setManualObsFlags(prev => ({ ...prev, [c.operacao]: false }));
-                                                setObservacoesContratos(prev => {
-                                                  const next = { ...prev };
-                                                  delete next[c.operacao];
-                                                  return next;
-                                                });
-                                              }}
-                                              style={{
-                                                background: 'none',
-                                                border: 'none',
-                                                color: 'var(--color-primary)',
-                                                fontSize: '0.72rem',
-                                                cursor: 'pointer',
-                                                textDecoration: 'underline'
-                                              }}
-                                            >
-                                              Restaurar observação automática
-                                            </button>
-                                          )}
+                                      {/* Observações e Mês/Ano de Início do Contrato */}
+                                      <div style={{ marginTop: '0.75rem', display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
+                                        <div style={{ flex: 1 }}>
+                                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+                                            <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-primary)' }}>
+                                              Observações
+                                            </label>
+                                            {manualObsFlags[c.operacao] && (
+                                              <button
+                                                type="button"
+                                                onClick={() => {
+                                                  setManualObsFlags(prev => ({ ...prev, [c.operacao]: false }));
+                                                  setObservacoesContratos(prev => {
+                                                    const next = { ...prev };
+                                                    delete next[c.operacao];
+                                                    return next;
+                                                  });
+                                                }}
+                                                style={{
+                                                  background: 'none',
+                                                  border: 'none',
+                                                  color: 'var(--color-primary)',
+                                                  fontSize: '0.72rem',
+                                                  cursor: 'pointer',
+                                                  textDecoration: 'underline'
+                                                }}
+                                              >
+                                                Restaurar observação automática
+                                              </button>
+                                            )}
+                                          </div>
+                                          <textarea
+                                            value={getObservacaoContrato(c)}
+                                            onChange={e => handleObservacaoChange(c.operacao, e.target.value)}
+                                            rows={2}
+                                            placeholder="Observação deste contrato..."
+                                            style={{
+                                              width: '100%',
+                                              resize: 'vertical',
+                                              fontSize: '0.82rem',
+                                              borderRadius: '6px',
+                                              border: '1px solid var(--color-border)',
+                                              padding: '0.5rem',
+                                              backgroundColor: 'var(--color-bg-surface)',
+                                              color: 'var(--color-text-main, #333)'
+                                            }}
+                                          />
                                         </div>
-                                        <textarea
-                                          value={getObservacaoContrato(c)}
-                                          onChange={e => handleObservacaoChange(c.operacao, e.target.value)}
-                                          rows={2}
-                                          placeholder="Observação deste contrato..."
-                                          style={{
-                                            width: '100%',
-                                            resize: 'vertical',
-                                            fontSize: '0.82rem',
-                                            borderRadius: '6px',
-                                            border: '1px solid var(--color-border)',
-                                            padding: '0.5rem',
-                                            backgroundColor: 'var(--color-bg-surface)',
-                                            color: 'var(--color-text-main, #333)'
-                                          }}
-                                        />
+
+                                        <div style={{ width: '110px' }}>
+                                          <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-primary)', display: 'block', marginBottom: '0.35rem' }}>
+                                            Mês
+                                          </label>
+                                          <select
+                                            value={getInicioContrato(c).mes}
+                                            onChange={e => handleInicioContratoChange(c.operacao, 'mes', e.target.value)}
+                                            style={{
+                                              width: '100%',
+                                              padding: '0.45rem 0.5rem',
+                                              fontSize: '0.82rem',
+                                              borderRadius: '6px',
+                                              border: '1px solid var(--color-border)',
+                                              backgroundColor: 'var(--color-bg-surface)',
+                                              color: 'var(--color-text-main, #333)'
+                                            }}
+                                          >
+                                            <option value="">--</option>
+                                            {['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'].map(m => (
+                                              <option key={m} value={m}>{m}</option>
+                                            ))}
+                                          </select>
+                                        </div>
+
+                                        <div style={{ width: '120px' }}>
+                                          <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-primary)', display: 'block', marginBottom: '0.35rem' }}>
+                                            Ano
+                                          </label>
+                                          <input
+                                            type="number"
+                                            value={getInicioContrato(c).ano}
+                                            onChange={e => handleInicioContratoChange(c.operacao, 'ano', e.target.value)}
+                                            style={{
+                                              width: '100%',
+                                              padding: '0.45rem 0.5rem',
+                                              fontSize: '0.82rem',
+                                              borderRadius: '6px',
+                                              border: '1px solid var(--color-border)',
+                                              backgroundColor: 'var(--color-bg-surface)',
+                                              color: 'var(--color-text-main, #333)'
+                                            }}
+                                          />
+                                        </div>
                                       </div>
                                     </td>
                                   </tr>
@@ -1792,24 +1869,6 @@ export default function NovaVendaLote() {
                     </div>
                   </div>
                 )}
-
-                <div style={{ marginTop: '1.25rem', paddingTop: '1rem', borderTop: '1px solid var(--color-border)', display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                  <div style={{ width: '140px' }}>
-                    <label style={fs}>Mês</label>
-                    <select name="inicio_mes" value={form.inicio_mes} onChange={handleChange} required style={{ width: '100%' }}>
-                      <option value="">--</option>
-                      {['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'].map(m => (
-                        <option key={m} value={m}>
-                          {m}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div style={{ width: '160px' }}>
-                    <label style={fs}>Ano</label>
-                    <input name="inicio_ano" type="number" value={form.inicio_ano} onChange={handleChange} required style={{ width: '100%' }} />
-                  </div>
-                </div>
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginBottom: '2rem' }}>
